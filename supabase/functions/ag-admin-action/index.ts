@@ -238,8 +238,14 @@ Deno.serve(async (req) => {
         // SIEMPRE mostraba 0/0/0/0 sin importar cuántos datos reales
         // hubiera. Confirmado 2026-08-28: 46 pasajeros y 3 conductores
         // aprobados reales, el panel mostraba 0 en ambos.
-        const [p, pend, appr, rej] = await Promise.all([
+        const [p, quick, pend, appr, rej] = await Promise.all([
           movi.from('ag_users').select('id', { count: 'exact', head: true }).eq('role', 'passenger'),
+          // 'quick' = Registro Rápido: el conductor ya puede aceptar su primer
+          // viaje sin documentos ni aprobación (ver anda-gana.component.ts
+          // ~L5543). No es lo mismo que 'pending' -- faltaba en el resumen,
+          // por eso Pendientes+Aprobados+Rechazados nunca sumaba el total
+          // real de conductores que se ve en la pestaña Conductores.
+          movi.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('status', 'quick'),
           movi.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
           movi.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
           movi.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
@@ -248,6 +254,7 @@ Deno.serve(async (req) => {
           ok: true,
           data: {
             passengers: p.count ?? 0,
+            quick: quick.count ?? 0,
             pending: pend.count ?? 0,
             approved: appr.count ?? 0,
             rejected: rej.count ?? 0,

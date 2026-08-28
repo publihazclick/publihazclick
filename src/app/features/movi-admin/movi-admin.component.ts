@@ -159,10 +159,18 @@ const TABS: TabDef[] = [
       </div>
 
       <!-- Platform stats -->
+      <p class="text-slate-600 text-[10px] font-black uppercase tracking-widest">👤 Pasajeros</p>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06)">
           <p class="text-slate-500 text-[10px] uppercase tracking-widest mb-1">Total pasajeros</p>
           <p class="text-white font-black text-3xl">{{ stats().passengers }}</p>
+        </div>
+      </div>
+      <p class="text-slate-600 text-[10px] font-black uppercase tracking-widest">🚗 Conductores</p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="rounded-2xl p-4" style="background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.12)" title="Ya pueden aceptar su primer viaje, sin documentos aprobados todavía">
+          <p class="text-blue-400 text-[10px] uppercase tracking-widest mb-1">Registro rápido</p>
+          <p class="text-white font-black text-3xl">{{ stats().quick }}</p>
         </div>
         <div class="rounded-2xl p-4" style="background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.12)">
           <p class="text-amber-400 text-[10px] uppercase tracking-widest mb-1">Pendientes aprobación</p>
@@ -440,8 +448,8 @@ const TABS: TabDef[] = [
             </div>
             <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
               <span class="px-2 py-0.5 rounded-full text-[9px] font-black"
-                [style]="d.status === 'approved' ? 'background:rgba(16,185,129,0.15);color:#34d399' : d.status === 'pending' ? 'background:rgba(245,158,11,0.15);color:#fbbf24' : 'background:rgba(239,68,68,0.15);color:#f87171'">
-                {{ d.status === 'approved' ? 'APROBADO' : d.status === 'pending' ? 'PENDIENTE' : 'RECHAZADO' }}
+                [style]="d.status === 'approved' ? 'background:rgba(16,185,129,0.15);color:#34d399' : d.status === 'pending' ? 'background:rgba(245,158,11,0.15);color:#fbbf24' : d.status === 'quick' ? 'background:rgba(59,130,246,0.15);color:#60a5fa' : 'background:rgba(239,68,68,0.15);color:#f87171'">
+                {{ d.status === 'approved' ? 'APROBADO' : d.status === 'pending' ? 'PENDIENTE' : d.status === 'quick' ? 'REGISTRO RÁPIDO' : 'RECHAZADO' }}
               </span>
               <span class="text-[10px] text-slate-600">{{ d.created_at | date:'dd/MM/yy' }}</span>
             </div>
@@ -1058,7 +1066,7 @@ export class MoviAdminComponent implements OnInit {
   rejectReason   = '';
   actionLoading  = signal<string | null>(null);
 
-  stats          = signal({ passengers: 0, pending: 0, approved: 0, rejected: 0 });
+  stats          = signal({ passengers: 0, quick: 0, pending: 0, approved: 0, rejected: 0 });
   pendingDrivers = signal<AgDriver[]>([]);
   allDrivers     = signal<AgDriver[]>([]);
   passengers     = signal<AgUser[]>([]);

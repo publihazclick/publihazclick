@@ -1497,9 +1497,9 @@ export class AndaGanaService {
    * conductores aprobados reales, mostraba 0 en ambos). Ahora pasa por
    * ag-admin-action con service_role, igual que el resto de acciones admin.
    */
-  async getStats(publihazclickToken: string): Promise<{ passengers: number; pending: number; approved: number; rejected: number }> {
+  async getStats(publihazclickToken: string): Promise<{ passengers: number; quick: number; pending: number; approved: number; rejected: number }> {
     const out = await this.callAdminAction(publihazclickToken, { action: 'get_stats' });
-    return out.data ?? { passengers: 0, pending: 0, approved: 0, rejected: 0 };
+    return out.data ?? { passengers: 0, quick: 0, pending: 0, approved: 0, rejected: 0 };
   }
 
   // ═══════════════════════════════════════════════════

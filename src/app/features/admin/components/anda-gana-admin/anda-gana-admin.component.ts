@@ -39,22 +39,42 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
 
   <!-- Stats -->
   @if (!loading()) {
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-4 flex flex-col gap-1">
-        <p class="text-slate-500 text-xs uppercase tracking-widest">Pasajeros</p>
-        <p class="text-white font-black text-3xl">{{ stats().passengers }}</p>
+    <div class="flex flex-col gap-4">
+      <!-- ── Pasajeros ── -->
+      <div class="flex flex-col gap-2">
+        <p class="text-slate-600 text-[10px] font-black uppercase tracking-widest px-1">👤 Pasajeros</p>
+        <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,220px)] gap-3">
+          <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-4 flex flex-col gap-1">
+            <p class="text-slate-500 text-xs uppercase tracking-widest">Registrados</p>
+            <p class="text-white font-black text-3xl">{{ stats().passengers }}</p>
+          </div>
+        </div>
       </div>
-      <div class="bg-amber-500/5 border border-amber-500/15 rounded-2xl p-4 flex flex-col gap-1">
-        <p class="text-amber-400 text-xs uppercase tracking-widest">Pendientes</p>
-        <p class="text-white font-black text-3xl">{{ stats().pending }}</p>
-      </div>
-      <div class="bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-4 flex flex-col gap-1">
-        <p class="text-emerald-400 text-xs uppercase tracking-widest">Aprobados</p>
-        <p class="text-white font-black text-3xl">{{ stats().approved }}</p>
-      </div>
-      <div class="bg-rose-500/5 border border-rose-500/15 rounded-2xl p-4 flex flex-col gap-1">
-        <p class="text-rose-400 text-xs uppercase tracking-widest">Rechazados</p>
-        <p class="text-white font-black text-3xl">{{ stats().rejected }}</p>
+
+      <!-- ── Conductores ── -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between px-1">
+          <p class="text-slate-600 text-[10px] font-black uppercase tracking-widest">🚗 Conductores</p>
+          <p class="text-slate-600 text-[10px]">Total: {{ stats().quick + stats().pending + stats().approved + stats().rejected }}</p>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="bg-blue-500/5 border border-blue-500/15 rounded-2xl p-4 flex flex-col gap-1" title="Ya pueden aceptar su primer viaje, sin documentos aprobados todavía">
+            <p class="text-blue-400 text-xs uppercase tracking-widest">Registro rápido</p>
+            <p class="text-white font-black text-3xl">{{ stats().quick }}</p>
+          </div>
+          <div class="bg-amber-500/5 border border-amber-500/15 rounded-2xl p-4 flex flex-col gap-1">
+            <p class="text-amber-400 text-xs uppercase tracking-widest">Pendientes</p>
+            <p class="text-white font-black text-3xl">{{ stats().pending }}</p>
+          </div>
+          <div class="bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-4 flex flex-col gap-1">
+            <p class="text-emerald-400 text-xs uppercase tracking-widest">Aprobados</p>
+            <p class="text-white font-black text-3xl">{{ stats().approved }}</p>
+          </div>
+          <div class="bg-rose-500/5 border border-rose-500/15 rounded-2xl p-4 flex flex-col gap-1">
+            <p class="text-rose-400 text-xs uppercase tracking-widest">Rechazados</p>
+            <p class="text-white font-black text-3xl">{{ stats().rejected }}</p>
+          </div>
+        </div>
       </div>
     </div>
   }
@@ -236,7 +256,9 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
             <p class="text-slate-500 text-xs">{{ d.plate }} · {{ d.vehicle_brand }} {{ d.vehicle_model }}</p>
           </div>
           <div class="flex flex-col items-end gap-1">
-            @if (d.status === 'pending') {
+            @if (d.status === 'quick') {
+              <span class="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold" title="Ya puede aceptar su primer viaje, sin documentos aprobados todavía">Registro rápido</span>
+            } @else if (d.status === 'pending') {
               <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold">Pendiente</span>
             } @else if (d.status === 'approved') {
               <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">Aprobado</span>
@@ -924,7 +946,7 @@ export class AndaGanaAdminComponent implements OnInit {
   rejectingId   = signal<string | null>(null);
   rejectReason  = '';
 
-  stats          = signal({ passengers: 0, pending: 0, approved: 0, rejected: 0 });
+  stats          = signal({ passengers: 0, quick: 0, pending: 0, approved: 0, rejected: 0 });
   pendingDrivers = signal<AgDriver[]>([]);
   allDrivers     = signal<AgDriver[]>([]);
   passengers     = signal<AgUser[]>([]);
