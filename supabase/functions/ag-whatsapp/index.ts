@@ -399,6 +399,36 @@ function expandStreetType(segment: string): string {
   });
 }
 
+// ─── Barrio (best-effort, en paralelo, nunca bloquea la respuesta) ───────────
+// Pedido explícito del usuario 2026-08-28: "no podemos devolver también el
+// barrio". Se confirmó consultando varios puntos reales de Cúcuta que Mapbox
+// NO tiene ninguna capa "neighborhood" para esta ciudad (el context nunca la
+// trae, ni pidiéndola explícitamente) -- OpenStreetMap/Nominatim sí la tiene
+// para las mismas coordenadas exactas ("Zulima", confirmado). Nominatim ya se
+// había sacado del camino PRINCIPAL de geocodificación por ser lento y sin
+// SLA (ver comentario en reverseGeocode) -- acá se usa solo como dato EXTRA,
+// arrancado en paralelo con Mapbox (no en serie) y con timeout corto propio,
+// así que si Nominatim tarda o falla el pasajero de todos modos recibe su
+// dirección a tiempo, solo sin el barrio.
+async function fetchNeighborhood(lat: number, lng: number): Promise<string | undefined> {
+  try {
+    const r = await fetchWithTimeout(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&accept-language=es`,
+      { headers: { 'User-Agent': 'Movi-App/1.0 (movi@publihazclick.com)' } },
+      900
+    );
+    const j = await r.json();
+    const addr = j?.address as Record<string, string> | undefined;
+    // OSM etiqueta el barrio con distintos tags según qué tan bien mapeada
+    // esté la zona -- se prueban los 3 más comunes en ciudades colombianas,
+    // del más específico al más general.
+    return addr?.neighbourhood || addr?.suburb || addr?.quarter || undefined;
+  } catch (e) {
+    console.error('[Geo] fetchNeighborhood (Nominatim) error:', e);
+    return undefined;
+  }
+}
+
 // ─── Geocoding inverso (solo Mapbox) ───────────────────────────────────────────
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
   // Mapbox como única fuente -- el mismo token publico que ya usa el mapa de
@@ -417,6 +447,10 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   // vuelve lenta e impredecible toda la función. Si Mapbox no da un
   // resultado confiable, se cae directo a coordenadas crudas (rápido,
   // siempre disponible, y más honesto que una dirección adivinada).
+  // Arrancada ANTES de esperar a Mapbox (no con await todavía) para que
+  // corra en paralelo de verdad, no en serie -- se recoge más abajo, después
+  // de tener ya la calle/ciudad de Mapbox.
+  const neighborhoodPromise = fetchNeighborhood(lat, lng);
   const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN');
   if (mapboxToken) {
     try {
@@ -470,7 +504,15 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
         // primer segmento (la calle) -- los demás son ciudad/barrio, no hace
         // falta tocarlos.
         if (segments[0]) segments[0] = expandStreetType(segments[0]);
-        return segments.slice(0, 2).join(', ');
+        const [street, city] = segments;
+        // Para este punto ya pasó tiempo de sobra (todo lo de arriba: fetch a
+        // Mapbox + parsear) -- normalmente neighborhoodPromise ya está resuelta
+        // y este await es instantáneo; si no, espera como mucho lo que le
+        // quede de su propio timeout de 900ms.
+        const barrio = await neighborhoodPromise;
+        return barrio
+          ? [street, `barrio ${barrio}`, city].filter(Boolean).join(', ')
+          : segments.slice(0, 2).join(', ');
       }
     } catch (e) { console.error('[Geo] Mapbox reverseGeocode error:', e); }
   }
