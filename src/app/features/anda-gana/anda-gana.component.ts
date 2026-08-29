@@ -8617,21 +8617,21 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;flex-direction:column;gap:5px">
             <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">TIPO DE VEHÍCULO</label>
             <div style="display:flex;gap:8px">
-              <button (click)="qrVehicle.set('carro')"
+              <button (click)="selectQrVehicle('carro')"
                 style="flex:1;padding:12px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px;border:none;cursor:pointer;transition:all 0.15s"
                 [style.background]="qrVehicle() === 'carro' ? 'rgba(36,91,219,0.2)' : 'rgba(255,255,255,0.05)'"
                 [style.border]="qrVehicle() === 'carro' ? '1.5px solid rgba(36,91,219,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
                 <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'carro' ? '#6E93F2' : '#64748b'" style="font-size:24px">directions_car</span>
                 <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'carro' ? '#6E93F2' : '#64748b'">Carro</span>
               </button>
-              <button (click)="qrVehicle.set('moto')"
+              <button (click)="selectQrVehicle('moto')"
                 style="flex:1;padding:12px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px;border:none;cursor:pointer;transition:all 0.15s"
                 [style.background]="qrVehicle() === 'moto' ? 'rgba(36,91,219,0.2)' : 'rgba(255,255,255,0.05)'"
                 [style.border]="qrVehicle() === 'moto' ? '1.5px solid rgba(36,91,219,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
                 <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'moto' ? '#6E93F2' : '#64748b'" style="font-size:24px">two_wheeler</span>
                 <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'moto' ? '#6E93F2' : '#64748b'">Moto</span>
               </button>
-              <button (click)="qrVehicle.set('camion')"
+              <button (click)="selectQrVehicle('camion')"
                 style="flex:1;padding:12px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px;border:none;cursor:pointer;transition:all 0.15s"
                 [style.background]="qrVehicle() === 'camion' ? 'rgba(36,91,219,0.2)' : 'rgba(255,255,255,0.05)'"
                 [style.border]="qrVehicle() === 'camion' ? '1.5px solid rgba(36,91,219,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
@@ -8645,7 +8645,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;flex-direction:column;gap:5px">
             <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">TU PRECIO PROPUESTO</label>
             <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px">
-              <button (click)="qrPrice.set(qrPrice() > 2500 ? qrPrice() - 500 : 2000)"
+              <button (click)="qrDecrementPrice()"
                 style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.08);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;flex-shrink:0">−</button>
               <div style="flex:1;text-align:center">
                 <span style="color:#fff;font-weight:900;font-size:22px">{{ '$' + qrPrice() }}</span>
@@ -8653,7 +8653,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <button (click)="qrPrice.set(qrPrice() + 500)"
                 style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.08);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;flex-shrink:0">+</button>
             </div>
-            <p style="color:#475569;font-size:11px;text-align:center;margin:2px 0 0">El conductor puede aceptar o contraofertar</p>
+            <p style="color:#475569;font-size:11px;text-align:center;margin:2px 0 0">Mínimo {{ formatCOP(qrRecommendedMinPrice()) }} · el conductor puede aceptar o contraofertar</p>
           </div>
 
           <!-- Método de pago -->
@@ -8679,9 +8679,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           }
 
           <!-- Buscar conductor -->
-          <button (click)="qrSubmitTrip()" [disabled]="qrSubmitting() || !qrOriginSelected() || !qrDestSelected() || qrPrice() < 2000"
+          <button (click)="qrSubmitTrip()" [disabled]="qrSubmitting() || !qrOriginSelected() || !qrDestSelected() || qrPrice() < qrRecommendedMinPrice()"
             style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#2563EB);color:#fff;font-weight:900;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 24px rgba(36,91,219,0.4);margin-top:4px"
-            [style.opacity]="qrSubmitting() || !qrOriginSelected() || !qrDestSelected() || qrPrice() < 2000 ? '0.5' : '1'">
+            [style.opacity]="qrSubmitting() || !qrOriginSelected() || !qrDestSelected() || qrPrice() < qrRecommendedMinPrice() ? '0.5' : '1'">
             @if (qrSubmitting()) {
               <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Buscando conductor...
             } @else {
@@ -19330,6 +19330,21 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   qrDestSelected      = signal<{ name: string; lat: number; lng: number } | null>(null);
   qrVehicle           = signal<'carro' | 'moto' | 'camion'>('carro');
   qrPrice             = signal(8000);
+  // BUG REAL encontrado 2026-08-29: el flujo QR tenía su propio piso hardcodeado en $2.000,
+  // sin ninguna relación con el piso real de la plataforma (MIN_PRICE=5000 / 75.23% del precio
+  // sugerido, ver _recommendedMinPrice() y ag-whatsapp/index.ts) -- un pasajero podía bajar el
+  // precio hasta $2.000 con el botón "-" y el submit lo dejaba pasar, pero el trigger de la BD
+  // lo rechazaba (offered_price por debajo del mínimo), generando un error real de flujo de
+  // viaje y una alerta de WhatsApp al admin. Este computed replica el mismo cálculo para que el
+  // piso sea el mismo sin importar por dónde se pida el viaje.
+  readonly qrRecommendedMinPrice = computed(() => {
+    const orig = this.qrOriginSelected();
+    const dest = this.qrDestSelected();
+    if (!orig || !dest) return 5000;
+    const km = this._distKm(orig.lat, orig.lng, dest.lat, dest.lng);
+    const suggested = this._calcPrice(km, this.qrVehicle());
+    return Math.max(5000, Math.ceil(suggested * 0.7523 / 500) * 500);
+  });
   qrPayment           = signal<AgPaymentMethod>('efectivo');
   qrSubmitting        = signal(false);
   qrError             = signal('');
@@ -21655,6 +21670,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOriginSelected.set({ name: s.text || s.place_name, lat, lng });
     this.qrOriginQuery.set('');
     this.qrOriginSuggestions.set([]);
+    this._qrRecalcPrice();
     this.cdr.markForCheck();
   }
 
@@ -21674,7 +21690,27 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrDestSelected.set({ name: s.text || s.place_name, lat, lng });
     this.qrDestQuery.set('');
     this.qrDestSuggestions.set([]);
+    this._qrRecalcPrice();
     this.cdr.markForCheck();
+  }
+
+  selectQrVehicle(v: 'carro' | 'moto' | 'camion'): void {
+    this.qrVehicle.set(v);
+    this._qrRecalcPrice();
+  }
+
+  qrDecrementPrice(): void {
+    this.qrPrice.set(Math.max(this.qrRecommendedMinPrice(), this.qrPrice() - 500));
+  }
+
+  /** Recalcula el precio propuesto en base a la distancia real una vez hay origen y destino. */
+  private _qrRecalcPrice(): void {
+    const orig = this.qrOriginSelected();
+    const dest = this.qrDestSelected();
+    if (!orig || !dest) return;
+    const km = this._distKm(orig.lat, orig.lng, dest.lat, dest.lng);
+    const suggested = this._calcPrice(km, this.qrVehicle());
+    this.qrPrice.set(Math.max(this.qrRecommendedMinPrice(), suggested));
   }
 
   padTime(seconds: number): string {
@@ -21928,7 +21964,11 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const orig = this.qrOriginSelected();
     const dest = this.qrDestSelected();
     if (!orig || !dest) { this.qrError.set('Selecciona el punto de origen y el destino.'); return; }
-    if (this.qrPrice() < 2000) { this.qrError.set('El precio mínimo es $2.000.'); return; }
+    const minPrice = this.qrRecommendedMinPrice();
+    if (this.qrPrice() < minPrice) {
+      this.qrError.set(`El precio mínimo para este viaje es ${this.formatCOP(minPrice)}.`);
+      return;
+    }
     this.qrSubmitting.set(true);
     this.qrError.set('');
     this.cdr.markForCheck();
