@@ -5453,13 +5453,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
 
           @if (rechargeAmount() >= 10000) {
-            @if (rechargeMethod() === 'pse') {
-              <!-- Solo es cierto con PSE: la comisión tiene un fijo que pesa menos en montos grandes -->
-              <p class="text-[10px] text-center" style="color:#0891b2">
-                💡 A mayor monto de recarga, menor costo de transacción — te conviene recargar montos más grandes.
-              </p>
-            }
-
             <!-- Selector de método de pago -->
             <div class="grid grid-cols-2 gap-2">
               <button (click)="rechargeMethod.set('pse')"
@@ -20117,14 +20110,23 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // coincidir con la fórmula real de supabase/functions/ag-create-wallet-recharge).
   // Es solo para mostrarle el desglose ANTES de pagar — el cobro real lo calcula
   // el backend de forma autoritativa al crear el pago.
+  //
+  // Pedido explícito del usuario 2026-08-29: mientras no midamos con datos
+  // reales cada medio de pago (revisado en el panel de ePayco -- Efectivo
+  // está activo en la cuenta pero sin ninguna transacción real todavía, y el
+  // dato que se creía de Tarjeta resultó ser DaviPlata), se cobra siempre el
+  // mayor de los dos estimados que sí tenemos, sin importar qué medio elija
+  // el conductor -- nunca el más barato, así no quedamos cortos si paga por
+  // un canal que no hemos medido (ver misma fórmula en el backend).
   private readonly PSE_FIXED_COP  = 2120;
   private readonly PSE_PCT        = 0.0260;
   private readonly CARD_PCT       = 0.050;
 
-  rechargeFeeCop(amount: number, method: 'pse' | 'card'): number {
+  rechargeFeeCop(amount: number, _method: 'pse' | 'card'): number {
     if (!amount) return 0;
-    const raw = method === 'pse' ? this.PSE_FIXED_COP + amount * this.PSE_PCT : amount * this.CARD_PCT;
-    return Math.ceil(raw / 10) * 10;
+    const pseFee  = this.PSE_FIXED_COP + amount * this.PSE_PCT;
+    const cardFee = amount * this.CARD_PCT;
+    return Math.ceil(Math.max(pseFee, cardFee) / 10) * 10;
   }
 
   rechargeTotalCop(amount: number, method: 'pse' | 'card'): number {

@@ -35,19 +35,32 @@ function decodeJwtPayload(token: string): { sub: string; email?: string } {
 // que pidió). Fórmula PSE derivada empíricamente de 2 transacciones reales
 // aprobadas en la cuenta ePayco de producción (2026-08-26): $10.000 → comisión
 // $2.380 y $98.000 → comisión $4.669,80. Resolviendo el sistema fijo+% da
-// ~$2.120 fijo + 2,60% variable. Tarjeta solo tiene 1 dato real ($102.727 →
-// comisión $4.854,86 ≈ 4,73%); se usa como % plano sin fijo por ser el patrón
-// típico de comisión de franquicia de tarjeta, con un margen de seguridad.
+// ~$2.120 fijo + 2,60% variable.
+//
+// La fórmula de "Tarjeta" (5%) en realidad viene de una transacción que se
+// creía de tarjeta pero al revisarla en el panel real de ePayco (2026-08-29)
+// resultó ser DaviPlata ($102.727 → comisión $4.854,86 ≈ 4,73%) -- no hay NI
+// UN dato real de tarjeta todavía. Y el checkout de ePayco (checkout.js) no
+// se restringe a PSE/Tarjeta -- el conductor puede elegir ahí mismo Efectivo
+// (Efecty/Baloto/etc, confirmado activo en la cuenta) o cualquier otro medio
+// habilitado, y de esos no hay NINGÚN dato real todavía.
+//
+// Pedido explícito del usuario 2026-08-29: mientras no tengamos una
+// transacción real de cada medio para medirlo bien, se cobra SIEMPRE el
+// mayor de los dos estimados que sí tenemos (nunca el más barato), sin
+// importar qué medio elija el conductor -- así nunca nos quedamos cortos
+// aunque paguen en un canal que no hemos medido. Los medios de pago se
+// dejan TODOS visibles y normales en el checkout, ninguno se restringe.
 const PSE_FIXED_COP  = 2120;
 const PSE_PCT        = 0.0260;
-const CARD_PCT       = 0.050; // 4.73% real + margen de seguridad (menor confianza, 1 solo dato)
+const CARD_PCT       = 0.050; // dato real es de DaviPlata (~4.73%), se deja con margen
 
 type PaymentMethod = 'pse' | 'card';
 
-function gatewayFeeCop(method: PaymentMethod, walletAmount: number): number {
-  const raw = method === 'pse'
-    ? PSE_FIXED_COP + walletAmount * PSE_PCT
-    : walletAmount * CARD_PCT;
+function gatewayFeeCop(_method: PaymentMethod, walletAmount: number): number {
+  const pseFee  = PSE_FIXED_COP + walletAmount * PSE_PCT;
+  const cardFee = walletAmount * CARD_PCT;
+  const raw = Math.max(pseFee, cardFee);
   return Math.ceil(raw / 10) * 10; // redondeo a la decena más cercana hacia arriba
 }
 
