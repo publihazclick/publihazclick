@@ -653,7 +653,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             @if (offerSentFor().has(req.id)) {
               <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:12px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3)">
                 <span class="material-symbols-outlined" style="font-size:16px;color:#34d399;font-variation-settings:'FILL' 1">check_circle</span>
-                <span style="color:#34d399;font-size:13px;font-weight:900">Oferta enviada — esperando al pasajero</span>
+                <!-- Pedido explícito del usuario 2026-08-28: el conductor no veía cuánto había
+                     ofertado él mismo tras enviar una contra-oferta -- se agrega el monto acá,
+                     en el mismo aviso, en vez de un modal nuevo (ver offerSentPriceFor). -->
+                <span style="color:#34d399;font-size:13px;font-weight:900">Ofertaste {{ formatCOP(offerSentPriceFor().get(req.id) ?? 0) }} — esperando al pasajero</span>
               </div>
             } @else {
               <div style="display:flex;gap:8px">
@@ -10407,6 +10410,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverOfferPrice     = signal(0);
   sendingOffer         = signal(false);
   offerSentFor         = signal<Set<string>>(new Set());
+  // Cuánto ofertó el conductor en CADA solicitud (id -> precio) -- pedido explícito del
+  // usuario 2026-08-28: tras enviar una contra-oferta, el conductor no tenía forma de ver
+  // cuánto había ofertado él mismo, el aviso de "Oferta enviada" no incluía el número.
+  offerSentPriceFor    = signal<Map<string, number>>(new Map());
   // Keyed por id de solicitud (no un solo boolean global) -- el banner ahora apila TODAS las
   // solicitudes activas a la vez (ver template), así que abrir la contra-oferta de una no debe
   // afectar a las demás tarjetas visibles.
@@ -18994,6 +19001,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.sendingOffer.set(false);
     if (result.success) {
       this.offerSentFor.update(s => { const ns = new Set(s); ns.add(req.id); return ns; });
+      this.offerSentPriceFor.update(m => { const nm = new Map(m); nm.set(req.id, this.driverOfferPrice()); return nm; });
       this.makingOfferFor.set(null);
       this.agService.logMetricEvent('offer_made', req.id).catch(() => {});
       // Push al pasajero para que vea la oferta aunque tenga la app cerrada
