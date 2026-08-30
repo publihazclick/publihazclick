@@ -831,7 +831,18 @@ export class AndaGanaService {
       .single();
     if (error) {
       this.reportTripError('requestTrip', error, { critical: true, extra: { passengerUserId: data.passengerUserId } });
-      return { success: false, error: error.message };
+      // Bug real encontrado 2026-08-30: un pasajero con sesión válida pero cuyo perfil
+      // (ag_users) no estaba vinculado a esa sesión (auth_user_id desincronizado -- caso
+      // real: cuenta creada primero por WhatsApp, vinculada después al iniciar sesión en la
+      // app, y la vinculación no se completó) chocaba contra la política de seguridad de la
+      // fila (RLS) al insertar. El error crudo de Postgres ("new row violates row-level
+      // security policy...") le llegaba en inglés y sin ninguna acción clara -- viola
+      // feedback_no_english_errors. code 42501 = violación de RLS; se traduce a un mensaje
+      // accionable en vez de mostrar el texto técnico.
+      const friendly = error.code === '42501'
+        ? 'No pudimos verificar tu perfil. Cierra sesión y vuelve a entrar, e intenta pedir el viaje de nuevo.'
+        : error.message;
+      return { success: false, error: friendly };
     }
     return { success: true, tripId: row.id };
   }
