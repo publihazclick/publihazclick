@@ -109,6 +109,54 @@ function db() {
   });
 }
 
+// ─── "Subir oferta" (migración 243) ───────────────────────────────────────────
+// Monto sugerido al subir oferta: mismos pasos en pesos que ya usa la app
+// (adjustTripPriceSmart() en anda-gana.component.ts) -- NO un porcentaje, para
+// que el salto sea proporcionalmente más chico entre más caro es el viaje. Si
+// se cambia uno de los dos lados, cambiar el otro para que no queden distintos.
+function _raiseOfferStep(current: number): number {
+  return current < 8000 ? 500 : current < 20000 ? 1000 : 2000;
+}
+function _raiseOfferSuggested(current: number): number {
+  return current + _raiseOfferStep(current);
+}
+// Por encima de este múltiplo del monto actual, se pide confirmar una vez más
+// antes de aplicar -- protección contra errores de tipeo (ej. un cero de más).
+const RAISE_OFFER_SANITY_MULTIPLIER = 3;
+
+/** Aplica el monto final de "subir oferta": guarda el precio de origen la primera vez (no lo
+ * pisa en subidas siguientes), actualiza el precio, reenvía el push real a conductores
+ * cercanos, y le confirma al pasajero -- compartido por el camino directo y el confirmado. */
+async function _applyRaisedOffer(phone: string, tripId: string, currentPrice: number, newPrice: number, delivery: boolean) {
+  const supabase = db();
+  const { data: updated } = await supabase.from('ag_trip_requests')
+    .update({ offered_price: newPrice, updated_at: new Date().toISOString() })
+    .eq('id', tripId).eq('status', 'searching')
+    .select('initial_offered_price').maybeSingle();
+
+  // COALESCE manual (no en SQL directo porque pasa por supabase-js): si initial_offered_price
+  // todavía está vacío, esta es la primera vez que se sube la oferta de este viaje -- se guarda
+  // el monto ANTERIOR a este cambio como el de origen, para poder mostrar "empezaste en $X" en
+  // subidas futuras sin perder ese dato.
+  let initialPrice = updated?.initial_offered_price as number | null;
+  if (initialPrice == null) {
+    initialPrice = currentPrice;
+    await supabase.from('ag_trip_requests').update({ initial_offered_price: initialPrice }).eq('id', tripId);
+  }
+
+  await supabase.rpc('ag_rebroadcast_trip_request', { p_trip_id: tripId });
+  await upsertSession(phone, { state: 'matching', matching_started_at: new Date().toISOString(), pending_raise_amount: null });
+
+  const noun = delivery ? 'mensajeros' : 'conductores';
+  const startedLine = initialPrice < currentPrice
+    ? ` (empezaste en *$${initialPrice.toLocaleString('es-CO')}*)`
+    : '';
+  await sendText(phone,
+    `💰 Tu oferta subió de *$${currentPrice.toLocaleString('es-CO')}* a *$${newPrice.toLocaleString('es-CO')}*${startedLine}.\n\n` +
+    `🔍 Seguimos buscando ${noun} cerca de ti...\n\nTe avisamos apenas alguien acepte.`
+  );
+}
+
 // ─── Registro de mensajes para el panel de soporte (ver migración 237) ───────
 // Guarda cada mensaje entrante/saliente de ambos números (viajes=pasajero,
 // soporte=conductor) para poder verlos como conversación en el admin. No
@@ -2644,38 +2692,129 @@ async function handleConversation(
       return;
     }
 
-    if (decision === 'keep' || decision === 'raise') {
-      let newPrice: number | null = null;
+    if (decision === 'keep') {
       if (tripId) {
-        const supabase = db();
-        if (decision === 'raise') {
-          const { data: trip } = await supabase.from('ag_trip_requests')
-            .select('offered_price').eq('id', tripId).maybeSingle();
-          const current = (trip?.offered_price as number) ?? MIN_PRICE;
-          // Subida rápida ~15%, redondeada al múltiplo de $500 más cercano hacia
-          // arriba, con un mínimo de +$500 aunque el 15% sea menor -- mismo
-          // espíritu que los pasos de ajuste de precio que ya usa la app.
-          newPrice = Math.max(current + 500, Math.ceil(current * 1.15 / 500) * 500);
-          await supabase.from('ag_trip_requests')
-            .update({ offered_price: newPrice, updated_at: new Date().toISOString() })
-            .eq('id', tripId).eq('status', 'searching');
-        }
         // Reenvía la notificación real a conductores cercanos -- mismo push que
         // se manda al crear el viaje, para que de verdad vuelvan a sonar los
         // celulares de quienes no se dieron cuenta la primera vez.
-        await supabase.rpc('ag_rebroadcast_trip_request', { p_trip_id: tripId });
+        await db().rpc('ag_rebroadcast_trip_request', { p_trip_id: tripId });
       }
       await upsertSession(phone, { state: 'matching', matching_started_at: new Date().toISOString() });
       const noun = delivery ? 'mensajeros' : 'conductores';
+      await sendText(phone, `🔍 Seguimos buscando ${noun} cerca de ti...\n\nTe avisamos apenas alguien acepte.`);
+      return;
+    }
+
+    if (decision === 'raise') {
+      // Rediseño 2026-08-30 (migración 243): antes esto aplicaba +15% a ciegas sin preguntar.
+      // Ahora se sugiere un monto (mismos pasos que la app, ver _raiseOfferSuggested) y el
+      // pasajero puede aceptarlo o escribir el suyo -- ver estado stale_raise_offer_amount.
+      const { data: trip } = await db().from('ag_trip_requests')
+        .select('offered_price').eq('id', tripId).maybeSingle();
+      const current = (trip?.offered_price as number) ?? MIN_PRICE;
+      const suggested = _raiseOfferSuggested(current);
+      await upsertSession(phone, { state: 'stale_raise_offer_amount', offered_price: current });
       await sendText(phone,
-        (newPrice ? `💰 Tu nueva oferta: *$${newPrice.toLocaleString('es-CO')}*\n\n` : '') +
-        `🔍 Seguimos buscando ${noun} cerca de ti...\n\nTe avisamos apenas alguien acepte.`
+        `Tu oferta actual es *$${current.toLocaleString('es-CO')}*.\n\n` +
+        `Para llamar más la atención de los ${delivery ? 'mensajeros' : 'conductores'}, podrías subir a *$${suggested.toLocaleString('es-CO')}*.\n\n` +
+        `• Escribe el monto que quieras ofrecer\n` +
+        `• O escribe *ok* para usar $${suggested.toLocaleString('es-CO')}`
       );
       return;
     }
 
     await sendText(phone, interp?.reply_text ||
       `Responde:\n*Seguir buscando* — seguimos intentando\n*Subir oferta* — ofrecer un poco más para captar más atención\n*Cancelar* — cancelar la solicitud`
+    );
+    return;
+  }
+
+  // ── STALE_RAISE_OFFER_AMOUNT ─────────────────────────────────────────────────
+  // Procesa el monto para "Subir oferta" (migración 243) -- mismo patrón ya probado
+  // que usa awaiting_price: acepta *ok* para el sugerido, un monto escrito (con
+  // interpretFallback de respaldo para texto libre tipo "diez mil"), exige que sea
+  // mayor al actual, y si es mucho mayor pide confirmar antes de aplicarlo.
+  if (state === 'stale_raise_offer_amount') {
+    const tripId   = session.trip_request_id as string;
+    const delivery = isDeliveryService(session.service_type as string);
+    const current  = session.offered_price as number ?? MIN_PRICE;
+    const suggested = _raiseOfferSuggested(current);
+
+    let newAmount: number | null = isYes(text) ? suggested : null;
+    let interp: FallbackInterpretation | null = null;
+
+    if (newAmount == null) {
+      const parsed = parseInt(text.replace(/\D/g, ''), 10);
+      if (!isNaN(parsed)) {
+        newAmount = parsed;
+      } else {
+        const interpAmount = await interpretFallback({
+          state,
+          question: `¿A cuánto quieres subir tu oferta? (actual: $${current.toLocaleString('es-CO')}, sugerido: $${suggested.toLocaleString('es-CO')})`,
+          answerFormat: `un monto en pesos colombianos como número entero sin puntos ni decimales (ej: si dice "diez mil" o "10 mil pesos", matched_value debe ser "10000"). Debe ser mayor a ${current}. Si el mensaje no es un monto (es una pregunta o comentario), es "distraction" o "unclear", nunca "matched".`,
+          userText: text,
+        });
+        await logFallbackInterpretation(phone, state, text, interpAmount);
+        interp = interpAmount;
+        if (interpAmount?.outcome === 'matched' && interpAmount.matched_value) {
+          newAmount = parseInt(interpAmount.matched_value.replace(/\D/g, ''), 10);
+        }
+      }
+    }
+
+    if (newAmount == null || isNaN(newAmount)) {
+      await sendText(phone, interp?.reply_text ||
+        `No entendí el monto 🤔\n\nEscribe un número (ej: *${suggested.toLocaleString('es-CO')}*), o *ok* para usar el sugerido.`
+      );
+      return;
+    }
+
+    if (newAmount <= current) {
+      await sendText(phone,
+        `Ese monto debe ser mayor a tu oferta actual de *$${current.toLocaleString('es-CO')}* 🚫\n\n` +
+        `Escribe un monto más alto, o *ok* para usar $${suggested.toLocaleString('es-CO')}.`
+      );
+      return;
+    }
+
+    if (newAmount > current * RAISE_OFFER_SANITY_MULTIPLIER) {
+      await upsertSession(phone, { state: 'stale_raise_offer_confirm_high', pending_raise_amount: newAmount });
+      await sendText(phone,
+        `Eso es *$${newAmount.toLocaleString('es-CO')}* — bastante más que tu oferta actual de *$${current.toLocaleString('es-CO')}*. ¿Seguro?\n\n` +
+        `Escribe *confirmar* para aplicarlo, o escribe otro monto.`
+      );
+      return;
+    }
+
+    await _applyRaisedOffer(phone, tripId, current, newAmount, delivery);
+    return;
+  }
+
+  // ── STALE_RAISE_OFFER_CONFIRM_HIGH ───────────────────────────────────────────
+  if (state === 'stale_raise_offer_confirm_high') {
+    const tripId   = session.trip_request_id as string;
+    const delivery = isDeliveryService(session.service_type as string);
+    const current  = session.offered_price as number ?? MIN_PRICE;
+    const pending  = session.pending_raise_amount as number | null;
+
+    if (isYes(text) || /confirmar/i.test(text)) {
+      if (pending == null) {
+        // Red de seguridad: si por algo se perdió el monto pendiente, vuelve a pedirlo en vez
+        // de aplicar un número inexistente.
+        await upsertSession(phone, { state: 'stale_raise_offer_amount' });
+        await sendText(phone, `Se me perdió ese monto 😅\n\nEscribe de nuevo cuánto quieres ofrecer.`);
+        return;
+      }
+      await _applyRaisedOffer(phone, tripId, current, pending, delivery);
+      return;
+    }
+
+    // Cualquier otra respuesta descarta el monto alto y vuelve a preguntar, sin perder el hilo.
+    await upsertSession(phone, { state: 'stale_raise_offer_amount', pending_raise_amount: null });
+    const suggested = _raiseOfferSuggested(current);
+    await sendText(phone,
+      `Ok, no se aplicó ese monto.\n\n` +
+      `Escribe otro monto, o *ok* para usar $${suggested.toLocaleString('es-CO')}.`
     );
     return;
   }
