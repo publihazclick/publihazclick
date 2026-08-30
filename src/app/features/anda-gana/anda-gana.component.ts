@@ -18574,7 +18574,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (Date.now() - ts > 240000) return [];
       const now = Date.now();
       return reqs.filter(r =>
-        now - new Date(r.created_at).getTime() <= 240000 &&
+        now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= 240000 &&
         !this._cancelledRequestIds.has(r.id)
       );
     } catch { return []; }
@@ -18662,7 +18662,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         const kept = current.filter(r =>
           !serverIds.has(r.id) &&
           !this._cancelledRequestIds.has(r.id) &&
-          now - new Date(r.created_at).getTime() <= 240000
+          now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= 240000
         );
         const merged = [...reqs, ...kept].sort(
           (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -18697,7 +18697,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           const kept = current.filter(r =>
             !serverIds.has(r.id) &&
             !this._cancelledRequestIds.has(r.id) &&
-            now - new Date(r.created_at).getTime() <= 240000
+            now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= 240000
           );
           // Orden: más antigua primero (llevan más tiempo esperando → mayor prioridad)
           const merged = [...reqs, ...kept].sort(
@@ -18734,9 +18734,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       const now = Date.now();
       this.reqNowMs.set(now);
       this.cdr.markForCheck();
-      const hasExpired = this.driverRequests().some(r => now - new Date(r.created_at).getTime() > 240000);
+      const hasExpired = this.driverRequests().some(r => now - new Date(r.driver_visible_since ?? r.created_at).getTime() > 240000);
       if (hasExpired) {
-        this.driverRequests.update(list => list.filter(r => now - new Date(r.created_at).getTime() <= 240000));
+        this.driverRequests.update(list => list.filter(r => now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= 240000));
         this.cdr.markForCheck();
       }
     }, 1000);
@@ -18892,7 +18892,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   reqRemainingMs(req: AgTripRequest): number {
-    return Math.max(0, 240000 - (this.reqNowMs() - new Date(req.created_at).getTime()));
+    return Math.max(0, 240000 - (this.reqNowMs() - new Date(req.driver_visible_since ?? req.created_at).getTime()));
   }
   reqRemainingPct(req: AgTripRequest): number {
     return (this.reqRemainingMs(req) / 240000) * 100;

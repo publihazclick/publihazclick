@@ -117,6 +117,11 @@ export interface AgTripRequest {
   payment_method: AgPaymentMethod;
   status: string;
   created_at: string;
+  // Reloj aparte de created_at para decidir si el conductor debe seguir viendo la solicitud en su
+  // lista -- arranca igual a created_at, pero ag_rebroadcast_trip_request() lo reinicia a now()
+  // cada vez que el pasajero toca "Seguir buscando"/"Subir oferta" (migración 242). created_at
+  // sigue siendo el momento real en que se pidió el viaje (historial/analítica), sin tocar.
+  driver_visible_since: string;
   ag_users?: AgUser;
   // ── Domicilio fields ────────────────────────────────────────────
   service_type?: string;
@@ -1061,14 +1066,18 @@ export class AndaGanaService {
   // ── Trip offers — driver ──────────────────────────────────────
   /** Solicitudes de viaje en estado "searching" compatibles con el tipo de vehículo */
   async getSearchingRequests(vehicleType?: string, lat?: number, lng?: number, maxKm = 50): Promise<AgTripRequest[]> {
-    // Solo solicitudes de los últimos 4 minutos (240 segundos)
+    // Solo solicitudes visibles en los últimos 4 minutos (240 segundos). driver_visible_since, NO
+    // created_at -- una solicitud reenviada por "Seguir buscando"/"Subir oferta" (migración 241)
+    // reinicia este reloj para que vuelva a aparecer en la lista del conductor (bug real
+    // reportado 2026-08-30: el push llegaba pero la solicitud nunca aparecía en la app porque
+    // este filtro seguía comparando contra el created_at original, ya vencido).
     const cutoff = new Date(Date.now() - 240000).toISOString();
     let query = this.supabase
       .from('ag_trip_requests')
       .select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level)')
       .eq('status', 'searching')
-      .gte('created_at', cutoff)
-      .order('created_at', { ascending: true })
+      .gte('driver_visible_since', cutoff)
+      .order('driver_visible_since', { ascending: true })
       .limit(50);
     if (vehicleType) query = query.eq('vehicle_type', vehicleType);
     const { data } = await query;
