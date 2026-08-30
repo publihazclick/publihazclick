@@ -11769,8 +11769,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.driverStatus.set(mine?.status ?? 'quick');
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
       this.screen.set('driver-home');
-      await this._initDriverHome(mine);
+      // Pedido explícito del usuario 2026-08-30: al tocar la notificación push con la app
+      // cerrada del todo (cold start), la solicitud debe verse lo antes posible -- ANTES no
+      // se esperaba a _initDriverHome() (setear online, alertas de documentos, comisión,
+      // saldo) para recién ahí mostrar la solicitud, así que el conductor veía primero todo
+      // el dashboard cargando y solo al final aparecía el viaje. Ahora corren en paralelo:
+      // _showIncomingTripById es un solo fetch directo por id, no depende de nada de
+      // _initDriverHome, así que no hay ninguna razón real para que espere a que termine.
       if (_tripRequestIdParam) this._showIncomingTripById(_tripRequestIdParam).catch(() => {});
+      await this._initDriverHome(mine);
     }
 
     if (!this._map) {
