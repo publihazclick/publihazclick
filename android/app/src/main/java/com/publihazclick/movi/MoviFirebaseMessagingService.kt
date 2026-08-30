@@ -1,6 +1,5 @@
 package com.publihazclick.movi
 
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
@@ -92,19 +91,7 @@ class MoviFirebaseMessagingService : MessagingService() {
         val channelId = "movi_trips" // mismo canal de alta prioridad que ya crea MainActivity
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(NotificationManager::class.java)
-            if (manager.getNotificationChannel(channelId) == null) {
-                val channel = NotificationChannel(
-                    channelId,
-                    "Solicitudes de viaje",
-                    NotificationManager.IMPORTANCE_HIGH
-                )
-                channel.description = "Alertas urgentes de viajes Movi"
-                channel.enableVibration(true)
-                channel.vibrationPattern = longArrayOf(0, 300, 100, 300, 100, 300, 100, 600)
-                channel.enableLights(true)
-                manager.createNotificationChannel(channel)
-            }
+            NotificationChannelHelper.ensureTripChannel(this, getSystemService(NotificationManager::class.java))
         }
 
         val tapIntent = Intent(this, MainActivity::class.java).apply {
@@ -146,20 +133,10 @@ class MoviFirebaseMessagingService : MessagingService() {
         // El canal ya lo crea MainActivity.createNotificationChannels() en un uso normal de la
         // app, pero si el proceso arranca en frio solo para procesar el push (app nunca abierta
         // en este boot), el canal podria no existir todavia -- se asegura aca tambien.
+        // NotificationChannelHelper (compartido con MainActivity) es quien de verdad crea el
+        // canal, con el sonido propio (ver migracion 2026-08-30).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(NotificationManager::class.java)
-            if (manager.getNotificationChannel(channelId) == null) {
-                val channel = NotificationChannel(
-                    channelId,
-                    "Solicitudes de viaje",
-                    NotificationManager.IMPORTANCE_HIGH
-                )
-                channel.description = "Nuevas solicitudes de viaje para conductores Movi"
-                channel.enableVibration(true)
-                channel.vibrationPattern = longArrayOf(0, 300, 100, 300, 100, 300, 100, 600)
-                channel.enableLights(true)
-                manager.createNotificationChannel(channel)
-            }
+            NotificationChannelHelper.ensureTripChannel(this, getSystemService(NotificationManager::class.java))
         }
 
         // Unico destino posible al tocar la notificacion (en cualquier parte, ya no hay botones
