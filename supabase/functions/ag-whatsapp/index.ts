@@ -2559,10 +2559,17 @@ async function handleConversation(
       }
     }
 
-    // Verificar timeout (5 minutos)
+    // Timeout de respaldo (12 minutos = las 3 rondas de 4 min que ya maneja el
+    // cron ag_wa_stale_search_check, migración 241). El aviso proactivo real
+    // (con el número de conductores que vieron la solicitud y los botones
+    // seguir buscando/subir oferta/cancelar) ya lo manda ese cron sin depender
+    // de que el pasajero escriba nada -- este bloque solo queda como red de
+    // seguridad para cuando el pasajero SÍ escribe algo mientras espera (ej.
+    // "cancelar", o cualquier otro mensaje) y para el caso raro en que el cron
+    // no haya podido correr.
     const matchStart = session.matching_started_at ? new Date(session.matching_started_at as string) : new Date();
     const elapsedMin = (Date.now() - matchStart.getTime()) / 60000;
-    if (elapsedMin > 5) {
+    if (elapsedMin > 12) {
       // Cancelar el viaje en DB si existe
       const tripId = session.trip_request_id as string;
       if (tripId) {
@@ -2572,7 +2579,7 @@ async function handleConversation(
             status:        'cancelled',
             cancelled_at:  new Date().toISOString(),
             updated_at:    new Date().toISOString(),
-            cancel_reason: 'Cancelado automáticamente — nadie aceptó en 5 minutos',
+            cancel_reason: 'Cancelado automáticamente — nadie aceptó en 12 minutos',
           })
           .eq('id', tripId)
           .eq('status', 'searching');
@@ -2586,9 +2593,90 @@ async function handleConversation(
       return;
     }
 
-    const minLeft = Math.ceil(5 - elapsedMin);
+    const minLeft = Math.ceil(12 - elapsedMin);
     const waitingNoun = isDeliveryService(session.service_type as string) ? 'mensajero' : 'conductores';
     await sendText(phone, `⏳ Buscando ${waitingNoun}... (${minLeft} min restantes)\n\nEscribe *cancelar* para cancelar.`);
+    return;
+  }
+
+  // ── STALE_SEARCH_CONFIRM ─────────────────────────────────────────────────────
+  // Responde al aviso proactivo de "nadie ha aceptado tu solicitud todavía"
+  // (disparado por el evento interno 'stale_search_check', ver handleInternalEvent
+  // más abajo) -- botones "Seguir buscando" / "Subir oferta" / "Cancelar".
+  if (state === 'stale_search_confirm') {
+    const tripId   = session.trip_request_id as string;
+    const delivery = isDeliveryService(session.service_type as string);
+
+    let decision: 'keep' | 'raise' | 'cancel' | null = null;
+    if (/subir\s*oferta/i.test(text)) decision = 'raise';
+    else if (/seguir\s*buscando/i.test(text) || isYes(text)) decision = 'keep';
+    else if (/cancelar/i.test(text) || isNo(text)) decision = 'cancel';
+
+    let interp: FallbackInterpretation | null = null;
+    if (!decision) {
+      interp = await interpretFallback({
+        state,
+        question: `Tu solicitud sigue sin conductor. ¿Qué quieres hacer: seguir buscando, subir la oferta, o cancelar?`,
+        answerFormat: 'matched_value debe ser exactamente "keep" (seguir buscando), "raise" (subir oferta) o "cancel" (cancelar).',
+        userText: text,
+      });
+      await logFallbackInterpretation(phone, state, text, interp);
+      if (interp?.outcome === 'matched' && ['keep', 'raise', 'cancel'].includes(interp.matched_value ?? '')) {
+        decision = interp.matched_value as 'keep' | 'raise' | 'cancel';
+      }
+    }
+
+    if (decision === 'cancel') {
+      if (tripId) {
+        const supabase = db();
+        await supabase.from('ag_trip_requests')
+          .update({
+            status:        'cancelled',
+            cancelled_at:  new Date().toISOString(),
+            updated_at:    new Date().toISOString(),
+            cancel_reason: 'Cancelado por el pasajero — nadie había aceptado',
+          })
+          .eq('id', tripId)
+          .eq('status', 'searching');
+      }
+      await resetSession(phone);
+      await presentServiceMenu(phone, `Solicitud cancelada ❌\n\nCuando quieras, vuelve a intentarlo.`);
+      return;
+    }
+
+    if (decision === 'keep' || decision === 'raise') {
+      let newPrice: number | null = null;
+      if (tripId) {
+        const supabase = db();
+        if (decision === 'raise') {
+          const { data: trip } = await supabase.from('ag_trip_requests')
+            .select('offered_price').eq('id', tripId).maybeSingle();
+          const current = (trip?.offered_price as number) ?? MIN_PRICE;
+          // Subida rápida ~15%, redondeada al múltiplo de $500 más cercano hacia
+          // arriba, con un mínimo de +$500 aunque el 15% sea menor -- mismo
+          // espíritu que los pasos de ajuste de precio que ya usa la app.
+          newPrice = Math.max(current + 500, Math.ceil(current * 1.15 / 500) * 500);
+          await supabase.from('ag_trip_requests')
+            .update({ offered_price: newPrice, updated_at: new Date().toISOString() })
+            .eq('id', tripId).eq('status', 'searching');
+        }
+        // Reenvía la notificación real a conductores cercanos -- mismo push que
+        // se manda al crear el viaje, para que de verdad vuelvan a sonar los
+        // celulares de quienes no se dieron cuenta la primera vez.
+        await supabase.rpc('ag_rebroadcast_trip_request', { p_trip_id: tripId });
+      }
+      await upsertSession(phone, { state: 'matching', matching_started_at: new Date().toISOString() });
+      const noun = delivery ? 'mensajeros' : 'conductores';
+      await sendText(phone,
+        (newPrice ? `💰 Tu nueva oferta: *$${newPrice.toLocaleString('es-CO')}*\n\n` : '') +
+        `🔍 Seguimos buscando ${noun} cerca de ti...\n\nTe avisamos apenas alguien acepte.`
+      );
+      return;
+    }
+
+    await sendText(phone, interp?.reply_text ||
+      `Responde:\n*Seguir buscando* — seguimos intentando\n*Subir oferta* — ofrecer un poco más para captar más atención\n*Cancelar* — cancelar la solicitud`
+    );
     return;
   }
 
@@ -3081,7 +3169,11 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // conversación activa está esperando -- con más de un viaje en curso
     // por teléfono, "matching" ya no alcanza solo por sí (podría ser el
     // estado de una segunda conversación distinta a la de esta oferta).
-    if (!session || session.state !== 'matching' || session.trip_request_id !== payload.trip_request_id) return;
+    // 'stale_search_confirm' también es válido: el pasajero puede recibir
+    // una oferta real justo mientras está viendo el aviso de "nadie ha
+    // aceptado todavía" (migración 241) -- sin este estado extra, esa
+    // oferta se perdería en silencio.
+    if (!session || (session.state !== 'matching' && session.state !== 'stale_search_confirm') || session.trip_request_id !== payload.trip_request_id) return;
 
     // Misma tarjeta (foto + botones) que usa el chequeo oportunista en
     // fetchNextPendingOffer/presentOffer -- una sola forma de mostrar una
@@ -3188,6 +3280,43 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
         ? `⏱️ Quedan *2 minutos* para que *${forName}* aborde con *${driverName}* antes de que se cumpla el máximo de espera.`
         : `⏱️ Te quedan *2 minutos* para abordar con *${driverName}* antes de que se cumpla el máximo de espera.`
     );
+  }
+
+  // Cron ag_wa_stale_search_check (migración 241) -- avisa proactivamente cuando
+  // el pasajero lleva 4/8/12 minutos sin que nadie acepte su viaje, sin depender
+  // de que vuelva a escribir. Antes ese chequeo era 100% reactivo (solo se
+  // evaluaba cuando el pasajero volvía a escribir algo, ver el estado 'matching'
+  // más arriba), así que si se quedaba callado esperando el mensaje "Buscando
+  // conductores cerca de ti..." se quedaba ahí para siempre aunque la solicitud
+  // ya llevara rato invisible para los conductores (getSearchingRequests solo
+  // trae solicitudes de los últimos 4 minutos -- mismo límite real que usa la
+  // tarjeta del conductor en la app). Pedido explícito del usuario 2026-08-30.
+  if (event === 'stale_search_check') {
+    const tripId    = payload.trip_request_id as string;
+    const delivery  = isDeliveryService(payload.service_type as string | undefined);
+    const forName   = travelerLabelFromForOther(payload.for_other);
+    // Número decorativo mientras la base real de conductores es chica -- pedido
+    // explícito del usuario: entre 12 y 23, distinto en cada ronda, para que el
+    // pasajero sienta que sí hay interés real aunque el match tarde. Quitar esta
+    // simulación el día que el número real de conductores activos alcance para
+    // que la cifra real ya sea creíble por sí sola.
+    const sawCount = Math.floor(Math.random() * 12) + 12;
+    const noun = delivery ? 'mensajeros' : 'conductores';
+    const body =
+      `👀 *${sawCount}* ${noun} vieron tu solicitud${forName ? ` para *${forName}*` : ''}, pero ninguno la ha aceptado todavía.\n\n` +
+      `¿Qué quieres hacer?`;
+
+    // Nota: ag_wa_sessions NO tiene columna for_other -- ese dato vive solo en
+    // ag_trip_requests.for_other (jsonb) y llega aquí vía payload.for_other, ya
+    // usado arriba en travelerLabelFromForOther() para el texto del mensaje; no
+    // hace falta persistirlo en la sesión.
+    await upsertSession(phone, { state: 'stale_search_confirm', trip_request_id: tripId, service_type: payload.service_type });
+    await sendButtons(phone, body, [
+      { id: 'stale_keep_looking', title: '🔍 Seguir buscando' },
+      { id: 'stale_raise_offer',  title: '💰 Subir oferta' },
+      { id: 'stale_cancel',       title: '❌ Cancelar' },
+    ]);
+    return;
   }
 
   if (event === 'trip_started') {
