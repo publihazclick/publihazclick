@@ -20423,9 +20423,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     await this.loadPassengerFavorites();
   }
 
+  // BUG REAL encontrado 2026-08-31 (reportado por el usuario: "está calculando mal la
+  // cantidad de kilómetros"): a diferencia de TODOS los demás caminos para elegir destino
+  // (buscar dirección, tocar el mapa, etc. -- todos llaman a _drawRoute()), este solo ponía
+  // tripDest sin recalcular la ruta -- tripDistKm/tripPrice se quedaban con el valor de la
+  // búsqueda anterior (o en 0 si era la primera acción), mostrando un km y un precio que no
+  // correspondían al favorito elegido.
   useFavoriteAsDestination(fav: any) {
     this.tripDest.set({ name: fav.address, lat: fav.lat, lng: fav.lng });
     this.passengerSection.set(null);
+    this._drawRoute(fav.lng, fav.lat);
   }
 
   // ═══════════════════════════════════════════════════
