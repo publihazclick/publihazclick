@@ -1342,13 +1342,22 @@ async function presentOriginConfirm(phone: string, addr: string, lat: number, ln
 }
 
 // ─── Confirmar destino + precio sugerido (reusado por ambos flujos) ───────────
-async function presentDestConfirm(phone: string, addr: string, lat: number | null, lng: number | null, session: Record<string, unknown>): Promise<void> {
+async function presentDestConfirm(
+  phone: string, addr: string, lat: number | null, lng: number | null, session: Record<string, unknown>,
+  precomputedRoute?: { distKm: number; durationMin: number },
+): Promise<void> {
   const oLat = session.origin_lat as number;
   const oLng = session.origin_lng as number;
   let distKm = 0;
   let suggested = MIN_PRICE;
   if (lat != null && lng != null && oLat && oLng) {
-    const route = await getRouteDistanceDuration(oLat, oLng, lat, lng);
+    // precomputedRoute viene ya resuelto desde el webhook (lanzado en paralelo apenas se
+    // conoce la sesión, ver serve() más abajo) -- ahorra un round-trip completo a Mapbox
+    // Directions aquí, mismo patrón que ya usa precomputedAddr para el reverse-geocode.
+    // Bug real reportado 2026-08-31 (tercera vez que "la ubicación es lenta"): la llamada a
+    // Directions que agregó la recalibración de precio del día anterior corría en serie
+    // DESPUÉS de reverseGeocode, sumando latencia nueva a cada ubicación compartida.
+    const route = precomputedRoute ?? await getRouteDistanceDuration(oLat, oLng, lat, lng);
     distKm = route.distKm;
     suggested = await suggestPrice(distKm, session.service_type as string ?? 'carro', oLat, oLng, route.durationMin);
   }
@@ -1712,6 +1721,7 @@ async function handleConversation(
   msgLng?: number,
   precomputedAddr?: string,
   precomputedSession?: Record<string, unknown> | null,
+  precomputedRoute?: { distKm: number; durationMin: number },
 ) {
   // Recuperar o crear sesión -- precomputedSession viene ya resuelta desde el
   // webhook (en paralelo con markReadWithTyping/reverseGeocode, ver serve()),
@@ -2438,7 +2448,11 @@ async function handleConversation(
       return;
     }
 
-    await presentDestConfirm(phone, addr, lat ?? null, lng ?? null, session);
+    // precomputedRoute solo aplica al camino de ubicación compartida (msgType==='location')
+    // -- para una dirección escrita el destino recién se resuelve arriba (forwardGeocode), no
+    // había forma de haberlo precalculado antes de llegar aquí.
+    const routeForConfirm = msgType === 'location' ? precomputedRoute : undefined;
+    await presentDestConfirm(phone, addr, lat ?? null, lng ?? null, session, routeForConfirm);
     return;
   }
 
@@ -4303,11 +4317,30 @@ serve(async (req) => {
         const rawLoc = msg.type === 'location' ? (msg.location as Record<string, unknown>) : null;
         const rawLat = rawLoc?.latitude as number | undefined;
         const rawLng = rawLoc?.longitude as number | undefined;
+        // Ubicación compartida mientras se espera el destino (awaiting_dest): apenas se conoce
+        // la sesión (con el origen ya guardado ahí), lanzar YA la consulta de ruta real a
+        // Mapbox Directions -- sin esto, ese round-trip corría recién adentro de
+        // presentDestConfirm(), en serie DESPUÉS del reverse-geocode, sumando latencia nueva a
+        // cada ubicación compartida (bug real reportado 2026-08-31: "la ubicación es lenta",
+        // introducido por la recalibración de precio del día anterior). Mismo patrón ya
+        // probado que usa precomputedAddr más abajo -- lanzar temprano, en paralelo, no en
+        // serie con el resto del procesamiento del webhook.
+        let precomputedRoutePromise: Promise<{ distKm: number; durationMin: number }> | undefined;
+        const sessionPromise = isSupportNumber ? Promise.resolve(undefined) : getSession(fromPhone).then(s => {
+          if (s && s.state === 'awaiting_dest' && rawLat != null && rawLng != null
+              && s.origin_lat != null && s.origin_lng != null) {
+            precomputedRoutePromise = getRouteDistanceDuration(
+              s.origin_lat as number, s.origin_lng as number, rawLat, rawLng,
+            );
+          }
+          return s;
+        });
         const [dedupeResult, precomputedAddr, precomputedSession] = await Promise.all([
           msgId ? db().from('ag_wa_processed_messages').insert({ message_id: msgId }) : Promise.resolve({ error: null }),
           (!isSupportNumber && rawLat != null && rawLng != null) ? reverseGeocode(rawLat, rawLng) : Promise.resolve(undefined),
-          isSupportNumber ? Promise.resolve(undefined) : getSession(fromPhone),
+          sessionPromise,
         ]);
+        const precomputedRoute = precomputedRoutePromise ? await precomputedRoutePromise : undefined;
         if (dedupeResult?.error) {
           // 23505 = unique_violation -- mensaje repetido, no reprocesar.
           if ((dedupeResult.error as { code?: string }).code === '23505') {
@@ -4358,7 +4391,7 @@ serve(async (req) => {
         if (isSupportNumber) {
           await handleSupportConversation(fromPhone, name, msgText);
         } else {
-          await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession);
+          await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession, precomputedRoute);
         }
 
         // Fire-and-forget: no debe agregar latencia a la respuesta real que
