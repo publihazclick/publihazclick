@@ -10375,6 +10375,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripPrice       = signal(0);
   tripPayment     = signal<AgPaymentMethod>('efectivo');
   tripDistKm      = signal(0);
+  // Duración real del trayecto (minutos) según la ruta por calles de Mapbox Directions --
+  // null hasta que _drawRoute() la obtenga; _calcPrice() cae a una estimación por velocidad
+  // asumida mientras tanto (ver comentario en _calcPrice).
+  tripDurationMin = signal<number | null>(null);
   tripSending     = signal(false);
   tripGpsError    = signal(false);
   tripRequestError = signal<string | null>(null);
@@ -17585,6 +17589,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripQuery.set('');
     this.tripSuggestions.set([]);
     this.tripDistKm.set(0);
+    this.tripDurationMin.set(null);
     this.tripPrice.set(0);
     this.waitingDriverCount.set(0);
     this.waitingDriverColors.set([]);
@@ -17899,7 +17904,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   setTripVehicle(type: 'carro' | 'moto' | 'camion') {
     this.tripVehicle.set(type);
-    this.tripPrice.set(this._calcPrice(this.tripDistKm(), type));
+    this.tripPrice.set(this._calcPrice(this.tripDistKm(), type, this.tripDurationMin()));
   }
 
   // Toast "se envió tu ajuste de precio" -- solo tiene sentido mientras el viaje YA fue enviado
@@ -17936,7 +17941,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   private _recommendedMinPrice(): number {
     const suggested = this.tripService() === 'domicilio'
       ? this.domEstPrice()
-      : this._calcPrice(this.tripDistKm(), this.tripVehicle());
+      : this._calcPrice(this.tripDistKm(), this.tripVehicle(), this.tripDurationMin());
     return Math.max(5000, Math.ceil(suggested * 0.7523 / 500) * 500);
   }
 
@@ -17969,12 +17974,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   setTripPricePreset(pct: number) {
-    const base = this._calcPrice(this.tripDistKm(), this.tripVehicle());
+    const base = this._calcPrice(this.tripDistKm(), this.tripVehicle(), this.tripDurationMin());
     this.tripPrice.set(Math.max(this._recommendedMinPrice(), Math.round(base * (1 + pct) / 500) * 500));
   }
 
   readonly tripSliderMax = computed(() =>
-    Math.max(this._calcPrice(this.tripDistKm(), this.tripVehicle()) * 2, 30000),
+    Math.max(this._calcPrice(this.tripDistKm(), this.tripVehicle(), this.tripDurationMin()) * 2, 30000),
   );
 
   async findOffers() {
@@ -19047,6 +19052,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripQuery.set('');
     this.tripSuggestions.set([]);
     this.tripDistKm.set(0);
+    this.tripDurationMin.set(null);
     this.tripPrice.set(0);
     this.waitingDriverCount.set(0);
     this.waitingDriverColors.set([]);
@@ -19096,13 +19102,28 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     } catch { /* silencioso -- se queda con el precio de horario fijo ya mostrado */ }
   }
 
-  private _calcPrice(km: number, vehicle: 'carro' | 'moto' | 'camion'): number {
-    // Tarifas calibradas para igualar el precio sugerido de InDrive en Colombia
+  // Recalibrado 2026-08-30 (investigación con fuentes primarias -- Área Metropolitana de
+  // Cúcuta, DANE, testimonios reales de conductores, blog oficial de Uber): las tarifas
+  // originales solo cobraban por distancia en línea recta, igual que hoy sigue haciendo
+  // camión (fuera de este cambio, el usuario solo pidió ajustar carro y moto). Uber/DiDi/
+  // InDrive cobran por distancia REAL por calles Y por tiempo estimado -- en viajes cortos
+  // Movi ya calzaba bien contra InDrive, pero en viajes largos con tráfico se quedaba muy
+  // por debajo (un viaje de 15 km puede tardar mucho más que uno de 5 km proporcionalmente,
+  // y ese tiempo extra es justo lo que las otras apps ya cobraban y Movi no). El aumento de
+  // ~20-28% en carro/moto está calibrado contra lo que conductores reales de Cúcuta piden
+  // (~30%) y contra un caso real de InDriver en Cali ($1.435/km, considerado insuficiente
+  // por el conductor) -- sin llegar a tarifas de ciudad grande (Medellín), que sobreestimaría
+  // el mercado real de Cúcuta.
+  private _calcPrice(km: number, vehicle: 'carro' | 'moto' | 'camion', durationMin?: number | null): number {
+    // Respaldo: misma velocidad asumida que ya usa el ETA del conductor en otra parte del
+    // código (driverOkForNewRequests(), km/30*60) -- se usa solo cuando todavía no se conoce
+    // la duración real de la ruta (ej. antes de que _drawRoute() termine de consultar Mapbox).
+    const minutes = durationMin ?? (km / 30 * 60);
     const raw = vehicle === 'camion'
       ? Math.max(8000, 6000 + km * 1500)
       : vehicle === 'carro'
-      ? Math.max(4500, 4000 + km * 1000)
-      : Math.max(3000, 2500 + km * 700);
+      ? Math.max(4500, 4000 + km * 1000 + minutes * 150)
+      : Math.max(3000, 2500 + km * 800 + minutes * 80);
     const surge = this.surgeMultiplier() ?? 1;
     return Math.round((raw * surge) / 500) * 500;
   }
@@ -19122,7 +19143,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const token = ++this._drawRouteToken;
     this._clearRoute();
     try {
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${this._currentLng},${this._currentLat};${destLng},${destLat}?geometries=geojson&overview=full&access_token=${this.MAPBOX_TOKEN}`;
+      // Perfil driving-traffic (antes: driving) -- mismo token, sin credenciales nuevas, pero
+      // refleja tráfico en vivo en route.duration, igual que usan Uber/DiDi/InDrive para su
+      // precio sugerido (ver _calcPrice). route.duration ya venía en cada respuesta de Mapbox,
+      // solo que antes se descartaba sin usar.
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${this._currentLng},${this._currentLat};${destLng},${destLat}?geometries=geojson&overview=full&access_token=${this.MAPBOX_TOKEN}`;
       const json = await (await fetch(url)).json();
       // Si el token cambió (oferta aceptada u otra ruta), abortar
       if (token !== this._drawRouteToken) return;
@@ -19130,11 +19155,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (!route) return;
 
       const km = Math.round(route.distance / 100) / 10;
+      const durationMin = route.duration / 60;
       this.tripDistKm.set(km);
+      this.tripDurationMin.set(durationMin);
       this.tripSuggestions.set([]);
-      this.tripPrice.set(this._calcPrice(km, this.tripVehicle()));
+      this.tripPrice.set(this._calcPrice(km, this.tripVehicle(), durationMin));
       this._refreshBlendedSurgeThenRecalc(this._currentLat, this._currentLng,
-        () => this.tripPrice.set(this._calcPrice(this.tripDistKm(), this.tripVehicle())));
+        () => this.tripPrice.set(this._calcPrice(this.tripDistKm(), this.tripVehicle(), this.tripDurationMin())));
 
       this._map.addSource('trip-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry }, lineMetrics: true });
       this._map.addLayer({ id: 'trip-route-bg',   type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
@@ -20914,6 +20941,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this.tripQuery.set('');
         this.tripSuggestions.set([]);
         this.tripDistKm.set(0);
+        this.tripDurationMin.set(null);
         this.tripPrice.set(0);
         this.currentTripRequestId.set(null);
         this.receivedOffers.set([]);

@@ -714,6 +714,33 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.asin(Math.sqrt(a));
 }
 
+// ─── Distancia + duración reales por calles (Mapbox Directions) ──────────────
+// Mismo patrón defensivo que ya usa reverseGeocode() más arriba (mismo token
+// MAPBOX_PUBLIC_TOKEN, mismo fetchWithTimeout) -- si Mapbox falla o no hay
+// token, cae a línea recta + una velocidad urbana asumida (30 km/h, mismo
+// respaldo que usa _calcPrice() en la app) en vez de bloquear la solicitud.
+// Reemplaza a haversineKm() en presentDestConfirm()/createWaTrip() para que el
+// precio sugerido y el distance_km guardado reflejen calles reales, igual que
+// ya hace la app (_drawRoute() en anda-gana.component.ts).
+async function getRouteDistanceDuration(
+  oLat: number, oLng: number, dLat: number, dLng: number
+): Promise<{ distKm: number; durationMin: number }> {
+  const fallbackKm = haversineKm(oLat, oLng, dLat, dLng);
+  const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN');
+  if (!mapboxToken) return { distKm: fallbackKm, durationMin: fallbackKm / 30 * 60 };
+  try {
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${oLng},${oLat};${dLng},${dLat}`
+      + `?overview=false&access_token=${mapboxToken}`;
+    const r = await fetchWithTimeout(url, {}, 2500);
+    const j = await r.json();
+    const route = j?.routes?.[0];
+    if (route?.distance != null && route?.duration != null) {
+      return { distKm: route.distance / 1000, durationMin: route.duration / 60 };
+    }
+  } catch (e) { console.error('[getRouteDistanceDuration] Mapbox error:', e); }
+  return { distKm: fallbackKm, durationMin: fallbackKm / 30 * 60 };
+}
+
 // ─── Calcular precio sugerido ─────────────────────────────────────────────────
 // Debe coincidir con la fórmula real que usa la app (_calcPrice/_calcDomPrice
 // en anda-gana.component.ts) -- antes esto era solo tarifa*km sin ningún
@@ -753,13 +780,21 @@ async function currentSurgeMultiplier(lat?: number, lng?: number): Promise<numbe
   } catch (e) { console.error('[Price] currentSurgeMultiplier fetch error:', e); return 1; }
 }
 
-async function suggestPrice(distKm: number, service: string, originLat?: number, originLng?: number): Promise<number> {
+// Recalibrado 2026-08-30 -- espejo exacto del cambio en _calcPrice() de
+// anda-gana.component.ts (ver comentario allá para el porqué completo): carro y
+// moto ahora también cobran por minutos estimados, no solo km, para que un
+// viaje largo con tráfico cueste más, igual que Uber/DiDi/InDrive. domicilio,
+// flete y ciudad quedan sin tocar -- fuera del pedido explícito del usuario.
+async function suggestPrice(distKm: number, service: string, originLat?: number, originLng?: number, durationMin?: number): Promise<number> {
   const surge = await currentSurgeMultiplier(originLat, originLng);
+  // Respaldo: misma velocidad asumida que usa _calcPrice() en la app cuando no
+  // se conoce la duración real (30 km/h).
+  const minutes = durationMin ?? (distKm / 30 * 60);
   if (service === 'domicilio') {
     return Math.max(MIN_PRICE, Math.round(distKm * 1500 * surge / 500) * 500);
   }
   if (service === 'moto') {
-    const raw = Math.max(3000, 2500 + distKm * 700);
+    const raw = Math.max(3000, 2500 + distKm * 800 + minutes * 80);
     return Math.round(raw * surge / 500) * 500;
   }
   if (service === 'flete') {
@@ -770,7 +805,7 @@ async function suggestPrice(distKm: number, service: string, originLat?: number,
     return Math.max(MIN_PRICE, Math.round(distKm * 1800 * surge / 500) * 500);
   }
   // carro (default)
-  const raw = Math.max(4500, 4000 + distKm * 1000);
+  const raw = Math.max(4500, 4000 + distKm * 1000 + minutes * 150);
   return Math.round(raw * surge / 500) * 500;
 }
 
@@ -849,6 +884,9 @@ async function createWaTrip(session: Record<string, unknown>): Promise<string | 
   // ser el vehiculo tipico de mensajeria en Colombia (el pasajero no elige vehiculo
   // aparte para domicilios en el flujo de WhatsApp, a diferencia de la app).
   const vehicleType = serviceType === 'moto' ? 'moto' : serviceType === 'carro' ? 'carro' : 'moto';
+  // Distancia real por calles (no línea recta) -- igual que ya usa presentDestConfirm() para
+  // el precio sugerido y _drawRoute() en la app, para que distance_km refleje el trayecto real.
+  const { distKm: realDistKm } = await getRouteDistanceDuration(oLat, oLng, dLat, dLng);
 
   const tripData: Record<string, unknown> = {
     passenger_user_id: userId,
@@ -860,7 +898,7 @@ async function createWaTrip(session: Record<string, unknown>): Promise<string | 
     dest_name:     session.dest_name,
     dest_lat:      dLat,
     dest_lng:      dLng,
-    distance_km:   haversineKm(oLat, oLng, dLat, dLng),
+    distance_km:   realDistKm,
     offered_price: session.offered_price,
     status:        'searching',
     source:        'whatsapp',
@@ -1310,8 +1348,9 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
   let distKm = 0;
   let suggested = MIN_PRICE;
   if (lat != null && lng != null && oLat && oLng) {
-    distKm = haversineKm(oLat, oLng, lat, lng);
-    suggested = await suggestPrice(distKm, session.service_type as string ?? 'carro', oLat, oLng);
+    const route = await getRouteDistanceDuration(oLat, oLng, lat, lng);
+    distKm = route.distKm;
+    suggested = await suggestPrice(distKm, session.service_type as string ?? 'carro', oLat, oLng, route.durationMin);
   }
 
   const distText = distKm > 0 ? ` (${distKm.toFixed(1)} km)` : '';
