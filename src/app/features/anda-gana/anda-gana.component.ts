@@ -17572,6 +17572,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
    * corregido 2026-07-30: un modal propio aparecía ENCIMA de ese banner). */
   private async _showIncomingTripById(tripId: string): Promise<void> {
     if (!tripId) return;
+    // Este metodo SOLO se llama al tocar la notificacion push real de esta solicitud puntual
+    // (deep link nativo trip_request_id=... o el puente __moviHandleTripPush) -- a diferencia
+    // de offer_seen (se dispara con cualquier apertura normal de la app), esto SI confirma que
+    // el conductor abrio ESTA notificacion en concreto. Pedido explicito 2026-09-01: saber
+    // quienes de verdad leen los push.
+    const driverId = this.driverData()?.id;
+    if (driverId) this.agService.logPushOpened(tripId, driverId).catch(() => {});
     const req = await this.agService.getTripRequestById(tripId).catch(() => null);
     if (!req || req.status !== 'searching') return;
     this.driverRequests.update(list => list.some(r => r.id === req.id) ? list : [...list, req]);

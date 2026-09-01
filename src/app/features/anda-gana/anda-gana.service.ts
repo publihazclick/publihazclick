@@ -2514,6 +2514,14 @@ export class AndaGanaService {
     await this.supabase.rpc('ag_log_metric_event', { p_event_type: eventType, p_trip_id: tripId ?? null });
   }
 
+  /** Marca que ESTE conductor abrió la notificación push de ESTA solicitud puntual (pedido
+   * explícito 2026-09-01: saber qué conductores de verdad leen los push, no solo asumirlo).
+   * Solo se debe llamar desde _showIncomingTripById -- ahí sí sabemos que vino de tocar la
+   * notificación (deep link nativo o el puente __moviHandleTripPush), no de abrir la app normal. */
+  async logPushOpened(tripRequestId: string, driverId: string): Promise<void> {
+    await this.supabase.rpc('ag_log_push_opened', { p_trip_request_id: tripRequestId, p_driver_id: driverId }).catch(() => {});
+  }
+
   async driverCancelTrip(tripRequestId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
     const { error } = await this.supabase.rpc('ag_driver_cancel_trip', {
       p_trip_request_id: tripRequestId, p_reason: reason ?? null,
