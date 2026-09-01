@@ -2519,7 +2519,7 @@ export class AndaGanaService {
    * Solo se debe llamar desde _showIncomingTripById -- ahí sí sabemos que vino de tocar la
    * notificación (deep link nativo o el puente __moviHandleTripPush), no de abrir la app normal. */
   async logPushOpened(tripRequestId: string, driverId: string): Promise<void> {
-    await this.supabase.rpc('ag_log_push_opened', { p_trip_request_id: tripRequestId, p_driver_id: driverId }).catch(() => {});
+    await this.supabase.rpc('ag_log_push_opened', { p_trip_request_id: tripRequestId, p_driver_id: driverId });
   }
 
   async driverCancelTrip(tripRequestId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
