@@ -373,6 +373,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             Pasajero a Bordo — Iniciar Ruta
           </button>
 
+          <!-- Cancelar (el pasajero no llegó, etc.) -->
+          <button (click)="openCancelWithReason('driver', driverArrivalTrip())"
+            style="width:100%;padding:8px;border-radius:12px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:700;color:#f87171">
+            Cancelar viaje
+          </button>
+
         </div>
       </div>
     </div>
@@ -5670,6 +5676,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <span class="material-symbols-outlined" style="font-size:18px">person_check</span>Pasajero a bordo
                     </button>
                   }
+                  <!-- Cancelar: solo antes de recoger al pasajero (sin etapa / camino / esperando).
+                       Pedido explicito del usuario 2026-09-01 -- el RPC ya existia pero nunca
+                       tuvo boton conectado. -->
+                  @if (!trip.ag_trip_requests?.driver_stage || trip.ag_trip_requests?.driver_stage === 'heading_to_pickup' || trip.ag_trip_requests?.driver_stage === 'arrived_at_pickup') {
+                    <button (click)="openCancelWithReason('driver', trip)"
+                      class="w-full py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                      style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.4);color:#ef4444">
+                      <span class="material-symbols-outlined" style="font-size:16px">cancel</span>Cancelar viaje
+                    </button>
+                  }
                   <!-- Etapa 3 (respaldo): algun viaje que haya quedado en 'picked_up' antes de
                        este cambio -- ya no se genera este estado, solo se deja la salida. -->
                   @if (trip.ag_trip_requests?.driver_stage === 'picked_up') {
@@ -6129,6 +6145,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </button>
                 }
               </div>
+
+              <!-- Cancelar: solo antes de recoger al pasajero, texto discreto para no competir
+                   con los botones principales de la fila de arriba. -->
+              @if (navPhase() === 'to_pickup') {
+                <button (click)="openCancelWithReason('driver', driverFullscreenTrip())"
+                  class="w-full py-2 text-center text-xs font-bold active:scale-[0.98]"
+                  style="color:#f87171">
+                  Cancelar viaje
+                </button>
+              }
 
               <!-- Código de entrega — solo para domicilios en fase de destino -->
               @if (driverFullscreenTrip()?.ag_trip_requests?.service_type === 'domicilio' && navPhase() !== 'to_pickup') {
@@ -10536,6 +10562,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   cancelReasonModal      = signal(false);
   cancelReasonTarget     = signal<'passenger' | 'driver'>('passenger');
   cancelReasonSelected   = signal('');
+  // Viaje puntual que el CONDUCTOR está cancelando (puede tener varios activos a la vez,
+  // ver movi_wa_multi_trip_support) -- el lado pasajero no lo necesita, usa currentTripRequestId().
+  private cancelReasonDriverTrip = signal<any | null>(null);
   // 5. Contraoferta del pasajero
   counterOfferModal      = signal(false);
   counterOfferTarget     = signal<AgTripOffer | null>(null);
@@ -12014,7 +12043,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   /** Limpia todo el estado del conductor cuando el pasajero cancela el viaje */
-  private _handleTripCancelled(tripRequestId: string, cancelReason?: string): void {
+  private _handleTripCancelled(tripRequestId: string, cancelReason?: string, showAlert = true): void {
     const active = this.driverActiveTrips().find((t: any) =>
       t.trip_request_id === tripRequestId || t.ag_trip_requests?.id === tripRequestId
     );
@@ -12052,8 +12081,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.driverFullscreenTrip.set(null);
     this.navActive.set(false);
     if (this.driverSection() !== null) this.driverSection.set(null);
-    // Mostrar aviso con motivo
-    this.driverCancelAlert.set(cancelReason ?? null);
+    // Mostrar aviso con motivo -- solo cuando fue el PASAJERO quien canceló (showAlert=false
+    // cuando este cleanup lo dispara el propio conductor cancelando, ver driverCancelActiveTrip).
+    if (showAlert) this.driverCancelAlert.set(cancelReason ?? null);
     // Restaurar mapa a estado inicial (300px, tiles recargados)
     this._resetMapToInitialState();
   }
@@ -22027,15 +22057,53 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   }
 
   // ── Cancel with reason ────────────────────────────────────────
-  openCancelWithReason(target: 'passenger' | 'driver'): void {
+  openCancelWithReason(target: 'passenger' | 'driver', driverTrip?: any): void {
     this.cancelReasonTarget.set(target);
+    this.cancelReasonDriverTrip.set(target === 'driver' ? (driverTrip ?? null) : null);
     this.cancelReasonSelected.set('');
     this.cancelReasonModal.set(true);
   }
 
   async confirmCancelWithReason(): Promise<void> {
     this.cancelReasonModal.set(false);
-    await this.cancelTrip(this.cancelReasonSelected() || undefined);
+    const reason = this.cancelReasonSelected() || undefined;
+    if (this.cancelReasonTarget() === 'driver') {
+      await this.driverCancelActiveTrip(reason);
+    } else {
+      await this.cancelTrip(reason);
+    }
+  }
+
+  /** Conductor cancela un viaje YA ACEPTADO (antes de recoger al pasajero). Pedido explicito
+   * del usuario 2026-09-01 -- el RPC ya existia (ag_driver_cancel_trip) pero nunca estuvo
+   * conectado a ningun boton, así que el conductor no tenía forma real de cancelar desde la app. */
+  private async driverCancelActiveTrip(reason?: string): Promise<void> {
+    const trip = this.cancelReasonDriverTrip();
+    this.cancelReasonDriverTrip.set(null);
+    const tripReqId = trip?.trip_request_id ?? trip?.ag_trip_requests?.id;
+    if (!tripReqId) return;
+    const res = await this.agService.driverCancelTrip(tripReqId, reason);
+    if (!res.success) {
+      alert(res.error ?? 'No se pudo cancelar el viaje. Intenta de nuevo.');
+      return;
+    }
+    // Push real al pasajero -- el realtime (que ya limpia su pantalla) solo llega si tiene
+    // la app abierta con el socket activo, igual que el resto del flujo (ver advanceStage()).
+    const req = trip.ag_trip_requests ?? trip;
+    const passengerAuthId = req?.ag_users?.auth_user_id;
+    if (passengerAuthId) {
+      this.agService.sendPush({
+        userIds: [passengerAuthId],
+        title: '❌ Viaje cancelado',
+        body: 'Tu conductor canceló el viaje. Puedes pedir uno nuevo cuando quieras.',
+        tag: `trip-cancelled-${tripReqId}`,
+        urgent: true,
+      }).catch(() => {});
+    }
+    // Mismo estado limpio que cuando el conductor se entera de que el PASAJERO canceló
+    // (_handleTripCancelled), pero sin el modal "El pasajero canceló" -- ese texto sería
+    // incorrecto aquí, fue el conductor quien canceló.
+    this._handleTripCancelled(tripReqId, reason, false);
   }
 
   // ── Counter-offer from passenger ─────────────────────────────
