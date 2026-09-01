@@ -15813,6 +15813,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   private _gpsWatchId: number | null = null;
+  private _locationHeartbeatId: any = null;
   private _lastDriverTripLocLogAt = 0;
   private _lastDriverCcTripLocLogAt = 0;
 
@@ -17119,6 +17120,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._startBackgroundTracking(driverId).catch(() => {});
     // Web Push para navegadores (funciona con app cerrada)
     this._autoRegisterWebPush().catch(() => {});
+
+    // Latido de ubicación: ni el watcher en primer plano ni BackgroundGeolocation
+    // (distanceFilter) disparan un evento nuevo si el conductor no se mueve -- un
+    // conductor parado esperando solicitud (comportamiento normal, no un caso raro)
+    // deja de refrescar ag_driver_locations.updated_at indefinidamente. El trigger
+    // que avisa a conductores de una solicitud nueva exige GPS de menos de 10 min
+    // (app abierta) o 4 horas (app cerrada, ver migración 208) -- pasada esa
+    // ventana, el conductor se vuelve invisible para CUALQUIER solicitud nueva, sea
+    // de la app o de WhatsApp, aunque siga en línea de verdad (bug real reportado
+    // 2026-09-01: "ningún conductor se entera"). Se reenvía la última posición
+    // conocida cada 3 minutos -- sin pedir un fix nuevo (no gasta batería de más),
+    // bien dentro de ambas ventanas.
+    if (this._locationHeartbeatId) clearInterval(this._locationHeartbeatId);
+    this._locationHeartbeatId = setInterval(() => {
+      if (this._currentLat && this._currentLng) {
+        this.agService.updateDriverLocation(driverId, this._currentLat, this._currentLng, this._currentHeading);
+      }
+    }, 180000);
   }
 
   // ── Finalizar viaje automatico por GPS (pedido explicito del usuario 2026-07-31) ──
@@ -17458,6 +17477,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         // Actualizar posición GPS
         if (location.accuracy == null || location.accuracy <= 50) {
           this.agService.updateDriverLocation(driverId, location.latitude, location.longitude, location.bearing ?? 0);
+          // El watcher en primer plano (arriba) sí actualizaba _currentLat/_currentLng en
+          // cada tick -- este (background) no lo hacía, así que el latido de ubicación
+          // (más abajo) se quedaba sin una posición fresca para reenviar cuando el
+          // conductor tenía la app realmente en segundo plano.
+          this._currentLat = location.latitude;
+          this._currentLng = location.longitude;
+          if (location.bearing != null && isFinite(location.bearing) && location.bearing >= 0) {
+            this._currentHeading = location.bearing;
+          }
         }
 
         // Revisar nuevas solicitudes cada vez que llega una posición GPS
@@ -17497,6 +17525,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (this._gpsWatchId !== null) {
       navigator.geolocation.clearWatch(this._gpsWatchId);
       this._gpsWatchId = null;
+    }
+    if (this._locationHeartbeatId) {
+      clearInterval(this._locationHeartbeatId);
+      this._locationHeartbeatId = null;
     }
     this._stopBackgroundTracking();
   }
