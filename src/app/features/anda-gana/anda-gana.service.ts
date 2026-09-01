@@ -1255,6 +1255,36 @@ export class AndaGanaService {
     } catch { return false; }
   }
 
+  // ── Versión mínima/recomendada de la app nativa (pedido explicito 2026-09-01) ──
+  // version_code = versionCode de Android (entero, ver android/app/build.gradle), no el nombre
+  // "1.4.30". min bloquea el uso hasta actualizar; latest solo recomienda actualizar.
+  async getAppVersionRequirements(): Promise<{ min: number; latest: number }> {
+    const { data } = await this.supabase
+      .from('platform_settings')
+      .select('key, value')
+      .in('key', ['ag_min_app_version_code', 'ag_latest_app_version_code']);
+    const map: Record<string, string> = {};
+    for (const row of (data ?? []) as any[]) map[row.key] = row.value;
+    return {
+      min: parseInt(map['ag_min_app_version_code'] ?? '0', 10) || 0,
+      latest: parseInt(map['ag_latest_app_version_code'] ?? '0', 10) || 0,
+    };
+  }
+
+  async setMinAppVersion(versionCode: number, publihazclickToken: string): Promise<boolean> {
+    try {
+      await this.callAdminAction(publihazclickToken, { action: 'set_min_app_version', version_code: versionCode });
+      return true;
+    } catch { return false; }
+  }
+
+  async setLatestAppVersion(versionCode: number, publihazclickToken: string): Promise<boolean> {
+    try {
+      await this.callAdminAction(publihazclickToken, { action: 'set_latest_app_version', version_code: versionCode });
+      return true;
+    } catch { return false; }
+  }
+
   // ── Billetera conductor ───────────────────────────────────────
   async getDriverWalletBalance(driverId: string): Promise<number | null> {
     try {

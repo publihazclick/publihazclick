@@ -83,6 +83,48 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   [style.padding]="screen() === 'quick-register' || screen() === 'passenger-home' ? '0' : screen() === 'driver-home' ? '0 16px' : '24px 16px'"
   style="min-height:100dvh">
 
+  <!-- ═══════════ ACTUALIZACIÓN OBLIGATORIA (bloquea todo, no se puede cerrar) ═══════════ -->
+  @if (updateRequired()) {
+    <div class="fixed inset-0 flex flex-col items-center justify-center px-6"
+      style="z-index:99999;background:#0a1628">
+      <div class="w-full max-w-sm rounded-3xl overflow-hidden text-center"
+        style="background:linear-gradient(180deg,#0d1f3c 0%,#0a1628 100%);border:1.5px solid rgba(0,229,255,0.3)">
+        <div class="flex flex-col items-center gap-3 py-8 px-6">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center" style="background:rgba(0,229,255,0.15)">
+            <span class="material-symbols-outlined" style="font-size:36px;color:#00E5FF">system_update</span>
+          </div>
+          <p style="color:#fff;font-size:19px;font-weight:900;margin:0">Necesitas actualizar Movi</p>
+          <p style="color:rgba(255,255,255,0.6);font-size:13px;margin:0;line-height:1.5">
+            Esta versión de la app ya no funciona correctamente. Actualiza gratis desde Play Store para seguir usando Movi.
+          </p>
+          <button (click)="openPlayStoreUpdate()"
+            class="w-full py-4 rounded-2xl text-white font-black flex items-center justify-center gap-2 active:scale-[0.98] mt-2"
+            style="background:linear-gradient(135deg,#00E5FF,#0891b2)">
+            <span class="material-symbols-outlined" style="font-size:20px">download</span>
+            Actualizar ahora
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════ ACTUALIZACIÓN DISPONIBLE (banner, se puede descartar) ═══════════ -->
+  @if (updateAvailable() && !updateRequired()) {
+    <div class="fixed left-3 right-3 flex items-center gap-3 px-4 py-3 rounded-2xl"
+      style="top:max(12px,env(safe-area-inset-top));z-index:9998;background:#0d1f3c;border:1.5px solid rgba(0,229,255,0.35);box-shadow:0 12px 32px rgba(0,0,0,0.5)">
+      <span class="material-symbols-outlined flex-shrink-0" style="font-size:22px;color:#00E5FF">system_update</span>
+      <p style="flex:1;color:#fff;font-size:12.5px;font-weight:700;margin:0;line-height:1.3">Hay una nueva versión de Movi disponible</p>
+      <button (click)="openPlayStoreUpdate()"
+        class="flex-shrink-0 px-3 py-2 rounded-xl text-white text-xs font-black active:scale-95"
+        style="background:linear-gradient(135deg,#00E5FF,#0891b2)">Actualizar</button>
+      <button (click)="dismissUpdateBanner()"
+        class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center active:scale-90"
+        style="background:rgba(255,255,255,0.08)">
+        <span class="material-symbols-outlined" style="font-size:16px;color:rgba(255,255,255,0.6)">close</span>
+      </button>
+    </div>
+  }
+
   <!-- ═══════════ LLAMADA ENTRANTE (LiveKit) ═══════════ -->
   @if (callState() === 'incoming') {
     <div class="fixed inset-0 flex flex-col items-center justify-center px-6"
@@ -10469,6 +10511,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverTripAlert    = signal<any | null>(null); // full-screen inDrive-style alert when offer accepted
   driverCancelAlert  = signal<string | null>(null); // aviso al conductor cuando pasajero cancela
   driverBenefits     = signal<any | null>(null); // tier + founder + commission data
+  // Aviso de version de app desactualizada (pedido explicito 2026-09-01) -- updateRequired
+  // bloquea el uso (versionCode < minimo configurado), updateAvailable solo recomienda
+  // (versionCode < ultima configurada, pero >= minima).
+  updateRequired     = signal(false);
+  updateAvailable    = signal(false);
   // Driver menu sections
   driverSection      = signal<string | null>(null);
   loadingSection     = signal(false);
@@ -11660,6 +11707,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       (window as any).__moviHandleTripPush = (tripId: string) => {
         this._showIncomingTripById(tripId).catch(() => {});
       };
+      // Pedido explicito del usuario 2026-09-01: avisar (o bloquear) cuando la app nativa
+      // instalada quedó vieja -- ver _checkAppVersion(). No bloquea el arranque, corre aparte.
+      this._checkAppVersion().catch(() => {});
     }
 
     // Link corto y personalizado (?r=<código>, ej. "carlos4821") desde 2026-08-22 -- pedido
@@ -16964,6 +17014,48 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _stopOnlineTimer() {
     if (this._onlineTimer) { clearInterval(this._onlineTimer); this._onlineTimer = null; }
+  }
+
+  // ── Version de app nativa (pedido explicito del usuario 2026-09-01) ──────────
+  // Compara el versionCode REAL instalado (leido del propio APK via @capacitor/app, no algo
+  // que la app pueda inventar) contra los minimos configurados por el admin en platform_settings
+  // (ver ag_min_app_version_code / ag_latest_app_version_code, editable desde el panel admin).
+  // Solo aplica a la app nativa -- en el navegador (PWA/preview) el codigo web SIEMPRE es el
+  // ultimo (se despliega solo), no tiene sentido "actualizar" nada ahi.
+  private async _checkAppVersion(): Promise<void> {
+    try {
+      const cap = (window as any)?.Capacitor;
+      if (!cap?.isNativePlatform?.()) return;
+      const AppPlugin = cap.Plugins?.App;
+      if (!AppPlugin?.getInfo) return;
+      const info = await AppPlugin.getInfo();
+      const current = parseInt(info?.build ?? '', 10);
+      if (!current) return;
+      const { min, latest } = await this.agService.getAppVersionRequirements();
+      if (min > 0 && current < min) {
+        this.updateRequired.set(true);
+        return;
+      }
+      if (latest > 0 && current < latest) {
+        // No volver a molestar por la MISMA version ya descartada -- si sale una version mas
+        // nueva todavia, latest cambia y esto vuelve a mostrarse.
+        const dismissedFor = typeof localStorage !== 'undefined' ? localStorage.getItem('movi_update_dismissed_v') : null;
+        if (dismissedFor !== String(latest)) this.updateAvailable.set(true);
+      }
+    } catch {}
+  }
+
+  openPlayStoreUpdate(): void {
+    window.open('https://play.google.com/store/apps/details?id=com.publihazclick.movi', '_blank');
+  }
+
+  dismissUpdateBanner(): void {
+    this.updateAvailable.set(false);
+    try {
+      this.agService.getAppVersionRequirements().then(({ latest }) => {
+        if (typeof localStorage !== 'undefined') localStorage.setItem('movi_update_dismissed_v', String(latest));
+      });
+    } catch {}
   }
 
   /** Ubicación + push nativo — lo que realmente dispara los cuadros de permiso del sistema. */

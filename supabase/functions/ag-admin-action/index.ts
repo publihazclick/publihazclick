@@ -343,6 +343,29 @@ Deno.serve(async (req) => {
         if (error) throw error;
         return json({ ok: true });
       }
+      // set_min_app_version / set_latest_app_version: pedido explicito del usuario 2026-09-01 --
+      // avisar (o bloquear) a conductores/pasajeros con una version nativa vieja de la app para
+      // que actualicen desde Play Store. version_code = versionCode de Android (entero,
+      // android/app/build.gradle), no el nombre "1.4.30". min = bloquea el uso (obligatorio),
+      // latest = solo recomienda (el usuario puede seguir usando la app, con un aviso).
+      case 'set_min_app_version': {
+        if (body.version_code == null) return json({ error: 'missing_version_code' }, 400);
+        const versionCode = Math.max(0, Math.min(999999, Math.floor(Number(body.version_code))));
+        const { error } = await movi
+          .from('platform_settings')
+          .upsert({ key: 'ag_min_app_version_code', value: String(versionCode) }, { onConflict: 'key' });
+        if (error) throw error;
+        return json({ ok: true });
+      }
+      case 'set_latest_app_version': {
+        if (body.version_code == null) return json({ error: 'missing_version_code' }, 400);
+        const versionCode = Math.max(0, Math.min(999999, Math.floor(Number(body.version_code))));
+        const { error } = await movi
+          .from('platform_settings')
+          .upsert({ key: 'ag_latest_app_version_code', value: String(versionCode) }, { onConflict: 'key' });
+        if (error) throw error;
+        return json({ ok: true });
+      }
       default:
         return json({ error: 'unknown_action' }, 400);
     }
