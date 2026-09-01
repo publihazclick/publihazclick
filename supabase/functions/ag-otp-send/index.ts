@@ -60,10 +60,10 @@ async function sendViaWhatsApp(phone: string, code: string): Promise<boolean> {
   return true;
 }
 
-async function sendViaTelnyx(phone: string, code: string): Promise<boolean> {
+async function sendViaTelnyx(phone: string, code: string): Promise<{ ok: boolean; debug?: string }> {
   const apiKey    = Deno.env.get('TELNYX_API_KEY');
   const fromSender = Deno.env.get('TELNYX_SENDER_ID') ?? Deno.env.get('TELNYX_PHONE_NUMBER');
-  if (!apiKey || !fromSender) return false;
+  if (!apiKey || !fromSender) return { ok: false, debug: `telnyx: falta secret (apiKey=${!!apiKey}, from=${!!fromSender})` };
 
   // No incluir messaging_profile_id: el número ya está asignado a su perfil en Telnyx,
   // y enviarlo explícito rompe la sustitución automática de remitente alfanumérico para CO.
@@ -84,15 +84,19 @@ async function sendViaTelnyx(phone: string, code: string): Promise<boolean> {
   // general de Deno.serve (abajo) sin pasar nunca por el fallback a Twilio de la línea 174 --
   // ese fallback era código muerto, nunca se ejecutaba. Ahora sendViaTelnyx falla igual que
   // sendViaWhatsApp/sendViaTwilio (devuelve false), así que el fallback real sí corre.
-  if (!res.ok) { const err = await res.text(); console.error('Telnyx error:', err); return false; }
-  return true;
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('Telnyx error:', err);
+    return { ok: false, debug: `telnyx ${res.status}: ${err.slice(0, 300)}` };
+  }
+  return { ok: true };
 }
 
-async function sendViaTwilio(phone: string, code: string): Promise<boolean> {
+async function sendViaTwilio(phone: string, code: string): Promise<{ ok: boolean; debug?: string }> {
   const sid   = Deno.env.get('TWILIO_ACCOUNT_SID');
   const token = Deno.env.get('TWILIO_AUTH_TOKEN');
   const from  = Deno.env.get('TWILIO_PHONE_NUMBER');
-  if (!sid || !token || !from) return false;
+  if (!sid || !token || !from) return { ok: false, debug: `twilio: falta secret (sid=${!!sid}, token=${!!token}, from=${!!from})` };
 
   const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
     method: 'POST',
@@ -105,8 +109,12 @@ async function sendViaTwilio(phone: string, code: string): Promise<boolean> {
       Body: `Tu código de verificación Movi es: ${code}. Válido por 10 minutos.`,
     }).toString(),
   });
-  if (!res.ok) { console.error('Twilio error:', await res.text()); return false; }
-  return true;
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('Twilio error:', err);
+    return { ok: false, debug: `twilio ${res.status}: ${err.slice(0, 300)}` };
+  }
+  return { ok: true };
 }
 
 Deno.serve(async (req) => {
@@ -185,10 +193,19 @@ Deno.serve(async (req) => {
     // confirmado funcionando para CO por soporte de Telnyx) como unico canal, priorizando
     // confiabilidad sobre costo cero. sendViaWhatsApp queda sin usar pero no se borra, por si se
     // retoma mas adelante (ver [[movi_otp_whatsapp_openwa]]).
-    let sent = await sendViaTelnyx(normalized, code);
-    if (!sent) sent = await sendViaTwilio(normalized, code);
+    let result = await sendViaTelnyx(normalized, code);
+    const telnyxDebug = result.debug;
+    if (!result.ok) result = await sendViaTwilio(normalized, code);
 
-    if (!sent) {
+    if (!result.ok) {
+      // Diagnostico temporal 2026-09-01 (usuario real bloqueado, "No se pudo enviar el
+      // codigo" en ambos proveedores): con ?debug=1 en la URL se incluye el error real de
+      // cada proveedor en la respuesta, para diagnosticar sin adivinar. NUNCA depende de esto
+      // el usuario final -- la app no manda ese query param, solo se usa a mano para depurar.
+      const url = new URL(req.url);
+      if (url.searchParams.get('debug') === '1') {
+        return json({ error: 'No se pudo enviar el código. Intenta de nuevo.', debug: { telnyx: telnyxDebug, twilio: result.debug } });
+      }
       return json({ error: 'No se pudo enviar el código. Intenta de nuevo.' });
     }
 
