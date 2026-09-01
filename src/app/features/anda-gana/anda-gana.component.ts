@@ -11606,6 +11606,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _currentLng = -74.0817;
   /** true solo cuando tenemos una lectura GPS con precisión real (<300m). Evita usar coords por defecto (Bogotá) como origen de viaje. */
   private _gpsRealFix    = false;
+  /** true solo para el CONDUCTOR cuando _currentLat/_currentLng son una posición real utilizable
+   * (GPS en vivo de esta sesión, o la última posición conocida cargada desde la BD al ir en
+   * línea -- ver startGpsTracking). Separado de _gpsRealFix (que también lo usa el pasajero para
+   * cosas sin relación, como confirmar un pin manual) para no arriesgar efectos cruzados: el
+   * latido de ubicación SOLO debe reenviar una posición real, nunca el default de Bogotá
+   * (4.6097,-74.0817) con el que arrancan _currentLat/_currentLng -- bug real encontrado
+   * 2026-09-01 (conductor con GPS roto desde su dispositivo, +573224181663) que habría mandado
+   * su ubicación como Bogotá cada 3 min en vez de dejarlo con su última posición real (Cúcuta). */
+  private _driverLocationKnown = false;
   /** true cuando initGpsAndMap tuvo que usar el fallback de Bogota (DEFAULT_LAT/LNG) porque el
    * GPS no dio una lectura a tiempo -- comun en la PRIMERA instalacion (GPS en frio puede tardar
    * mas de 30s). Mientras esto sea true, la direccion/mapa mostrados NO son reales; se corrige
@@ -17037,6 +17046,20 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       return;
     }
 
+    // Si el GPS en vivo de ESTA sesión tarda o nunca llega (dispositivo con el mismo problema
+    // real encontrado 2026-09-01: +573224181663, un solo fix en toda su historia y nunca más),
+    // usar la última posición real conocida del conductor (guardada en la BD la última vez que
+    // sí funcionó) para que el latido de ubicación (más abajo) tenga algo real que reenviar en
+    // vez de dejarlo invisible para todas las solicitudes nuevas. Se descarta si mientras tanto
+    // ya llegó un fix en vivo (_driverLocationKnown ya en true) para no pisarlo con un dato viejo.
+    this.agService.getLatestDriverLocation(driverId).then(loc => {
+      if (loc && !this._driverLocationKnown) {
+        this._currentLat = loc.lat;
+        this._currentLng = loc.lng;
+        this._driverLocationKnown = true;
+      }
+    }).catch(() => {});
+
     // Enviar posición inicial solo si la precisión es real (≤50m, no lectura de red/IP)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -17087,6 +17110,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this._currentLat = pos.coords.latitude;
         this._currentLng = pos.coords.longitude;
         this._gpsRealFix = true;
+        this._driverLocationKnown = true;
 
         this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude, pos.coords.heading ?? undefined);
 
@@ -17172,7 +17196,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // bien dentro de ambas ventanas.
     if (this._locationHeartbeatId) clearInterval(this._locationHeartbeatId);
     this._locationHeartbeatId = setInterval(() => {
-      if (this._currentLat && this._currentLng) {
+      // _driverLocationKnown (no solo "hay algun valor") -- _currentLat/_currentLng arrancan
+      // en el default de Bogota (4.6097,-74.0817), que es truthy pero NO es una posicion real;
+      // sin este guard, un conductor cuyo GPS nunca agarra senal habria mandado Bogota como si
+      // fuera su ubicacion real cada 3 min (bug real encontrado 2026-09-01).
+      if (this._driverLocationKnown && this._currentLat && this._currentLng) {
         this.agService.updateDriverLocation(driverId, this._currentLat, this._currentLng, this._currentHeading);
       }
     }, 180000);
@@ -17521,6 +17549,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           // conductor tenía la app realmente en segundo plano.
           this._currentLat = location.latitude;
           this._currentLng = location.longitude;
+          this._driverLocationKnown = true;
           if (location.bearing != null && isFinite(location.bearing) && location.bearing >= 0) {
             this._currentHeading = location.bearing;
           }
