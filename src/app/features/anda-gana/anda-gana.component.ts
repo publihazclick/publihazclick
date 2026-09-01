@@ -15968,6 +15968,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const passengerAuthId = req?.ag_users?.auth_user_id;
     if (passengerAuthId) {
       const pushMap: Partial<Record<string, { title: string; body: string }>> = {
+        heading_to_pickup:      { title: '🚗 Tu conductor va en camino', body: 'Tu conductor está en camino al punto de recogida.' },
         arrived_at_pickup:      { title: '🚗 Tu conductor llegó', body: 'Tu conductor está esperándote en el punto de recogida.' },
         on_route:               { title: '🚀 ¡El viaje inició!', body: 'Estás en camino a tu destino. Buen viaje.' },
         arrived_at_destination: { title: '📍 Llegaste a tu destino', body: 'El conductor confirma tu llegada. Gracias por viajar con Movi.' },
@@ -19064,6 +19065,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   cancelTrip(reason?: string) {
+    // Capturar ANTES de que el resto de la función limpie tripAccepted() más abajo --
+    // si ya había un conductor asignado, necesita enterarse por push de que el pasajero
+    // canceló (hasta ahora solo se enteraba por realtime, ver driverCancelAlert /
+    // _handleTripCancelled -- nada si tenía la app cerrada o en segundo plano).
+    const cancelledDriverAuthId = this.tripAccepted()?.ag_drivers?.ag_users?.auth_user_id;
     this._driverNearbyShown = false;
     this.driverNearbyAlert.set(false);
     // Ver misma nota en _resetTrip() -- cancelar el viaje es otro camino de
@@ -19077,6 +19083,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.currentTripStage.set(null);
     this._clearNavRoute();
     const tripId = this.currentTripRequestId();
+    if (tripId && cancelledDriverAuthId) {
+      this.agService.sendPush({
+        userIds: [cancelledDriverAuthId],
+        title: '❌ Viaje cancelado',
+        body: 'El pasajero canceló el viaje.',
+        tag: `trip-cancelled-${tripId}`,
+        urgent: true,
+      }).catch(() => {});
+    }
     if (tripId) this.agService.cancelTripRequest(tripId, reason);
     this.tripDest.set(null);
     this.tripSent.set(false);
@@ -21893,6 +21908,19 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     // Notificar al conductor por los dos canales para garantizar entrega
     if (driverId) this.agService.broadcastPassengerBoarded(driverId, tripId);
     this.agService.broadcastTripBoarding(tripId);
+    // Tercer canal: push real -- los dos de arriba son broadcasts de realtime, que solo
+    // llegan si el conductor tiene el socket activo (app abierta o en segundo plano vivo).
+    // Con la app cerrada no se enteraba de que el pasajero ya abordó.
+    const driverAuthId = this.tripAccepted()?.ag_drivers?.ag_users?.auth_user_id;
+    if (driverAuthId) {
+      this.agService.sendPush({
+        userIds: [driverAuthId],
+        title: '✅ Pasajero a bordo',
+        body: 'El pasajero confirmó que ya está en el vehículo.',
+        tag: `boarded-${tripId}`,
+        urgent: true,
+      }).catch(() => {});
+    }
     this.cdr.markForCheck();
   }
 
@@ -22027,6 +22055,18 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       await this.agService.updateTripOfferedPrice(target.trip_request_id, price);
       this.counterOfferModal.set(false);
       this.counterOfferTarget.set(null);
+      // Push al conductor -- el realtime solo actualiza el precio si tiene la app abierta con
+      // el socket activo; con la app cerrada/en segundo plano nunca se enteraba de la contraoferta.
+      const driverAuthId = (target as any)?.ag_drivers?.ag_users?.auth_user_id;
+      if (driverAuthId) {
+        this.agService.sendPush({
+          userIds: [driverAuthId],
+          title: '💰 Contraoferta del pasajero',
+          body: `El pasajero propone ${this.formatCOP(price)}. Abre Movi para responder.`,
+          tag: `counter-${target.trip_request_id}`,
+          urgent: true,
+        }).catch(() => {});
+      }
     } catch {
       // silencioso — el conductor verá el precio actualizado via realtime
     } finally {
