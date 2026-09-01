@@ -2241,11 +2241,24 @@ export class AndaGanaService {
     return data as any;
   }
 
+  /** BUG REAL encontrado en auditoria 2026-09-01: esta funcion tiene verify_jwt=true en el
+   * gateway de Supabase (confirmado con una llamada real: sin 'Authorization' devuelve 401
+   * UNAUTHORIZED_NO_AUTH_HEADER antes de ejecutar el codigo de la funcion) -- faltaba el header
+   * 'Authorization', asi que TODO push disparado desde el cliente (oferta hecha/aceptada/
+   * rechazada, cada etapa del viaje, contraoferta, abordaje, cancelacion) fallaba en silencio
+   * (el catch{} se traga el error) desde siempre. La API key anonima sirve como Bearer valido
+   * para el gateway -- la funcion no necesita la sesion de un usuario real, solo recibe los
+   * user_ids a los que hay que avisar.
+   */
   async sendPush(payload: { userIds: string[]; title: string; body?: string; url?: string; tag?: string; urgent?: boolean }): Promise<void> {
     try {
       await fetch(`${environment.moviSupabase.url}/functions/v1/ag-send-push`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: environment.moviSupabase.anonKey },
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: environment.moviSupabase.anonKey,
+          Authorization: `Bearer ${environment.moviSupabase.anonKey}`,
+        },
         body: JSON.stringify({
           user_ids: payload.userIds, title: payload.title, body: payload.body,
           url: payload.url ?? '/anda-gana', tag: payload.tag, urgent: payload.urgent,
