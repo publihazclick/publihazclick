@@ -17056,6 +17056,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           alert('Permiso de GPS denegado. Activa la ubicación para recibir solicitudes.');
           this.driverOnline.set(false);
           this.agService.setDriverOnline(driverId, false);
+          // Bug real encontrado 2026-09-01: esto apagaba is_online sin cerrar la sesion de
+          // ag_online_sessions (solo lo hace toggleDriverOnline en el camino normal) -- dejaba
+          // sesiones huerfanas con is_online YA en false, invisibles para cualquier limpieza
+          // que solo buscara is_online=true (ver migracion 246).
+          if (this._onlineSessionId) {
+            this.agService.endOnlineSession(this._onlineSessionId).catch(() => {});
+            this._onlineSessionId = null;
+          }
         }
       },
       { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
@@ -17141,6 +17149,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this.stopGpsTracking();
           this.driverOnline.set(false);
           this.agService.setDriverOnline(driverId, false);
+          // Mismo bug que el otro manejador de arriba -- ver nota ahi (migracion 246).
+          if (this._onlineSessionId) {
+            this.agService.endOnlineSession(this._onlineSessionId).catch(() => {});
+            this._onlineSessionId = null;
+          }
           alert('Se perdió el acceso al GPS. Te pusimos fuera de línea.');
         }
       },
