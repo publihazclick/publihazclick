@@ -16934,6 +16934,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return `${h}h ${m}m`;
   });
 
+  /** Pedido explicito del usuario 2026-09-01: eliminado por completo el "modo descanso" que
+   * existia aca -- alerta a las 8h y desconexion FORZADA a las 10h llamando a toggleOnline()
+   * por su cuenta. El conductor es el UNICO que decide cuando desconectarse; la plataforma
+   * nunca lo hace por el, sin importar cuantas horas lleve en linea. Se conserva el contador
+   * "horas en linea hoy" (onlineTodaySeconds/onlineTodayFormatted) porque es solo informativo
+   * para el conductor, no restringe ni desconecta a nadie. */
   private async _startOnlineTimer() {
     const driver = this.driverData();
     if (!driver) return;
@@ -16941,23 +16947,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       try {
         const sec = await this.agService.getTodayOnlineSeconds(driver.id);
         this.onlineTodaySeconds.set(sec);
-        // Modo descanso: alerta a las 8h (28800s), obligatorio a las 10h (36000s)
-        if (sec >= 36000 && !this.restEnforced()) {
-          this.restEnforced.set(true);
-          alert('🛏️ Has trabajado 10 horas seguidas. Por tu seguridad te ponemos fuera de línea. Descansa al menos 30 minutos antes de volver a conectarte.');
-          await this.toggleOnline();
-        } else if (sec >= 28800 && !this.restWarned()) {
-          this.restWarned.set(true);
-          alert('⚠️ Llevas 8 horas trabajando. Te recomendamos descansar pronto. En 2 horas te desconectaremos automáticamente por seguridad.');
-        }
       } catch {}
     };
     await refresh();
     this._onlineTimer = setInterval(refresh, 30000);
   }
-
-  restWarned = signal(false);
-  restEnforced = signal(false);
 
   private _stopOnlineTimer() {
     if (this._onlineTimer) { clearInterval(this._onlineTimer); this._onlineTimer = null; }
