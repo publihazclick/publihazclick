@@ -3514,8 +3514,13 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // que la cifra real ya sea creíble por sí sola.
     const sawCount = Math.floor(Math.random() * 12) + 12;
     const noun = delivery ? 'mensajeros' : 'conductores';
+    // Pedido explicito del usuario 2026-09-02: al ofrecer 'Subir oferta' hay que explicarle por
+    // que le conviene, no solo darle el boton. La razon real es simple y conviene decirla tal
+    // cual: el conductor elige entre varias solicitudes y toma primero la que mejor le paga.
     const body =
       `👀 *${sawCount}* ${noun} vieron tu solicitud${forName ? ` para *${forName}*` : ''}, pero ninguno la ha aceptado todavía.\n\n` +
+      `💡 Los ${noun} suelen tomar primero los viajes que pagan un poco mejor. ` +
+      `Si subes tu oferta, lo más probable es que alguien la acepte enseguida.\n\n` +
       `¿Qué quieres hacer?`;
 
     // Nota: ag_wa_sessions NO tiene columna for_other -- ese dato vive solo en
