@@ -34,6 +34,16 @@
   Content-Disposition: attachment; filename="movi-conductor.apk"
   Cache-Control: public, max-age=300, must-revalidate
 
+# El service worker de los push es la EXCEPCION: su nombre nunca cambia (no lleva hash),
+# asi que no se puede cachear como los demas .js. Si se cachea, un arreglo en el service
+# worker tarda en llegarle a los conductores y las notificaciones se quedan con la logica
+# vieja. Los navegadores ya limitan a 24h el cache del script de un service worker, pero
+# aqui se pide revalidacion en cada visita para que un cambio llegue de una.
+# Va ANTES de /*.js a proposito: cuando dos reglas coinciden Pages suma y gana la ultima,
+# asi que si fuera despues, /*.js le encajaria el immutable encima.
+/sw-movi.js
+  Cache-Control: no-cache, must-revalidate
+
 # Assets con hash en el nombre: cambian de nombre en cada build, asi que se pueden
 # cachear para siempre sin riesgo de servir version vieja.
 /*.js
