@@ -2518,8 +2518,13 @@ export class AndaGanaService {
    * explícito 2026-09-01: saber qué conductores de verdad leen los push, no solo asumirlo).
    * Solo se debe llamar desde _showIncomingTripById -- ahí sí sabemos que vino de tocar la
    * notificación (deep link nativo o el puente __moviHandleTripPush), no de abrir la app normal. */
-  async logPushOpened(tripRequestId: string, driverId: string): Promise<void> {
-    await this.supabase.rpc('ag_log_push_opened', { p_trip_request_id: tripRequestId, p_driver_id: driverId });
+  /**
+   * source 'tap' = el conductor TOCO la notificacion. 'foreground' = el push le llego con la app
+   * ya abierta en pantalla, sin que tocara nada. Son señales distintas y el informe las cuenta
+   * por separado: mezclarlas era el bug de la migracion 248.
+   */
+  async logPushOpened(tripRequestId: string, driverId: string, source: 'tap' | 'foreground' = 'tap'): Promise<void> {
+    await this.supabase.rpc('ag_log_push_opened', { p_trip_request_id: tripRequestId, p_driver_id: driverId, p_source: source });
   }
 
   async driverCancelTrip(tripRequestId: string, reason?: string): Promise<{ success: boolean; error?: string }> {

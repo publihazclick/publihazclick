@@ -95,6 +95,63 @@ async function sendFcm(token: string, title: string, body: string, data: Record<
   return 'ok';
 }
 
+/**
+ * Guarda en ag_trip_push_log si el proveedor ACEPTO el envio de cada conductor.
+ *
+ * Pedido explicito del usuario 2026-09-01: el informe de visibilidad decia "notificados", que
+ * en realidad era "a cuantos se les apunto el envio" -- la fila se inserta en el trigger de la
+ * DB ANTES de mandar nada, y nunca se guardaba si FCM lo acepto. Un conductor con el token
+ * vencido contaba igual que uno al que si le llego.
+ *
+ * Se marcan solo las filas con fcm_ok IS NULL, que son las del intento en curso (cada ronda de
+ * despacho inserta sus propias filas y despues llama aca). Limitacion conocida y aceptada: si
+ * el marcado de una ronda anterior fallara, el de la siguiente marcaria tambien esas filas
+ * viejas. No afecta al informe, que cuenta conductores DISTINTOS por solicitud y no por ronda. Los conductores que ni siquiera
+ * tienen suscripcion registrada nunca aparecen en estos conjuntos y se quedan en NULL a
+ * proposito: NULL significa "no se pudo ni intentar", distinto de false que es "se intento y lo
+ * rechazaron".
+ */
+async function registrarEntregaPush(
+  supabase: any,
+  tripId: string,
+  aceptados: Set<string>,
+  rechazados: Set<string>,
+): Promise<void> {
+  try {
+    const authIds = [...aceptados, ...rechazados];
+    if (!authIds.length) return;
+
+    const { data: filas } = await supabase
+      .from('ag_drivers')
+      .select('id, ag_users!inner(auth_user_id)')
+      .in('ag_users.auth_user_id', authIds);
+    if (!filas?.length) return;
+
+    const idsPorResultado: Record<'ok' | 'fail', string[]> = { ok: [], fail: [] };
+    for (const f of filas as any[]) {
+      const authId = f.ag_users?.auth_user_id;
+      if (!authId) continue;
+      if (aceptados.has(authId)) idsPorResultado.ok.push(f.id);
+      else if (rechazados.has(authId)) idsPorResultado.fail.push(f.id);
+    }
+
+    for (const [clave, valor] of [['ok', true], ['fail', false]] as const) {
+      const ids = idsPorResultado[clave];
+      if (!ids.length) continue;
+      const { error } = await supabase
+        .from('ag_trip_push_log')
+        .update({ fcm_ok: valor })
+        .eq('trip_request_id', tripId)
+        .in('driver_id', ids)
+        .is('fcm_ok', null);
+      if (error) console.error('[push] error marcando entrega', clave, error);
+    }
+  } catch (e) {
+    // Nunca debe tumbar el envio real de los push: esto es solo instrumentacion.
+    console.error('[push] registrarEntregaPush fallo:', e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -145,6 +202,9 @@ Deno.serve(async (req) => {
     if (body?.dest != null) data.dest = String(body.dest);
 
     let sent = 0;
+    // Resultado real por conductor (auth_user_id), para el informe de visibilidad.
+    const aceptados  = new Set<string>();
+    const rechazados = new Set<string>();
 
     // ── FCM nativos ──
     const fcmSubs = subs.filter((s: any) => s.provider === 'fcm' && s.fcm_token);
@@ -152,9 +212,13 @@ Deno.serve(async (req) => {
       const result = await sendFcm(s.fcm_token, title, text, data);
       if (result === 'ok') {
         sent++;
+        aceptados.add(s.user_id);
         supabase.from('ag_push_subs').update({ last_used_at: new Date().toISOString() }).eq('id', s.id).then(() => {});
-      } else if (result === 'unregistered') {
-        supabase.from('ag_push_subs').delete().eq('id', s.id).then(() => {});
+      } else {
+        rechazados.add(s.user_id);
+        if (result === 'unregistered') {
+          supabase.from('ag_push_subs').delete().eq('id', s.id).then(() => {});
+        }
       }
     }
 
@@ -167,14 +231,21 @@ Deno.serve(async (req) => {
         try {
           await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } } as any, payload);
           sent++;
+          aceptados.add(s.user_id);
           supabase.from('ag_push_subs').update({ last_used_at: new Date().toISOString() }).eq('id', s.id).then(() => {});
         } catch (e: any) {
+          rechazados.add(s.user_id);
           if ((e?.statusCode ?? e?.status) === 410 || (e?.statusCode ?? e?.status) === 404) {
             await supabase.from('ag_push_subs').delete().eq('endpoint', s.endpoint);
           }
         }
       }
     }
+
+    // Un conductor puede tener suscripcion FCM Y WebPush: si alguna acepto, cuenta como
+    // aceptado (le llego por algun lado), asi que se saca de los rechazados.
+    for (const id of aceptados) rechazados.delete(id);
+    if (body?.trip_id) await registrarEntregaPush(supabase, String(body.trip_id), aceptados, rechazados);
 
     return json({ ok: true, sent, channels: { fcm: fcmSubs.length, webpush: wpSubs.length }, debug: _lastFcmDebug });
   } catch (err) {

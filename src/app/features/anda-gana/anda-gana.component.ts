@@ -17448,7 +17448,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         // primer plano; segundo plano/cerrada las maneja el nativo (MoviFirebaseMessagingService).
         this._notifyNewTrip({ offered_price: n?.data?.price, distance_km: n?.data?.dist });
         const tripId = n?.data?.trip_id;
-        if (tripId) this._showIncomingTripById(tripId).catch(() => {});
+        // 'foreground': el push llego con la app abierta, el conductor NO toco nada.
+        if (tripId) this._showIncomingTripById(tripId, 'foreground').catch(() => {});
       });
 
       PP.addListener('pushNotificationActionPerformed', (ev: any) => {
@@ -17591,15 +17592,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
    * modal propio -- el banner "Nueva solicitud" (con Aceptar/Contra-oferta) ya existente se
    * muestra solo apenas la solicitud entra a driverRequests, no hace falta duplicarlo (bug real
    * corregido 2026-07-30: un modal propio aparecía ENCIMA de ese banner). */
-  private async _showIncomingTripById(tripId: string): Promise<void> {
+  private async _showIncomingTripById(tripId: string, source: 'tap' | 'foreground' = 'tap'): Promise<void> {
     if (!tripId) return;
-    // Este metodo SOLO se llama al tocar la notificacion push real de esta solicitud puntual
-    // (deep link nativo trip_request_id=... o el puente __moviHandleTripPush) -- a diferencia
-    // de offer_seen (se dispara con cualquier apertura normal de la app), esto SI confirma que
-    // el conductor abrio ESTA notificacion en concreto. Pedido explicito 2026-09-01: saber
-    // quienes de verdad leen los push.
+    // BUG REAL corregido 2026-09-01: este metodo se llama desde CUATRO lugares y solo tres son
+    // un toque real de la notificacion (deep link nativo trip_request_id=..., el puente
+    // __moviHandleTripPush, y pushNotificationActionPerformed). El cuarto,
+    // pushNotificationReceived, dispara cuando el push llega con la app YA ABIERTA en pantalla,
+    // sin que el conductor toque nada -- que es justo el caso mas comun de un conductor en
+    // linea esperando viajes. Como los cuatro marcaban lo mismo, el informe de visibilidad
+    // contaba como "abrio el push" a gente que nunca vio una notificacion, y por eso no servia
+    // para responder la unica pregunta para la que se hizo. Ahora cada llamador dice de donde
+    // viene y el informe las cuenta por separado.
     const driverId = this.driverData()?.id;
-    if (driverId) this.agService.logPushOpened(tripId, driverId).catch(() => {});
+    if (driverId) this.agService.logPushOpened(tripId, driverId, source).catch(() => {});
     const req = await this.agService.getTripRequestById(tripId).catch(() => null);
     if (!req || req.status !== 'searching') return;
     this.driverRequests.update(list => list.some(r => r.id === req.id) ? list : [...list, req]);
