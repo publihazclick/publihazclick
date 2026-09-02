@@ -34,25 +34,27 @@
   Content-Disposition: attachment; filename="movi-conductor.apk"
   Cache-Control: public, max-age=300, must-revalidate
 
-# El service worker de los push es la EXCEPCION: su nombre nunca cambia (no lleva hash),
-# asi que no se puede cachear como los demas .js. Si se cachea, un arreglo en el service
-# worker tarda en llegarle a los conductores y las notificaciones se quedan con la logica
-# vieja. Los navegadores ya limitan a 24h el cache del script de un service worker, pero
-# aqui se pide revalidacion en cada visita para que un cambio llegue de una.
-# Va ANTES de /*.js a proposito: cuando dos reglas coinciden Pages suma y gana la ultima,
-# asi que si fuera despues, /*.js le encajaria el immutable encima.
+# CACHE DE ASSETS. Las reglas apuntan a los prefijos EXACTOS que genera el build
+# (chunk-, main-, styles-) en vez de un /*.js generico, y la razon es concreta:
+# Pages SUMA las cabeceras cuando dos reglas coinciden con la misma URL, no las
+# reemplaza. Con /*.js, sw-movi.js terminaba con
+#   "no-cache, must-revalidate, public, max-age=31536000, immutable"
+# las dos politicas pegadas y contradiciendose (medido el 2026-09-02). Apuntando a los
+# prefijos, sw-movi.js sencillamente no coincide y no hay conflicto que resolver.
+# Si algun dia Angular cambia como nombra sus archivos, hay que actualizar esta lista:
+# comprobar con  ls dist/publihazclick/browser/*.js
+
+# sw-movi.js es el service worker de los push y su nombre NO lleva hash, asi que no se
+# puede cachear: si se cachea, un arreglo en las notificaciones tarda en llegarle a los
+# conductores. Revalida en cada visita.
 /sw-movi.js
   Cache-Control: no-cache, must-revalidate
 
-# Assets con hash en el nombre: cambian de nombre en cada build, asi que se pueden
-# cachear para siempre sin riesgo de servir version vieja.
-/*.js
+# Estos si llevan hash en el nombre: cambian de nombre al cambiar de contenido, asi que
+# se pueden cachear para siempre sin riesgo de servir una version vieja.
+/chunk-*.js
   Cache-Control: public, max-age=31536000, immutable
-/*.css
+/main-*.js
   Cache-Control: public, max-age=31536000, immutable
-/*.woff2
-  Cache-Control: public, max-age=31536000, immutable
-/*.woff
-  Cache-Control: public, max-age=31536000, immutable
-/*.ttf
+/styles-*.css
   Cache-Control: public, max-age=31536000, immutable
