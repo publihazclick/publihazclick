@@ -11877,6 +11877,30 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       // quedara en 'pending' esperando revisión (ver banner "Tus documentos están en revisión" y
       // migración 232_ag_pending_drivers_can_drive): apenas volvía a abrir Movi, quedaba
       // downgradeado a 'quick' otra vez. Eliminado.
+      // BUG REAL 2026-09-02: existe la cuenta con rol 'driver' pero NO hay ficha en ag_drivers.
+      // Pasa porque el registro rapido crea primero la fila de ag_users (que ya dispara el aviso
+      // de "nuevo registro" al admin) y guarda el vehiculo despues -- si la persona abandona en
+      // ese punto, queda partida a la mitad. El resultado era un callejon sin salida silencioso:
+      // caia igual en 'driver-home', veia el panel de conductor normal, pero submitDriverOffer()
+      // arranca con `if (!req || !driver) return;` asi que NUNCA podia ofertar, sin un solo
+      // mensaje que le explicara por que. Habia 2 personas reales asi (ENRIQUE 6 y Jose
+      // Carrillo, ambos de Cucuta, registrados el 31 de agosto) y ninguna volvio.
+      //
+      // Se les manda a completar el unico paso que falta -- el vehiculo -- en vez de inventarles
+      // datos: no sabemos si tienen carro o moto, y adivinarlo les mandaria solicitudes del tipo
+      // equivocado. Al guardarlo, ag-register-driver crea la ficha y quedan operativos de una,
+      // sin papeles, como manda la regla del primer viaje.
+      if (!mine) {
+        const perfilBase: any = this.agProfile() ?? profile;
+        this._qrEdgeProfile = perfilBase ?? null;
+        this.qrRole.set('conductor');
+        this.qrName.set(perfilBase?.full_name ?? '');
+        this.qrPhone.set(String(perfilBase?.phone ?? '').replace('+57', ''));
+        this.qrStep.set(3);
+        this.screen.set('quick-register');
+        this.cdr.markForCheck();
+        return;
+      }
       localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: mine }));
       this.driverData.set(mine);
       this.driverStatus.set(mine?.status ?? 'quick');
