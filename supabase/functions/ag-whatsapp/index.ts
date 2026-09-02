@@ -226,7 +226,21 @@ async function sendText(to: string, text: string): Promise<{ ok: boolean; status
 }
 
 // ─── Mensaje de plantilla aprobada (no depende de la ventana de 24h) ─────────
-async function sendTemplate(to: string, templateName: string, langCode: string, bodyParams: string[]): Promise<{ ok: boolean; status?: number; body?: string }> {
+/**
+ * BUG REAL 2026-09-02: Meta rechazaba SIEMPRE la plantilla trip_error_alert con
+ * '(#100) Invalid parameter -- Parameter name is missing or empty', asi que ningun aviso al
+ * admin llegaba nunca por plantilla; todos caian al texto libre de respaldo, que solo se
+ * entrega si la ventana de 24h esta abierta. Si el admin llevaba mas de un dia sin escribirle
+ * al bot, NO le llegaba nada y en silencio (el log decia "enviado" igual, ver logWaMessage
+ * abajo). Causa: esa plantilla esta definida en Meta con parameter_format NAMED
+ * ({{contexto}}/{{detalle}}) y aca se mandaban los valores por posicion. Comprobado consultando
+ * la definicion real en Meta: trip_error_alert es NAMED, viaje_completado y conductor_llego son
+ * POSITIONAL -- por eso esas dos si funcionaban y solo fallaba esta.
+ *
+ * paramNames opcional: si viene, se manda parameter_name en cada variable (plantillas NAMED);
+ * si no viene, se mandan por posicion como siempre (plantillas POSITIONAL).
+ */
+async function sendTemplate(to: string, templateName: string, langCode: string, bodyParams: string[], paramNames?: string[]): Promise<{ ok: boolean; status?: number; body?: string }> {
   try {
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
@@ -239,14 +253,20 @@ async function sendTemplate(to: string, templateName: string, langCode: string, 
           name: templateName,
           language: { code: langCode },
           components: [
-            { type: 'body', parameters: bodyParams.map(t => ({ type: 'text', text: t })) },
+            { type: 'body', parameters: bodyParams.map((t, i) => (
+              paramNames?.[i] ? { type: 'text', parameter_name: paramNames[i], text: t }
+                              : { type: 'text', text: t }
+            )) },
           ],
         },
       }),
     });
     const bodyText = await res.text();
     if (!res.ok) console.error('[WA] sendTemplate Meta API error:', res.status, bodyText);
-    logWaMessage(to, 'pasajero', 'out', `[plantilla ${templateName}] ${bodyParams.join(' | ')}`, 'template');
+    // El log tiene que reflejar la realidad: antes registraba el mensaje aunque Meta lo
+    // rechazara, asi que decia 'enviado' cuando no habia llegado nada. Bug real 2026-09-02.
+    const marcaTpl = res.ok ? '' : `[NO ENTREGADO ${res.status}] `;
+    logWaMessage(to, 'pasajero', 'out', `${marcaTpl}[plantilla ${templateName}] ${bodyParams.join(' | ')}`, 'template');
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendTemplate fetch error:', e);
@@ -4303,9 +4323,12 @@ serve(async (req) => {
     if (event === 'error_alert') {
       const contexto = msgData.context ?? 'desconocido';
       const detalle  = msgData.message ?? '';
-      let waResult = await sendTemplate(toE164(targetPhone), 'trip_error_alert', 'es_CO', [contexto, detalle]);
+      const tplResult = await sendTemplate(toE164(targetPhone), 'trip_error_alert', 'es_CO', [contexto, detalle], ['contexto', 'detalle']);
+      let waResult: WaResult = tplResult;
+      let txtResult: WaResult | null = null;
       if (!waResult.ok) {
-        waResult = await sendText(toE164(targetPhone), `🔴 *Movi* — Error en el flujo de viaje\n\n📍 Contexto: ${contexto}\n⚠️ ${detalle}`);
+        txtResult = await sendText(toE164(targetPhone), `🔴 *Movi* — Error en el flujo de viaje\n\n📍 Contexto: ${contexto}\n⚠️ ${detalle}`);
+        waResult = txtResult;
       }
       try {
         const supabase = db();
@@ -4315,6 +4338,18 @@ serve(async (req) => {
           body:  detalle,
         });
       } catch (e) { console.error('[WA] error_alert notification insert error:', e); }
+      // Diagnostico permanente pero gateado (mismo patron que ag-otp-send): con ?debug=1 en la
+      // URL se devuelve el error crudo de Meta de CADA intento. Hace falta porque logWaMessage()
+      // registra el mensaje aunque Meta lo rechace, asi que el log dice "enviado" cuando en
+      // realidad no llego nada -- y sin logs de ejecucion no habia forma de ver el motivo real.
+      const urlDbg = new URL(req.url);
+      if (urlDbg.searchParams.get('debug') === '1') {
+        return new Response(JSON.stringify({
+          sent: waResult.ok,
+          plantilla: { ok: tplResult.ok, status: tplResult.status, body: (tplResult.body ?? '').slice(0, 500) },
+          texto: txtResult ? { ok: txtResult.ok, status: txtResult.status, body: (txtResult.body ?? '').slice(0, 500) } : 'no hizo falta',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
       return new Response(JSON.stringify({ sent: waResult.ok }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -4329,7 +4364,7 @@ serve(async (req) => {
     if (event === 'new_registration') {
       const contexto = msgData.context ?? 'Nuevo registro en Movi';
       const detalle  = msgData.message ?? '';
-      let waResult = await sendTemplate(toE164(targetPhone), 'trip_error_alert', 'es_CO', [contexto, detalle]);
+      let waResult = await sendTemplate(toE164(targetPhone), 'trip_error_alert', 'es_CO', [contexto, detalle], ['contexto', 'detalle']);
       if (!waResult.ok) {
         waResult = await sendText(toE164(targetPhone), `🆕 *Movi* — ${contexto}\n\n${detalle}`);
       }
