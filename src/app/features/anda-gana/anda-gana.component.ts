@@ -1037,6 +1037,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           }
 
+          @if (otpWaReady()) {
+            <button (click)="openOtpWhatsApp()" type="button"
+              style="width:100%;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-weight:900;font-size:14px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+              <span class="material-symbols-outlined" style="font-size:18px">forum</span>
+              Pedir código por WhatsApp
+            </button>
+            <p style="color:#94a3b8;font-size:11px;text-align:center;margin:0;line-height:1.5">
+              Se abre WhatsApp con el mensaje listo. Solo envíalo y te llega el código al instante.
+            </p>
+          }
+
           <!-- Botones -->
           <div style="display:flex;flex-direction:column;gap:10px">
             <button (click)="confirmOtp()" [disabled]="otpStep() === 'verifying' || otpCode().length < 6"
@@ -8432,6 +8443,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 style="background:none;border:none;color:#245BDB;font-weight:700;font-size:13px;cursor:pointer;padding:0">
                 ¿No llegó? Reenviar SMS
               </button>
+            }
+            @if (qrOtpWaReady()) {
+              <button (click)="openQrOtpWhatsApp()" type="button"
+                style="width:100%;margin-top:12px;padding:14px;border-radius:14px;background:#25D366;color:#fff;font-weight:800;font-size:15px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+                <span class="material-symbols-outlined" style="font-size:18px">forum</span>
+                Pedir código por WhatsApp
+              </button>
+              <p style="color:#6B7280;font-size:11px;margin:8px 0 0;line-height:1.5">
+                Se abre WhatsApp con el mensaje listo. Solo envíalo y te llega el código al instante.
+              </p>
             }
           </div>
         </div>
@@ -19551,6 +19572,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   otpPhone   = signal('');
   otpContext = signal<'passenger' | 'driver'>('passenger');
 
+  // Botón "Pedir código por WhatsApp" (2026-09-01). Aparece cuando el SMS falla, y también a
+  // los 30s si el SMS salió "bien" pero nunca llegó -- así es como se perdían conductores en
+  // silencio: Telnyx respondía ok y el mensaje no aterrizaba nunca en el celular. El SMS
+  // depende del operador de cada persona; WhatsApp no.
+  otpWaReady = signal(false);
+  private _otpWaTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly _waConductores = '573009645697';
+  private readonly _waPasajeros   = '573166302106';
+  private readonly _waOtpTexto    = 'Hola Movi, necesito mi código de verificación para entrar a la app.';
+
   // ── Quick-register state (3 pasos) ──
   qrRole              = signal<'pasajero' | 'conductor'>('pasajero');
   qrVehicleType       = signal<'carro' | 'moto' | 'camion' | ''>('');
@@ -19568,6 +19599,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   qrOtpSending        = signal(false);
   qrOtpVerifying      = signal(false);
   qrResendCountdown   = signal(0);
+  // Mismo respaldo por WhatsApp del flujo normal, para el registro rápido por QR.
+  qrOtpWaReady        = signal(false);
   qrOriginQuery       = signal('');
   qrOriginSuggestions = signal<any[]>([]);
   qrOriginSelected    = signal<{ name: string; lat: number; lng: number } | null>(null);
@@ -20099,6 +20132,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.otpCodeDisplay = '';
     this.otpError.set('');
     this.otpStep.set('sending');
+    this._clearOtpWaTimer();
+    this.otpWaReady.set(false);
     this.cdr.markForCheck();
 
     if (isPlatformBrowser(this.platformId)) {
@@ -20107,10 +20142,23 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const res = await this.phoneAuth.sendOTP(phone);
     if (res.ok) {
       this.otpStep.set('sent');
+      this._armOtpWhatsApp(30000);
     } else {
-      this.otpStep.set('idle');
-      if (context === 'passenger') this.passengerError.set(res.message ?? 'Error enviando SMS');
-      else this.driverError.set(res.message ?? 'Error enviando SMS');
+      const msg = res.message ?? 'Error enviando SMS';
+      if (/inv[áa]lid|10 d[íi]gitos/i.test(msg)) {
+        // Número mal escrito: eso se corrige en el formulario, WhatsApp no ayuda en nada.
+        this.otpStep.set('idle');
+        if (context === 'passenger') this.passengerError.set(msg);
+        else this.driverError.set(msg);
+      } else {
+        // El SMS no salió (operador que rechaza el remitente alfanumérico, saldo, lo que sea).
+        // Se pasa igual a la pantalla del código y se ofrece WhatsApp de una vez: ag-otp-send
+        // ya dejó la fila en ag_otp_codes ANTES de intentar el envío, así que pedirlo por
+        // WhatsApp funciona aunque el SMS haya fallado.
+        this.otpStep.set('sent');
+        this.otpError.set(msg + ' Pídelo por WhatsApp aquí abajo.');
+        this._armOtpWhatsApp(0);
+      }
     }
     this.cdr.markForCheck();
   }
@@ -20120,8 +20168,35 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     await this._triggerOtp(this.otpContext(), this.otpPhone());
   }
 
+  private _clearOtpWaTimer() {
+    if (this._otpWaTimer) { clearTimeout(this._otpWaTimer); this._otpWaTimer = null; }
+  }
+
+  /** Deja listo el botón de WhatsApp: ya mismo (delay 0) o a los 30s de mandar el SMS. */
+  private _armOtpWhatsApp(delayMs: number) {
+    this._clearOtpWaTimer();
+    if (delayMs <= 0) { this.otpWaReady.set(true); this.cdr.markForCheck(); return; }
+    this._otpWaTimer = setTimeout(() => {
+      this._otpWaTimer = null;
+      this.otpWaReady.set(true);
+      this.cdr.markForCheck();
+    }, delayMs);
+  }
+
+  /**
+   * Abre WhatsApp con el mensaje ya escrito, al número que corresponde al rol (conductores y
+   * pasajeros tienen líneas separadas). La persona solo aprieta enviar; como es ella quien
+   * escribe primero, responderle el código no nos cuesta nada (ventana de servicio de Meta).
+   */
+  openOtpWhatsApp() {
+    const numero = this.otpContext() === 'driver' ? this._waConductores : this._waPasajeros;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(this._waOtpTexto)}`, '_blank');
+  }
+
   cancelOtp() {
     this.phoneAuth.reset();
+    this._clearOtpWaTimer();
+    this.otpWaReady.set(false);
     this.otpStep.set('idle');
     this.otpCode.set('');
     this.otpCodeDisplay = '';
@@ -21781,6 +21856,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     if (digits.length !== 10) { this.qrError.set('Ingresa un número de celular de 10 dígitos.'); return; }
     this.qrOtpSending.set(true);
     this.qrError.set('');
+    this.qrOtpWaReady.set(false);
     this.cdr.markForCheck();
     const result = await this.phoneAuth.sendOTP('+57' + digits);
     this.qrOtpSending.set(false);
@@ -21790,7 +21866,19 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.qrStep.set(2);
       this._startQrCountdown();
     } else {
-      this.qrError.set(result.message ?? 'Error al enviar el SMS. Intenta de nuevo.');
+      const msg = result.message ?? 'Error al enviar el SMS. Intenta de nuevo.';
+      if (/inv[áa]lid|10 d[íi]gitos/i.test(msg)) {
+        this.qrError.set(msg);
+      } else {
+        // El SMS no salió, pero ag-otp-send ya dejó la fila del código en la base -- así que
+        // pedirlo por WhatsApp sí funciona. Se avanza a la pantalla del código con la opción
+        // de WhatsApp visible de una vez, en vez de dejar a la persona trancada en el paso 1.
+        this.qrOtpCode.set('');
+        this.qrOtpError.set(msg + ' Pídelo por WhatsApp aquí abajo.');
+        this.qrStep.set(2);
+        this._startQrCountdown();
+        this.qrOtpWaReady.set(true);
+      }
     }
     this.cdr.markForCheck();
   }
@@ -21805,8 +21893,16 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       if (c <= 0 && this._qrCountdownInterval) {
         clearInterval(this._qrCountdownInterval);
         this._qrCountdownInterval = null;
+        // Pasaron los 30s sin que llegara el SMS: se ofrece pedirlo por WhatsApp.
+        this.qrOtpWaReady.set(true);
       }
     }, 1000);
+  }
+
+  /** Igual que openOtpWhatsApp(), pero el rol acá vive en qrRole(). */
+  openQrOtpWhatsApp() {
+    const numero = this.qrRole() === 'conductor' ? this._waConductores : this._waPasajeros;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(this._waOtpTexto)}`, '_blank');
   }
 
   async qrResendOtp() {

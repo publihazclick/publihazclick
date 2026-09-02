@@ -3657,6 +3657,133 @@ async function sendSupportText(to: string, text: string): Promise<WaResult> {
   return sendSupportGraph({ to, type: 'text', text: { preview_url: false, body: text } });
 }
 
+// ─── Código de verificación por WhatsApp ──────────────────────────────────────
+// Pedido explícito del usuario 2026-09-01, después de que un conductor real quedara trancado
+// en el registro porque su operador rechaza el remitente alfanumérico "MOVI" de Telnyx (ver
+// [[movi_otp_alpha_sender_movi_rejected]]). El SMS depende del operador de cada persona;
+// WhatsApp no. En la app aparece un botón "Pedir código por WhatsApp" que abre este chat con
+// el mensaje ya escrito -- la persona solo aprieta enviar. Como es ELLA quien nos escribe
+// primero, se abre la ventana de servicio de 24h de Meta y responderle el código sale gratis
+// (Meta cobra las conversaciones que inicia el negocio, no las que inicia el usuario).
+//
+// CANDADO DE SEGURIDAD -- lo más importante de todo este bloque: el código se manda ÚNICAMENTE
+// al mismo número de WhatsApp que lo está pidiendo, y solo si ese número tiene un registro en
+// curso pedido desde la app. Sin esa condición cualquiera podría escribir el número de otra
+// persona en la app, pedirnos el código desde su propio WhatsApp y quedarse con la cuenta
+// ajena (con su billetera y su plata adentro). NUNCA relajar esta condición ni permitir que el
+// código se mande a un número distinto del que escribe.
+
+function normalizarTexto(t: string): string {
+  return (t ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Devuelve true si el mensaje fue consumido acá (y NO debe seguir al bot normal).
+ * Devuelve false si no tiene nada que ver con pedir un código, para que el flujo de
+ * siempre (viajes o soporte) lo procese como si esta función no existiera.
+ */
+async function handleOtpCodeRequest(
+  fromPhone: string,
+  msgText: string,
+  isSupportNumber: boolean,
+): Promise<boolean> {
+  const t = normalizarTexto(msgText);
+  if (!t) return false;
+
+  // Dos niveles de detección, a propósito:
+  //  - EXPLÍCITA: la frase que la app deja preescrita en el chat. Se atiende siempre.
+  //  - GENÉRICA: alguien que lo pide con sus propias palabras ("no me llega el codigo del
+  //    registro"). Solo se atiende si de verdad hay un registro en curso para ese número --
+  //    si no, se deja pasar al bot normal para no secuestrar una conversación cualquiera.
+  const explicita = t.includes('codigo de verificacion');
+  const generica  = /(codigo|clave)/.test(t)
+                 && /(verific|registr|ingres|entrar|acced|acces|activar|sms|no me lleg|no lleg|nunca lleg)/.test(t);
+  if (!explicita && !generica) return false;
+
+  const rol: 'conductor' | 'pasajero' = isSupportNumber ? 'conductor' : 'pasajero';
+  const responder = async (texto: string) => {
+    if (isSupportNumber) await sendSupportText(fromPhone, texto);
+    else                 await sendText(fromPhone, texto);
+    logWaMessage(fromPhone, rol, 'out', texto);
+  };
+
+  // Un BSUID no es un número de teléfono (ver isBsuid/toE164), así que no hay forma de
+  // comprobar que quien escribe es el dueño del número que se está registrando -- y sin esa
+  // comprobación no se manda ningún código. Falla cerrado, a propósito.
+  if (isBsuid(fromPhone)) {
+    if (!explicita) return false;
+    await responder(
+      'No puedo enviarte el código por acá porque WhatsApp no me está compartiendo tu número 😔\n\n' +
+      'Pídelo por SMS desde la app, o escríbeme desde el mismo número que estás registrando.',
+    );
+    return true;
+  }
+
+  const phone = toE164(fromPhone);
+
+  // ag-otp-send inserta la fila en ag_otp_codes ANTES de intentar mandar el SMS, así que la
+  // fila existe incluso cuando el envío falló -- que es justo el caso que esto viene a
+  // rescatar. Ventana de 30 min: suficiente para que alcance a leer el error, tocar el botón
+  // y mandarnos el mensaje, sin dejar la puerta abierta indefinidamente.
+  const desde = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const { data: pendiente, error: qErr } = await db()
+    .from('ag_otp_codes')
+    .select('id')
+    .eq('phone', phone)
+    .gte('created_at', desde)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (qErr) {
+    console.error('[WA][otp] error consultando ag_otp_codes:', qErr);
+    await responder('Tuve un problema generando tu código 😔 Intenta de nuevo en un minuto.');
+    return true;
+  }
+
+  if (!pendiente) {
+    // Sin registro en curso no se manda nada. Si lo pidió con sus propias palabras, se deja
+    // pasar al bot normal (que sabe responder dudas); si usó el botón de la app, se le explica.
+    if (!explicita) return false;
+    await responder(
+      'No encuentro un registro en curso para este número 🤔\n\n' +
+      'Abre la app Movi, escribe *este mismo número* de celular y, cuando te pida el código, ' +
+      'vuelve a tocar "Pedir código por WhatsApp".\n\n' +
+      'Por seguridad, el código solo se le puede enviar al dueño del número.',
+    );
+    return true;
+  }
+
+  const code      = String(Math.floor(100000 + Math.random() * 900000));
+  const hash      = await sha256Hex(code);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+  // Mismo patrón que ag-otp-send: invalidar los códigos viejos sin usar antes de emitir uno
+  // nuevo, para que solo haya uno válido a la vez.
+  await db().from('ag_otp_codes').delete().eq('phone', phone).eq('used', false);
+  const { error: insErr } = await db()
+    .from('ag_otp_codes')
+    .insert({ phone, code_hash: hash, expires_at: expiresAt });
+
+  if (insErr) {
+    console.error('[WA][otp] error insertando código:', insErr);
+    await responder('Tuve un problema generando tu código 😔 Intenta de nuevo en un minuto.');
+    return true;
+  }
+
+  await responder(
+    `🔐 Tu código de verificación Movi es:\n\n*${code}*\n\n` +
+    'Escríbelo en la app para continuar. Vence en 10 minutos.\n\n' +
+    '⚠️ No se lo compartas a nadie: con ese código se entra a tu cuenta.',
+  );
+  return true;
+}
+
 // ─── Sesión del bot de soporte ────────────────────────────────────────────────
 async function getSupportSession(phone: string) {
   const { data } = await db().from('ag_wa_support_sessions').select('*').eq('wa_phone', phone).maybeSingle();
@@ -4387,6 +4514,13 @@ serve(async (req) => {
         }
 
         logWaMessage(fromPhone, isSupportNumber ? 'conductor' : 'pasajero', 'in', msgText, msgType);
+
+        // Pedido de codigo de verificacion por WhatsApp -- corre ANTES del bot normal
+        // (viajes o soporte) y corta el procesamiento si consumio el mensaje. Si el mensaje
+        // no tiene nada que ver con un codigo devuelve false, y todo sigue igual que antes.
+        if (await handleOtpCodeRequest(fromPhone, msgText, isSupportNumber)) {
+          return new Response('ok', { status: 200 });
+        }
 
         if (isSupportNumber) {
           await handleSupportConversation(fromPhone, name, msgText);
