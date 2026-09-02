@@ -1,56 +1,48 @@
-# Equivalente Cloudflare Pages de los "headers" de vercel.json.
-# Cuando varias reglas coinciden con la misma URL, Pages aplica todas y para un mismo
-# header gana la ULTIMA. Por eso las reglas de cache de los assets van al final, igual
-# que en vercel.json, donde la regla de assets iba despues del catch-all.
+# Cabeceras para Cloudflare Pages (equivalente de los "headers" de vercel.json).
+#
+# OJO: cuando varias reglas coinciden con la misma URL, Pages SUMA las cabeceras en vez
+# de reemplazarlas. Medido el 2026-09-02: con "Cache-Control: no-store" en /* y el
+# immutable en /*.js, los .js llegaban con
+#   "no-cache, no-store, must-revalidate, public, max-age=31536000, immutable"
+# o sea las dos politicas pegadas y en contradiccion. Por eso Cache-Control NO se pone
+# en el bloque /*: solo en los patrones concretos donde hace falta. El HTML se queda con
+# el default de Pages, que revalida en cada visita y es justo lo que se necesita para que
+# un deploy nuevo llegue de una a los conductores.
 
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(self), microphone=(self)
-  Cache-Control: no-cache, no-store, must-revalidate
 
 /robots.txt
   Cache-Control: public, max-age=86400
-  Content-Type: text/plain; charset=utf-8
 
 /sitemap.xml
   Cache-Control: public, max-age=86400
-  Content-Type: application/xml; charset=utf-8
 
 /llms.txt
   Cache-Control: public, max-age=86400
-  Content-Type: text/plain; charset=utf-8
 
 /manifest.webmanifest
   Cache-Control: public, max-age=604800
-  Content-Type: application/manifest+json
 
-# APK del conductor. Se conserva por si alguien todavia llega por este link viejo;
-# la descarga oficial vive en Supabase Storage.
+# APK del conductor. Se conserva por si alguien llega por este link viejo; la descarga
+# oficial vive en Supabase Storage.
 /downloads/*.apk
   Content-Type: application/vnd.android.package-archive
   Content-Disposition: attachment; filename="movi-conductor.apk"
   Cache-Control: public, max-age=300, must-revalidate
 
-# Assets con hash en el nombre: se pueden cachear para siempre sin riesgo.
+# Assets con hash en el nombre: cambian de nombre en cada build, asi que se pueden
+# cachear para siempre sin riesgo de servir version vieja.
 /*.js
   Cache-Control: public, max-age=31536000, immutable
 /*.css
   Cache-Control: public, max-age=31536000, immutable
-/*.woff
-  Cache-Control: public, max-age=31536000, immutable
 /*.woff2
   Cache-Control: public, max-age=31536000, immutable
+/*.woff
+  Cache-Control: public, max-age=31536000, immutable
 /*.ttf
-  Cache-Control: public, max-age=31536000, immutable
-/*.ico
-  Cache-Control: public, max-age=31536000, immutable
-/*.webp
-  Cache-Control: public, max-age=31536000, immutable
-/*.png
-  Cache-Control: public, max-age=31536000, immutable
-/*.jpg
-  Cache-Control: public, max-age=31536000, immutable
-/*.svg
   Cache-Control: public, max-age=31536000, immutable
