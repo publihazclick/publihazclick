@@ -1,17 +1,21 @@
 # Equivalente Cloudflare Pages de los "rewrites" de vercel.json.
-# Este archivo vive en public/ porque angular.json copia public/**/* tal cual al build.
-# OJO con el orden: Pages evalua estas reglas de arriba hacia abajo y SOLO despues de
-# no encontrar un archivo real, igual que Vercel (filesystem primero, rewrites despues).
-# Por eso "/" sigue sirviendo el index.html prerenderizado y no el shell.
+# Vive en public/ porque angular.json copia public/**/* tal cual al build.
+#
+# OJO CON LA EXTENSION .html EN EL DESTINO: Pages sirve cada archivo .html en su
+# ruta sin extension (index.csr.html se sirve como /index.csr) y responde 308 a
+# quien pida la ruta con .html. Si el destino de un rewrite termina en .html, Pages
+# degrada la regla a redirect 308 en vez de rewrite 200; y como los redirects se
+# evaluan ANTES de los assets, eso capturaba TODO (hasta los .js y las imagenes) y
+# ademas se mordia la cola: / -> /index.csr -> /index.csr -> ... Verificado en
+# produccion el 2026-09-02. Por eso el destino va SIN .html.
 
 # Shortlink de los SMS -> Edge Function de Supabase.
-# En Vercel era un rewrite (status 200, el usuario nunca ve el salto). Cloudflare Pages
-# NO permite rewrite hacia otro dominio, solo redirect, asi que va como 302: el usuario
-# termina en la misma funcion, solo que su navegador da un salto visible. Funcionalmente
-# igual para un link de un solo uso mandado por SMS.
+# En Vercel era un rewrite (status 200, invisible para el usuario). Cloudflare Pages
+# no permite rewrite hacia otro dominio, solo redirect, asi que va como 302: llega a
+# la misma funcion, solo que el navegador da un salto visible.
 /s/*    https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1/sms-link-redirect/:splat    302
 
-# SPA de Angular: cualquier ruta que no sea un archivo real sirve el shell del cliente.
-# Cubre "/@:path*" y "/(.*)" de vercel.json de una sola vez, incluido /anda-gana (Movi),
-# que es lo que carga la app de Play Store.
-/*      /index.csr.html    200
+# SPA de Angular: lo que no sea un archivo real sirve el shell del cliente.
+# Cubre "/@:path*" y "/(.*)" de vercel.json, incluido /anda-gana (Movi), que es la
+# ruta que carga la app de Play Store.
+/*      /index.csr    200
