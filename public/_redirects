@@ -1,21 +1,21 @@
-# Equivalente Cloudflare Pages de los "rewrites" de vercel.json.
+# Reglas de enrutamiento para Cloudflare Pages.
 # Vive en public/ porque angular.json copia public/**/* tal cual al build.
 #
-# OJO CON LA EXTENSION .html EN EL DESTINO: Pages sirve cada archivo .html en su
-# ruta sin extension (index.csr.html se sirve como /index.csr) y responde 308 a
-# quien pida la ruta con .html. Si el destino de un rewrite termina en .html, Pages
-# degrada la regla a redirect 308 en vez de rewrite 200; y como los redirects se
-# evaluan ANTES de los assets, eso capturaba TODO (hasta los .js y las imagenes) y
-# ademas se mordia la cola: / -> /index.csr -> /index.csr -> ... Verificado en
-# produccion el 2026-09-02. Por eso el destino va SIN .html.
+# AQUI NO VA UN CATCH-ALL "/*". En Cloudflare las reglas de este archivo se aplican
+# SIEMPRE, exista o no el archivo pedido ("Redirects are always followed, regardless of
+# whether or not an asset matches the incoming request", docs de Cloudflare). Es al
+# reves que Vercel, donde los rewrites solo entran si el archivo no existe. Con un
+# catch-all aqui, /main-XXX.js y /logo.webp devolvian el HTML del shell y la app no
+# arrancaba: verificado en produccion el 2026-09-02.
+#
+# El fallback de la SPA no hace falta declararlo: Pages lo trae de fabrica mientras no
+# exista un 404.html en la raiz, y sirve / con status 200 para toda ruta que no sea un
+# archivo real. De eso vive /anda-gana (Movi), que es la ruta que abre la app de Play
+# Store. Ver scripts/cf-postbuild.mjs, que deja el shell correcto en index.html.
 
 # Shortlink de los SMS -> Edge Function de Supabase.
-# En Vercel era un rewrite (status 200, invisible para el usuario). Cloudflare Pages
-# no permite rewrite hacia otro dominio, solo redirect, asi que va como 302: llega a
-# la misma funcion, solo que el navegador da un salto visible.
+# En Vercel era un rewrite (status 200, invisible para el usuario). Pages no permite
+# rewrite hacia otro dominio, solo redirect, asi que va como 302: llega a la misma
+# funcion, solo que el navegador da un salto visible. Es una ruta concreta (/s/...),
+# no un catch-all, asi que no interfiere con los assets.
 /s/*    https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1/sms-link-redirect/:splat    302
-
-# SPA de Angular: lo que no sea un archivo real sirve el shell del cliente.
-# Cubre "/@:path*" y "/(.*)" de vercel.json, incluido /anda-gana (Movi), que es la
-# ruta que carga la app de Play Store.
-/*      /index.csr    200
