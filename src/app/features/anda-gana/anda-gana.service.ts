@@ -335,6 +335,31 @@ export class AndaGanaService {
     }
   }
 
+  /**
+   * Deja el telefono siempre en formato E.164 (+57...) antes de guardarlo en ag_users.
+   *
+   * BUG REAL 2026-09-01: los tres registros (pasajero y las dos rutas de conductor) guardaban
+   * form.phone tal cual lo escribia la persona -- 10 digitos sueltos, sin prefijo. Todo lo demas
+   * del sistema busca por E.164. El impacto real es el bot de soporte de WhatsApp: consulta
+   * ag_users/ag_drivers por telefono para responder estado de solicitud, saldo, bonos y
+   * vencimientos, y a un conductor guardado sin prefijo simplemente no lo encuentra -- le
+   * responde mal o escala a un humano sin necesidad. El login NO se rompia: ag-otp-verify
+   * busca primero por telefono y, si no encuentra, cae a buscar por auth_user_id (que si
+   * coincidia, porque el correo sintetico si se arma con el telefono ya normalizado) --
+   * comprobado leyendo el codigo, no asumido. Habia 3 conductores reales asi (Pedro, Jeison y
+   * Henry) cuando se detecto.
+   */
+  private _phoneE164(phone: string): string {
+    const raw = (phone ?? '').trim();
+    if (!raw) return raw;
+    const digits = raw.replace(/D/g, '');
+    if (!digits) return raw;
+    if (raw.startsWith('+')) return '+' + digits;
+    if (digits.length === 10) return '+57' + digits;
+    if (digits.length === 12 && digits.startsWith('57')) return '+' + digits;
+    return '+' + digits;
+  }
+
   async registerPassenger(form: PassengerFormData): Promise<AgRegistrationResult> {
     try {
       const uid = await this.currentUserId();
@@ -357,7 +382,7 @@ export class AndaGanaService {
         department: form.department ?? '',
         city: form.city,
         id_number: form.idNumber,
-        phone: form.phone,
+        phone: this._phoneE164(form.phone),
         email: form.email,
         emergency_contact_name: form.emergencyName,
         emergency_contact_phone: form.emergencyPhone,
@@ -418,7 +443,7 @@ export class AndaGanaService {
         const { data: agUser, error: userError } = await this.supabase.from('ag_users').insert({
           auth_user_id: uid, role: 'driver', full_name: form.fullName, birth_date: form.birthDate,
           country: form.country ?? 'Colombia', department: form.department ?? '', city: form.city,
-          id_number: form.idNumber, phone: form.phone, email: form.email,
+          id_number: form.idNumber, phone: this._phoneE164(form.phone), email: form.email,
           emergency_contact_name: form.emergencyName, emergency_contact_phone: form.emergencyPhone,
           ...(form.referredBy ? { referred_by: form.referredBy } : {}),
         }).select('id').single();
@@ -500,7 +525,7 @@ export class AndaGanaService {
         department: form.department ?? '',
         city: form.city,
         id_number: form.idNumber,
-        phone: form.phone,
+        phone: this._phoneE164(form.phone),
         email: form.email,
         emergency_contact_name: form.emergencyName,
         emergency_contact_phone: form.emergencyPhone,
@@ -599,7 +624,7 @@ export class AndaGanaService {
       department: form.department ?? '',
       city: form.city,
       id_number: form.idNumber,
-      phone: form.phone,
+      phone: this._phoneE164(form.phone),
       email: form.email,
       emergency_contact_name: form.emergencyName,
       emergency_contact_phone: form.emergencyPhone,
