@@ -60,36 +60,65 @@ async function sendViaWhatsApp(phone: string, code: string): Promise<boolean> {
   return true;
 }
 
-async function sendViaTelnyx(phone: string, code: string): Promise<{ ok: boolean; debug?: string }> {
-  const apiKey    = Deno.env.get('TELNYX_API_KEY');
-  const fromSender = Deno.env.get('TELNYX_SENDER_ID') ?? Deno.env.get('TELNYX_PHONE_NUMBER');
-  if (!apiKey || !fromSender) return { ok: false, debug: `telnyx: falta secret (apiKey=${!!apiKey}, from=${!!fromSender})` };
-
-  // No incluir messaging_profile_id: el número ya está asignado a su perfil en Telnyx,
-  // y enviarlo explícito rompe la sustitución automática de remitente alfanumérico para CO.
-  const payload: Record<string, string> = {
-    from: fromSender,
-    to: phone,
-    text: `Tu código de verificación Movi es: ${code}. Válido por 10 minutos.`,
-    type: 'SMS',
-  };
-
+/** Un solo intento contra la API de Telnyx. Devuelve el error crudo para poder diagnosticarlo. */
+async function telnyxPost(apiKey: string, payload: Record<string, string>, etiqueta: string): Promise<{ ok: boolean; debug?: string }> {
   const res = await fetch('https://api.telnyx.com/v2/messages', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  // BUG REAL encontrado 2026-08-20: esto lanzaba una excepción en vez de devolver false, así que
-  // cualquier falla de Telnyx (saldo, rate limit, error transitorio) saltaba DIRECTO al catch
-  // general de Deno.serve (abajo) sin pasar nunca por el fallback a Twilio de la línea 174 --
-  // ese fallback era código muerto, nunca se ejecutaba. Ahora sendViaTelnyx falla igual que
-  // sendViaWhatsApp/sendViaTwilio (devuelve false), así que el fallback real sí corre.
   if (!res.ok) {
     const err = await res.text();
-    console.error('Telnyx error:', err);
-    return { ok: false, debug: `telnyx ${res.status}: ${err.slice(0, 300)}` };
+    console.error(`Telnyx error (${etiqueta}):`, err);
+    return { ok: false, debug: `${etiqueta} ${res.status}: ${err.slice(0, 300)}` };
   }
   return { ok: true };
+}
+
+async function sendViaTelnyx(phone: string, code: string): Promise<{ ok: boolean; debug?: string }> {
+  const apiKey    = Deno.env.get('TELNYX_API_KEY');
+  const fromSender = Deno.env.get('TELNYX_SENDER_ID') ?? Deno.env.get('TELNYX_PHONE_NUMBER');
+  if (!apiKey || !fromSender) return { ok: false, debug: `telnyx: falta secret (apiKey=${!!apiKey}, from=${!!fromSender})` };
+
+  const text = `Tu código de verificación Movi es: ${code}. Válido por 10 minutos.`;
+
+  // INTENTO 1 -- perfil propio de Movi (remitente alfanumérico "MOVI").
+  // No incluir messaging_profile_id: el número ya está asignado a su perfil en Telnyx,
+  // y enviarlo explícito rompe la sustitución automática de remitente alfanumérico para CO.
+  const primario = await telnyxPost(apiKey, {
+    from: fromSender,
+    to: phone,
+    text,
+    type: 'SMS',
+  }, 'telnyx');
+  if (primario.ok) return { ok: true };
+
+  // INTENTO 2 -- perfil de respaldo (BUG REAL encontrado 2026-09-01, conductor Henry Silva
+  // +573116510426 bloqueado en el registro). Telnyx rechazaba con 40305 "Alphanumeric sender ID
+  // MOVI is not supported for the destination number": en Colombia cada remitente alfanumérico
+  // tiene que estar registrado con cada operador, y "MOVI" no lo está para todos -- por eso el
+  // SMS llegaba a unos números y a otros no, de forma aparentemente aleatoria. Esto NO era falta
+  // de saldo (la cuenta estaba activa y recargada cuando se diagnosticó).
+  //
+  // El respaldo usa el numero de SMS Masivos (perfil con remitente "Publihaz"), ya registrado y
+  // con entrega comprobada en Colombia. Se manda SOLO el numero en from: Telnyx resuelve el
+  // perfil a partir de el y aplica la sustitucion de remitente alfanumerico. NO mandar
+  // messaging_profile_id junto con from (falla 40306, ver [[telnyx_messaging_profile_bug]]) ni
+  // solo el perfil sin from (falla 40321 "Number Pool is not enabled", comprobado en vivo
+  // 2026-09-01). El usuario final ve "Publihaz" y no "MOVI" como remitente, cosa preferible a
+  // quedarse sin poder registrarse.
+  const numeroRespaldo = Deno.env.get('TELNYX_FALLBACK_PHONE_NUMBER');
+  if (!numeroRespaldo) return primario;
+
+  const respaldo = await telnyxPost(apiKey, {
+    from: numeroRespaldo,
+    to: phone,
+    text,
+    type: 'SMS',
+  }, 'telnyx-respaldo');
+  if (respaldo.ok) return { ok: true };
+
+  return { ok: false, debug: `${primario.debug} || ${respaldo.debug}` };
 }
 
 async function sendViaTwilio(phone: string, code: string): Promise<{ ok: boolean; debug?: string }> {
