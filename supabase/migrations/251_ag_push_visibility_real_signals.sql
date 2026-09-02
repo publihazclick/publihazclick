@@ -1,4 +1,4 @@
--- 249: el informe de visibilidad de push tiene que decir la verdad
+-- 251: el informe de visibilidad de push tiene que decir la verdad
 --
 -- Pedido explicito del usuario 2026-09-01. El informe de la migracion 248 nacio para responder
 -- "¿los conductores estan viendo las solicitudes?" y NO podia responderla:

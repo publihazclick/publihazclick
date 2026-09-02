@@ -1,6 +1,6 @@
--- 250: las cifras del informe de visibilidad tienen que cuadrar
+-- 252: las cifras del informe de visibilidad tienen que cuadrar
 --
--- Fallo encontrado probando el informe de la migracion 249 con datos reales: contaba con
+-- Fallo encontrado probando el informe de la migracion 251 con datos reales: contaba con
 -- count(DISTINCT driver_id) FILTER (...) sobre las filas sueltas, asi que un conductor con dos
 -- rondas -- una con fcm_ok = true y otra todavia sin marcar -- se contaba a la vez en "FCM
 -- acepto" y en "sin token". El informe salia con cifras que sumaban mas que el total de
