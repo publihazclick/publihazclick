@@ -3531,6 +3531,34 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     return;
   }
 
+  // Cron ag_wa_stale_search_check -- cierre de una solicitud que nadie tomo nunca.
+  //
+  // Pedido explicito del usuario 2026-09-02. Hasta ahora una solicitud en 'searching' NO
+  // expiraba jamas: ag_cancel_abandoned_trips solo cancela viajes ya 'accepted' cuyo conductor
+  // se quedo mudo. Habia solicitudes de mas de 24 horas todavia abiertas, con el pasajero
+  // tecnicamente 'buscando conductor' desde el dia anterior. Es mas honesto cerrarle la
+  // solicitud y decirle como volver a pedir, que dejarlo esperando algo que no va a llegar.
+  //
+  // La sesion se devuelve a 'idle' para que su siguiente mensaje arranque un flujo limpio en
+  // vez de caer en el estado viejo de esta solicitud ya muerta.
+  if (event === 'search_expired') {
+    const delivery = isDeliveryService(payload.service_type as string | undefined);
+    const forName  = travelerLabelFromForOther(payload.for_other);
+    const quien    = delivery ? 'mensajero' : 'conductor';
+    await upsertSession(phone, { state: 'idle', trip_request_id: null });
+    await sendText(phone,
+      `😔 No encontramos ${quien} disponible${forName ? ` para *${forName}*` : ''} esta vez.` +
+      `
+
+Cerramos la solicitud para que no te quedes esperando. Suele haber mas ${quien}es ` +
+      `disponibles en horas pico.` +
+      `
+
+Cuando quieras intentar de nuevo, solo escribe *hola* y lo pedimos en un minuto. 🙌`,
+    );
+    return;
+  }
+
   if (event === 'trip_started') {
     // driver_stage pasó a 'on_route' -- el viaje arrancó de verdad hacia el
     // destino. Dispara sin importar si lo confirmó el pasajero por WhatsApp
