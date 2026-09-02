@@ -1,0 +1,17 @@
+# Equivalente Cloudflare Pages de los "rewrites" de vercel.json.
+# Este archivo vive en public/ porque angular.json copia public/**/* tal cual al build.
+# OJO con el orden: Pages evalua estas reglas de arriba hacia abajo y SOLO despues de
+# no encontrar un archivo real, igual que Vercel (filesystem primero, rewrites despues).
+# Por eso "/" sigue sirviendo el index.html prerenderizado y no el shell.
+
+# Shortlink de los SMS -> Edge Function de Supabase.
+# En Vercel era un rewrite (status 200, el usuario nunca ve el salto). Cloudflare Pages
+# NO permite rewrite hacia otro dominio, solo redirect, asi que va como 302: el usuario
+# termina en la misma funcion, solo que su navegador da un salto visible. Funcionalmente
+# igual para un link de un solo uso mandado por SMS.
+/s/*    https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1/sms-link-redirect/:splat    302
+
+# SPA de Angular: cualquier ruta que no sea un archivo real sirve el shell del cliente.
+# Cubre "/@:path*" y "/(.*)" de vercel.json de una sola vez, incluido /anda-gana (Movi),
+# que es lo que carga la app de Play Store.
+/*      /index.csr.html    200
