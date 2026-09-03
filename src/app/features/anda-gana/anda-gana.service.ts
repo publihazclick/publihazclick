@@ -2234,6 +2234,39 @@ export class AndaGanaService {
     if (error) throw error;
   }
 
+  /**
+   * ¿Este usuario tiene HOY un token FCM guardado en la base?
+   *
+   * La única verdad que importa para recibir solicitudes es esta fila: es lo que consulta
+   * ag_notify_drivers_on_trip_request para decidir a quién le reparte. Que la app crea que
+   * registró el token no significa nada si la fila no está.
+   *
+   * Hace falta porque el token puede desaparecer sin que la app se entere: cuando FCM responde
+   * UNREGISTERED (usuario reinstaló, limpió datos, restauró el celular), ag-send-push borra la
+   * fila (ver ag-send-push/index.ts:184). El conductor queda mudo con la app convencida de que
+   * todo está bien. Fue el caso real de Divan Rincon, Edinson Quintero y Jesus (2026-09-03).
+   *
+   * Devuelve null si no se pudo comprobar (sin sesión, sin red). null NO es lo mismo que false:
+   * quien llama no debe tratar "no sé" como "no tiene" y ponerse a re-registrar en un bucle.
+   */
+  async hasActivePushToken(): Promise<boolean | null> {
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session) return null;
+      const { data, error } = await this.supabase
+        .from('ag_push_subs')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .eq('provider', 'fcm')
+        .not('fcm_token', 'is', null)
+        .limit(1);
+      if (error) return null;
+      return (data?.length ?? 0) > 0;
+    } catch {
+      return null;
+    }
+  }
+
   async triggerDriverVerification(driverId: string): Promise<{ score: number; decision: string; flags: string[] } | null> {
     try {
       const { data: { session } } = await this.supabase.auth.getSession();

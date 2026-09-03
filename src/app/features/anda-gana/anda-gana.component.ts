@@ -12247,6 +12247,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} this._driverBroadcastChannel = null; }
     if (this._locationChannel) { this._locationChannel.unsubscribe(); this._locationChannel = null; }
     if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
+    this._stopPushRetryWatch();
   }
 
   /**
@@ -17391,11 +17392,26 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // aunque el conductor ya estuviera en linea de nuevo. Ahora, si ya esta registrado, solo se
     // refresca el estado visual a 'ok' sin repetir todo el registro nativo (innecesario, el token
     // sigue siendo valido).
+    // BUG REAL encontrado 2026-09-03: este guard confiaba en una variable de memoria que se ponía
+    // en true ANTES de confirmar que el token quedó guardado (ver más abajo). Si el guardado
+    // fallaba, el flag quedaba en true igual y toda llamada posterior salía por acá diciendo
+    // "✓ Activo" sobre una base de datos vacía. La app afirmaba estar bien mientras el conductor
+    // no recibía una sola solicitud.
+    //
+    // Ahora el flag solo permite el atajo si la fila existe de verdad. Si la comprobación dice
+    // que no está (token borrado por FCM UNREGISTERED, por ejemplo), se cae al registro completo
+    // en vez de mentir. Si devuelve null (sin red/sin sesión) se respeta el flag: "no sé" no es
+    // motivo para re-registrar en bucle.
     if (this._nativePushRegistered) {
-      this.pushDiagStatus.set('ok');
-      this.pushDiagLabel.set('✓ Activo — recibirás solicitudes mientras tengas habilitado el botón En línea');
-      this.cdr.markForCheck();
-      return;
+      const enBase = await this.agService.hasActivePushToken();
+      if (enBase !== false) {
+        this.pushDiagStatus.set('ok');
+        this.pushDiagLabel.set('✓ Activo — recibirás solicitudes mientras tengas habilitado el botón En línea');
+        this.cdr.markForCheck();
+        return;
+      }
+      // La fila no está: el token murió. Volver a registrar desde cero.
+      this._nativePushRegistered = false;
     }
 
     const cap = (window as any)?.Capacitor;
@@ -17432,6 +17448,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this.pushDiagStatus.set('denied');
           this.pushDiagLabel.set('Permiso denegado — ve a Ajustes del celular → Apps → Movi → Notificaciones y actívalas');
           this.cdr.markForCheck();
+          // BUG REAL encontrado 2026-09-03: acá se hacía `return` y se acababa la historia. El
+          // conductor tocaba el botón de Ajustes, activaba las notificaciones y volvía a la app
+          // -- y la app seguía convencida de que el permiso estaba denegado, porque nada lo
+          // volvía a mirar hasta que cerrara y reabriera. La mitad del camino ya la hacía el
+          // conductor y la app la desperdiciaba.
+          //
+          // Ahora queda un vigilante que re-verifica al volver de segundo plano (que es
+          // exactamente cuando el conductor vuelve de Ajustes) y cada tanto mientras la app esté
+          // abierta. En cuanto Android conceda el permiso, el registro se completa solo.
+          this._startPushRetryWatch();
           return;
         }
       }
@@ -17440,9 +17466,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
       PP.addListener('registration', async (token: { value: string }) => {
         if (!token?.value) return;
-        this._nativePushRegistered = true;
+        // El flag se pone DESPUÉS de que el guardado confirme, no antes (bug real 2026-09-03:
+        // ponerlo acá arriba hacía que un guardado fallido igual dejara la app diciendo que
+        // estaba todo bien). Marca "el token está en la base", no "Firebase me dio un token".
         try {
           await this.agService.registerFcmToken(token.value);
+          this._nativePushRegistered = true;
+          this._stopPushRetryWatch();
           this.pushDiagStatus.set('ok');
           this.pushDiagLabel.set('✓ Activo — recibirás solicitudes mientras tengas habilitado el botón En línea');
           this.cdr.markForCheck();
@@ -17455,11 +17485,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           setTimeout(async () => {
             try {
               await this.agService.registerFcmToken(token.value);
+              this._nativePushRegistered = true;
+              this._stopPushRetryWatch();
               this.pushDiagStatus.set('ok');
               this.pushDiagLabel.set('✓ Activo — recibirás solicitudes mientras tengas habilitado el botón En línea');
             } catch (e2: any) {
+              this._nativePushRegistered = false;
               this.pushDiagStatus.set('error');
               this.pushDiagLabel.set('Error al guardar el token: ' + (e2?.message ?? e?.message ?? 'desconocido'));
+              // Que fallen los dos intentos seguidos no puede ser el final: la causa típica es
+              // transitoria (sesión de Supabase a medio restaurar, red caída un momento). El
+              // vigilante lo sigue intentando en vez de dejar al conductor mudo hasta el próximo
+              // arranque de la app.
+              this._startPushRetryWatch();
             }
             this.cdr.markForCheck();
           }, 5000);
@@ -17471,6 +17509,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.pushDiagStatus.set('error');
         this.pushDiagLabel.set('Error al registrar FCM: ' + (err?.error ?? JSON.stringify(err)));
         this.cdr.markForCheck();
+        // Los fallos de registro con Firebase suelen ser de red o de Google Play Services todavía
+        // arrancando. Reintentar en vez de rendirse.
+        this._startPushRetryWatch();
       });
 
       PP.addListener('pushNotificationReceived', (n: any) => {
@@ -17496,12 +17537,91 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.cdr.markForCheck();
       await PP.register();
 
+      // register() resuelve apenas Android acepta el encargo, NO cuando Firebase entrega el
+      // token: eso llega después por el listener 'registration'. Si ese listener no dispara
+      // nunca (Firebase sin red, Google Play Services a medio arrancar), sin esto la pantalla se
+      // quedaba en "Registrando con Firebase..." para siempre y el conductor sin notificaciones,
+      // creyendo que estaba en proceso. 15s es de sobra: lo normal es menos de 2.
+      setTimeout(() => {
+        if (!this._nativePushRegistered) {
+          this.pushDiagStatus.set('error');
+          this.pushDiagLabel.set('Firebase no respondió — reintentando en segundo plano');
+          this.cdr.markForCheck();
+          this._startPushRetryWatch();
+        }
+      }, 15000);
+
     } catch (e: any) {
       this.pushDiagStatus.set('error');
       this.pushDiagLabel.set('Error: ' + (e?.message ?? String(e)));
       this.cdr.markForCheck();
+      this._startPushRetryWatch();
     }
   }
+
+  // ─── Vigilante de notificaciones ──────────────────────────────────────────────────────────
+  //
+  // POR QUÉ EXISTE (2026-09-03)
+  // Auditoría de la flota: 8 de 45 conductores no podían recibir una sola solicitud porque no
+  // tenían token FCM guardado. Gente registrada, con la app instalada y saldo pagado, invisible
+  // para el reparto. El caso que lo destapó fue ANDRES (+573145697734): pagó $10.000 de recarga
+  // y estuvo 4 días y medio sin que le llegara nada.
+  //
+  // La causa no era el reparto sino que el registro del token era de UN SOLO INTENTO. Si algo
+  // fallaba —Android negaba el permiso, Firebase no respondía, la sesión no había terminado de
+  // restaurarse— la app se rendía y nada lo volvía a intentar hasta el próximo arranque. Ni el
+  // conductor ni nosotros nos enterábamos.
+  //
+  // Este vigilante cierra ese hueco: mientras el registro no esté confirmado, sigue intentando.
+  // El momento importante es al volver de segundo plano, que es justo cuando el conductor
+  // regresa de activar el permiso en Ajustes.
+  //
+  // El tope de intentos es a propósito: si tras un rato largo sigue sin poder, insistir cada
+  // minuto solo gasta batería. A partir de ahí queda el chequeo diario del servidor
+  // (ag-push-health-check), que le manda un SMS.
+  private _pushRetryInterval: any = null;
+  private _pushRetryCount = 0;
+  private static readonly PUSH_RETRY_MAX = 20;        // ~20 min de reintentos en primer plano
+  private static readonly PUSH_RETRY_MS  = 60000;
+
+  private _startPushRetryWatch(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (this._pushRetryInterval) return;              // ya hay uno corriendo
+    this._pushRetryCount = 0;
+
+    this._pushRetryInterval = setInterval(() => {
+      if (this._nativePushRegistered) { this._stopPushRetryWatch(); return; }
+      if (++this._pushRetryCount > AndaGanaComponent.PUSH_RETRY_MAX) {
+        this._stopPushRetryWatch();
+        return;
+      }
+      this._registerNativePush().catch(() => {});
+    }, AndaGanaComponent.PUSH_RETRY_MS);
+
+    // Al volver de segundo plano: el conductor que fue a Ajustes a activar las notificaciones
+    // vuelve por acá. Reintentar de inmediato en vez de esperar al siguiente tick.
+    if (!this._pushVisibilityHandler) {
+      this._pushVisibilityHandler = () => {
+        if (!document.hidden && !this._nativePushRegistered) {
+          this._registerNativePush().catch(() => {});
+        }
+      };
+      document.addEventListener('visibilitychange', this._pushVisibilityHandler);
+    }
+  }
+
+  private _stopPushRetryWatch(): void {
+    if (this._pushRetryInterval) {
+      clearInterval(this._pushRetryInterval);
+      this._pushRetryInterval = null;
+    }
+    if (this._pushVisibilityHandler && isPlatformBrowser(this.platformId)) {
+      document.removeEventListener('visibilitychange', this._pushVisibilityHandler);
+      this._pushVisibilityHandler = null;
+    }
+  }
+
+  private _pushVisibilityHandler: (() => void) | null = null;
 
   private _getAudioCtx(): any {
     return this._ensureAudioCtx();
