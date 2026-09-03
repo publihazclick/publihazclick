@@ -650,10 +650,26 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 @if (req.for_other) {
                   <p style="color:#fbbf24;font-weight:700;font-size:10px;margin:1px 0 0">👤 Pedido por otra persona</p>
                 }
-                <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap">
                   <span style="color:rgba(255,255,255,0.4);font-size:10px">{{ req.ag_users?.total_trips_as_passenger ?? 0 }} viajes</span>
                   <span style="color:rgba(255,255,255,0.25)">·</span>
-                  <span style="color:rgba(255,255,255,0.45);font-size:10px">{{ req.distance_km }} km</span>
+                  <!-- "de viaje" agregado 2026-09-03: este numero es el largo del recorrido
+                       (origen→destino) y se leia como si fuera lo que el conductor tiene que
+                       manejar para recoger. Son cosas distintas y la de al lado es la que
+                       decide. -->
+                  <span style="color:rgba(255,255,255,0.45);font-size:10px">{{ req.distance_km }} km de viaje</span>
+                  <!-- Distancia del conductor al punto de recogida. Es el dato que faltaba para
+                       poder decidir: quien esta a menos de 3 km oferto el 25% de las veces y
+                       quien estaba entre 3 y 7 km, el 2,8% (medido 2026-09-03). Solo aparece
+                       cuando se sabe de verdad -- ver pickupDistanceKm. -->
+                  @if (pickupDistanceLabel(req)) {
+                    <span style="color:rgba(255,255,255,0.25)">·</span>
+                    <span style="display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:800"
+                      [style.color]="pickupDistanceColor(req)">
+                      <span class="material-symbols-outlined" style="font-size:11px;font-variation-settings:'FILL' 1">near_me</span>
+                      a {{ pickupDistanceLabel(req) }} de ti
+                    </span>
+                  }
                 </div>
               </div>
               <div style="text-align:right;flex-shrink:0">
@@ -19052,9 +19068,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           !this._cancelledRequestIds.has(r.id) &&
           now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= 240000
         );
-        const merged = [...reqs, ...kept].sort(
-          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
+        const merged = this._sortDriverRequests([...reqs, ...kept]);
         this._saveRequestsToCache(merged);
         return merged;
       });
@@ -19087,10 +19101,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
             !this._cancelledRequestIds.has(r.id) &&
             now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= 240000
           );
-          // Orden: más antigua primero (llevan más tiempo esperando → mayor prioridad)
-          const merged = [...reqs, ...kept].sort(
-            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
+          // Orden: primero las más cercanas al conductor; sin GPS, más antigua primero (llevan
+          // más tiempo esperando → mayor prioridad). Ver _sortDriverRequests.
+          const merged = this._sortDriverRequests([...reqs, ...kept]);
           this._saveRequestsToCache(merged);
           return merged;
         });
@@ -19248,6 +19261,86 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   /** Lista de solicitudes que realmente se le muestran al conductor (ver driverOkForNewRequests). */
   visibleDriverRequests(): AgTripRequest[] {
     return this.driverOkForNewRequests() ? this.driverRequests() : [];
+  }
+
+  /**
+   * Cuántos km tiene que manejar el conductor para llegar a RECOGER al pasajero.
+   *
+   * No confundir con req.distance_km, que es el largo del viaje (origen→destino) y es lo único
+   * que la tarjeta mostraba hasta ahora. Son cosas distintas y la que decide si el viaje le
+   * sirve al conductor es esta: un viaje de $10.000 es bueno si el pasajero está a 800 m y malo
+   * si está a 6 km.
+   *
+   * POR QUÉ SE AGREGA (medido el 2026-09-03 sobre los 67 push entregados):
+   *   conductor a 0-3 km del origen  → ofertó el 25%
+   *   conductor a 3-7 km del origen  → ofertó el 2,8%
+   * La tasa se desploma pasando los 3 km, y más de la mitad de los push caen en esa franja. El
+   * conductor veía "$10.000 · 4,6 km" sin manera de saber si el pasajero estaba en la esquina o
+   * al otro lado de Cúcuta, así que ante la duda no ofertaba.
+   *
+   * Devuelve null cuando no se puede saber, y ahí la tarjeta no muestra nada: es preferible no
+   * decir nada a decir una distancia inventada. Pasa si el conductor todavía no tiene una
+   * posición real (_driverLocationKnown en false, o sea que _currentLat/_currentLng siguen en el
+   * default de Bogotá) o si la solicitud no trae coordenadas de origen.
+   */
+  pickupDistanceKm(req: AgTripRequest): number | null {
+    if (!this._driverLocationKnown) return null;
+    const lat = Number(req?.origin_lat);
+    const lng = Number(req?.origin_lng);
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+    return this._distMeters(this._currentLat, this._currentLng, lat, lng) / 1000;
+  }
+
+  /** Texto corto para la tarjeta. Cadena vacía = no mostrar el chip (ver pickupDistanceKm). */
+  pickupDistanceLabel(req: AgTripRequest): string {
+    const km = this.pickupDistanceKm(req);
+    if (km === null) return '';
+    // Por debajo de 1 km los metros dicen más que "0,4 km" -- a esa distancia el conductor
+    // decide distinto (es "acá al lado", no "un viajecito").
+    if (km < 1) return `${Math.round(km * 1000)} m`;
+    return `${km.toFixed(1)} km`;
+  }
+
+  /** Verde si está cerca, ámbar si es un trecho, gris si ya es lejos. Que se lea de un vistazo
+   * sin tener que interpretar el número. */
+  pickupDistanceColor(req: AgTripRequest): string {
+    const km = this.pickupDistanceKm(req);
+    if (km === null) return 'rgba(255,255,255,0.45)';
+    if (km <= 3) return '#34d399';
+    if (km <= 7) return '#fbbf24';
+    return 'rgba(255,255,255,0.45)';
+  }
+
+  /**
+   * Ordena las solicitudes para el conductor: primero las que tiene más cerca.
+   *
+   * El orden anterior era solo por antigüedad ("la que lleva más tiempo esperando primero"), que
+   * es justo, pero le ponía arriba viajes al otro lado de la ciudad. Con GPS conocido ahora
+   * manda la cercanía y la antigüedad queda de desempate, así lo primero que ve es lo que
+   * realmente puede tomar.
+   *
+   * SIN GPS NO SE CAMBIA NADA: se devuelve el mismo orden por antigüedad de siempre. No se
+   * descarta ni se esconde ninguna solicitud en ningún caso -- esto solo reordena. Todo
+   * conductor sigue viendo todas las solicitudes, como está decidido.
+   */
+  private _sortDriverRequests(list: AgTripRequest[]): AgTripRequest[] {
+    const porAntiguedad = (a: AgTripRequest, b: AgTripRequest) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+
+    if (!this._driverLocationKnown) return [...list].sort(porAntiguedad);
+
+    return [...list].sort((a, b) => {
+      const da = this.pickupDistanceKm(a);
+      const db = this.pickupDistanceKm(b);
+      // Las que no tienen coordenadas van al final, pero se muestran igual.
+      if (da === null && db === null) return porAntiguedad(a, b);
+      if (da === null) return 1;
+      if (db === null) return -1;
+      // Diferencias menores a 500 m no son una diferencia real para decidir: ahí vuelve a
+      // mandar quién lleva más tiempo esperando.
+      if (Math.abs(da - db) < 0.5) return porAntiguedad(a, b);
+      return da - db;
+    });
   }
 
   /** Etiquetas legibles de accesibilidad de una solicitud, para mostrarle al conductor
