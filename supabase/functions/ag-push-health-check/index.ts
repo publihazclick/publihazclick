@@ -75,31 +75,55 @@ interface Afectado {
 }
 
 // ─── SMS por Telnyx ─────────────────────────────────────────────────────────
-// Mismo patrón que ag-sms: NO se manda messaging_profile_id junto con from,
+// Un solo POST a Telnyx. NO se manda messaging_profile_id junto con from,
 // porque rompe la sustitución del remitente alfanumérico en Colombia (bug real
 // documentado en telnyx_messaging_profile_bug). El número resuelve su perfil
 // solo.
+async function telnyxPost(apiKey: string, from: string, to: string, text: string)
+  : Promise<{ ok: boolean; detalle?: string }> {
+  try {
+    const resp = await fetch('https://api.telnyx.com/v2/messages', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to, text, type: 'SMS' }),
+    });
+    if (!resp.ok) {
+      const err = await resp.text();
+      console.error('[push-health] Telnyx error:', resp.status, err);
+      return { ok: false, detalle: `Telnyx ${resp.status}: ${err.slice(0, 180)}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('[push-health] Telnyx fetch error:', e);
+    return { ok: false, detalle: String(e).slice(0, 180) };
+  }
+}
+
+// Dos intentos, igual que ag-otp-send. Comprobado en vivo acá el 2026-09-03:
+// el remitente "MOVI" fue rechazado por los 8 destinos con 40305 "Alphanumeric
+// sender ID MOVI is not supported for the destination number". En Colombia
+// cada remitente alfanumérico tiene que estar registrado con cada operador y
+// "MOVI" no lo está para todos — por eso unos SMS llegan y otros no, de forma
+// aparentemente aleatoria. NO es falta de saldo.
+//
+// El respaldo usa el número de SMS Masivos (remitente "Publihaz"), ya
+// registrado y con entrega comprobada. El conductor ve "Publihaz" en vez de
+// "MOVI", cosa preferible a no recibir nada.
 async function enviarSms(telefono: string, texto: string): Promise<{ ok: boolean; detalle?: string }> {
   const apiKey = Deno.env.get('TELNYX_API_KEY');
   const from   = Deno.env.get('TELNYX_PHONE_NUMBER');
   if (!apiKey || !from) return { ok: false, detalle: 'Telnyx sin configurar' };
 
-  try {
-    const resp = await fetch('https://api.telnyx.com/v2/messages', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: telefono, text: texto }),
-    });
-    if (!resp.ok) {
-      const err = await resp.text();
-      console.error('[push-health] Telnyx error:', resp.status, err);
-      return { ok: false, detalle: `Telnyx ${resp.status}: ${err.slice(0, 200)}` };
-    }
-    return { ok: true };
-  } catch (e) {
-    console.error('[push-health] Telnyx fetch error:', e);
-    return { ok: false, detalle: String(e).slice(0, 200) };
-  }
+  const primario = await telnyxPost(apiKey, from, telefono, texto);
+  if (primario.ok) return primario;
+
+  const respaldo = Deno.env.get('TELNYX_FALLBACK_PHONE_NUMBER');
+  if (!respaldo) return primario;
+
+  const segundo = await telnyxPost(apiKey, respaldo, telefono, texto);
+  if (segundo.ok) return segundo;
+
+  return { ok: false, detalle: `${primario.detalle} || ${segundo.detalle}` };
 }
 
 // El SMS tiene que caber cómodo y ser accionable: qué pasa, qué hacer, dónde.
