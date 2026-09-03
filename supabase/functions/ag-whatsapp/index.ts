@@ -2612,7 +2612,14 @@ async function handleConversation(
       `📍 Desde: ${session.origin_address}\n` +
       `📍 Hasta: ${session.dest_name}\n` +
       `💰 Tu oferta: *$${price.toLocaleString('es-CO')}*\n\n` +
-      `Te avisamos cuando alguien acepte. Máx. 5 minutos.\n` +
+      // Decia "Max. 5 minutos" y era falso por partida doble. La solicitud le aparece al
+      // conductor exactamente 4 minutos (240000 ms, ver reqRemainingMs/driverRequests en
+      // anda-gana.component.ts, donde el numero esta repetido en 9 sitios y cuenta desde
+      // driver_visible_since). Y el "max" tampoco: cuando nadie responde, el rebroadcast
+      // renueva driver_visible_since y arranca otra ventana de 4 minutos, asi que la busqueda
+      // total dura mucho mas (un caso real del 2026-09-02 duro 23 minutos). Por eso ahora se
+      // dice de quien son los 4 minutos, en vez de prometer un tope que no existe.
+      `Te avisamos cuando alguien acepte. Cada conductor tiene 4 minutos para responderte.\n` +
       `Escribe *cancelar* si deseas cancelar la solicitud.\n\n` +
       `✅ ¡Solicitud enviada!`
     );
