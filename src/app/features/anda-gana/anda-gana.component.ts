@@ -703,8 +703,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <span class="material-symbols-outlined" style="font-size:16px;color:#34d399;font-variation-settings:'FILL' 1">check_circle</span>
                 <!-- Pedido explícito del usuario 2026-08-28: el conductor no veía cuánto había
                      ofertado él mismo tras enviar una contra-oferta -- se agrega el monto acá,
-                     en el mismo aviso, en vez de un modal nuevo (ver offerSentPriceFor). -->
-                <span style="color:#34d399;font-size:13px;font-weight:900">Ofertaste {{ formatCOP(offerSentPriceFor().get(req.id) ?? 0) }} — esperando al pasajero</span>
+                     en el mismo aviso, en vez de un modal nuevo (ver offerSentPriceFor).
+                     2026-09-02: decía solo "esperando al pasajero", que se confundía con el
+                     "Esperando al pasajero" de cuando el conductor YA llegó al punto de
+                     recogida y lo espera parqueado (ver el modal de driverArrivalTrip). El
+                     conductor no entendía si su contraoferta había salido o no. Ahora se dice
+                     en dos renglones: qué paso ya ocurrió y qué falta. -->
+                <span style="color:#34d399;font-size:13px;font-weight:900;line-height:1.35;text-align:center">
+                  Enviaste tu precio de {{ formatCOP(offerSentPriceFor().get(req.id) ?? 0) }}<br>
+                  <span style="font-weight:700;color:rgba(52,211,153,0.85)">El pasajero ya lo recibió · falta que lo acepte o lo rechace</span>
+                </span>
               </div>
             } @else {
               <div style="display:flex;gap:8px">

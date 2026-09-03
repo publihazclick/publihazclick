@@ -965,17 +965,27 @@ async function createWaTrip(session: Record<string, unknown>): Promise<string | 
 // Usado para no perder ofertas que llegaron mientras el pasajero ya estaba
 // respondiendo a otra (el trigger de DB las descarta en silencio en ese caso,
 // pero quedan en 'pending' en ag_trip_offers — esto las recupera).
-async function fetchNextPendingOffer(tripId: string): Promise<Record<string, unknown> | null> {
+// Con onlyOfferId trae ESA oferta puntual en vez de la siguiente de la cola. Se usa cuando el
+// pasajero toca el boton de una oferta que ya no es la ultima que le llego: hay que responderle
+// con el nombre y el precio del conductor que el escogio, no con los de la mas reciente.
+// Ahi no se filtra por status='pending' a proposito: quien decide si la oferta todavia sirve es
+// ag_wa_accept_offer, y un "esa oferta ya no esta disponible" es mejor que confirmarle un viaje
+// con los datos de otro conductor.
+async function fetchNextPendingOffer(tripId: string, onlyOfferId?: string): Promise<Record<string, unknown> | null> {
   const supabase = db();
 
-  const { data: offer } = await supabase
+  const base = supabase
     .from('ag_trip_offers')
-    .select('id, driver_id, offered_price')
-    .eq('trip_request_id', tripId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .select('id, driver_id, offered_price');
+
+  const { data: offer } = onlyOfferId
+    ? await base.eq('id', onlyOfferId).maybeSingle()
+    : await base
+        .eq('trip_request_id', tripId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
   if (!offer) return null;
 
   let driverName = 'Conductor';
@@ -1742,6 +1752,9 @@ async function handleConversation(
   precomputedAddr?: string,
   precomputedSession?: Record<string, unknown> | null,
   precomputedRoute?: { distKm: number; durationMin: number },
+  // ID del boton pulsado, cuando el mensaje vino de un boton interactivo. Sirve para saber
+  // SOBRE CUAL oferta esta respondiendo el pasajero cuando tiene varias en el chat.
+  msgBtnId?: string,
 ) {
   // Recuperar o crear sesión -- precomputedSession viene ya resuelta desde el
   // webhook (en paralelo con markReadWithTyping/reverseGeocode, ver serve()),
@@ -2894,8 +2907,53 @@ async function handleConversation(
 
   // ── AWAITING_OFFER_RESPONSE ──────────────────────────────────────────────────
   if (state === 'awaiting_offer_response') {
-    const offerId  = session.active_offer_id as string;
+    // Cual oferta esta respondiendo el pasajero.
+    //
+    // Si toco un boton, el ID del boton dice EXACTAMENTE de cual oferta habla ese mensaje
+    // (accept_offer_<uuid> / reject_offer_<uuid>, ver presentOffer). Eso manda por encima de
+    // session.active_offer_id, que solo guarda la ULTIMA oferta que llego: con dos conductores
+    // ofertando, el pasajero que subia en el chat y tocaba "Aceptar" en la oferta de arriba
+    // terminaba aceptando la de abajo, a otro precio y con otro conductor. Detectado el
+    // 2026-09-02 sobre un caso real con dos ofertas ($25.000 y $19.000).
+    //
+    // Si respondio escribiendo ("si", "acepto", una nota de voz), no hay boton de donde sacar
+    // el ID y ahi si toca creerle a la sesion: lo natural es que se refiera a la ultima que le
+    // llego, que es la que el mensaje anterior le pregunto.
+    const btnOfferId = msgBtnId && /^(accept|reject)_offer_/.test(msgBtnId)
+      ? msgBtnId.replace(/^(accept|reject)_offer_/, '')
+      : null;
+    const offerId  = btnOfferId ?? (session.active_offer_id as string);
+
     const tripId   = session.trip_request_id as string;
+
+    // Si toco el boton de una oferta que ya no es la ultima, la sesion todavia tiene el nombre,
+    // el precio y el vehiculo del conductor mas reciente. Sin esto le confirmariamos el viaje
+    // con los datos del conductor equivocado ("Listo, Pedro va para alla" cuando escogio a
+    // Maria). Se recargan los datos de la oferta que el realmente escogio.
+    // Va DESPUES de declarar tripId a proposito: es una const, y usarla antes revienta la
+    // funcion entera con un ReferenceError en vez de solo fallar este caso.
+    if (btnOfferId && btnOfferId !== session.active_offer_id) {
+      const picked = await fetchNextPendingOffer(tripId, btnOfferId);
+      if (picked) {
+        session = {
+          ...session,
+          active_offer_id: picked.offer_id,
+          driver_name:     picked.driver_name,
+          driver_price:    picked.driver_price,
+          driver_phone:    picked.driver_phone,
+          driver_vehicle:  picked.driver_vehicle,
+          driver_plate:    picked.driver_plate,
+        };
+        await upsertSession(phone, {
+          active_offer_id: picked.offer_id,
+          driver_name:     picked.driver_name,
+          driver_price:    picked.driver_price,
+          driver_phone:    picked.driver_phone,
+          driver_vehicle:  picked.driver_vehicle,
+          driver_plate:    picked.driver_plate,
+        });
+      }
+    }
 
     // Piloto de interpretación humana (2026-08-11): mismo patrón que
     // awaiting_dest_confirm -- la IA solo decide cuál camino ya probado correr,
@@ -4551,6 +4609,8 @@ serve(async (req) => {
         let msgText = '';
         let msgLat: number | undefined;
         let msgLng: number | undefined;
+        // ID del boton pulsado (solo en mensajes interactivos). Ver mas abajo por que importa.
+        let msgBtnId: string | undefined;
 
         if (msgType === 'text') {
           msgText = ((msg.text as Record<string, unknown>)?.body as string) ?? '';
@@ -4564,6 +4624,16 @@ serve(async (req) => {
           msgText = ((interactive?.button_reply as Record<string, unknown>)?.title as string)
             ?? ((interactive?.list_reply as Record<string, unknown>)?.title as string)
             ?? '';
+          // Ademas del titulo, guardar el ID del boton. Los botones de oferta se mandan como
+          // accept_offer_<uuid> / reject_offer_<uuid> (ver presentOffer), o sea que cada mensaje
+          // sabe de que oferta habla. Antes solo se leia el titulo y ese ID se tiraba a la
+          // basura: al tocar "Aceptar" se usaba session.active_offer_id, que guarda unicamente
+          // la ULTIMA oferta recibida. Con dos conductores ofertando, el pasajero que subia en
+          // el chat y aceptaba la oferta de arriba terminaba aceptando la de abajo, a otro
+          // precio y con otro conductor. Detectado el 2026-09-02.
+          msgBtnId = ((interactive?.button_reply as Record<string, unknown>)?.id as string)
+            ?? ((interactive?.list_reply as Record<string, unknown>)?.id as string)
+            ?? undefined;
         } else if (msgType === 'audio') {
           // Nota de voz: transcribir con Whisper y tratarla como si fuera texto
           // normal -- así funciona en cualquier punto de la conversación sin
@@ -4593,7 +4663,7 @@ serve(async (req) => {
         if (isSupportNumber) {
           await handleSupportConversation(fromPhone, name, msgText);
         } else {
-          await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession, precomputedRoute);
+          await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession, precomputedRoute, msgBtnId);
         }
 
         // Fire-and-forget: no debe agregar latencia a la respuesta real que
