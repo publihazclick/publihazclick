@@ -1895,6 +1895,60 @@ async function triggerWaSos(phone: string, contactName: string, session: Record<
 }
 
 // ─── Máquina de estados ───────────────────────────────────────────────────────
+/**
+ * Estado del viaje para un pasajero que está esperando: dónde viene el conductor y
+ * cuánto falta.
+ *
+ * POR QUÉ EXISTE (caso real 2026-09-05): Yolima esperó 15 minutos sin saber nada. Escribió
+ * "?" tres veces y el bot le contestó "✅ Le avisamos a tu conductor" -- un acuse de recibo
+ * que confirma que no pasa nada, justo lo peor en el momento de la ansiedad. Nunca supo que
+ * podía llamarlo sin ver su número (se menciona una sola vez, enterrado en el mensaje de
+ * aceptación, y nadie lee instrucciones cuando está estresado).
+ *
+ * El ETA es una estimación por línea recta a 25 km/h (velocidad urbana real de Cúcuta con
+ * semáforos). NO es la ruta de Mapbox a propósito: esto corre en el camino caliente de un
+ * mensaje entrante y no vale la pena gastar una llamada externa -- se prefiere un número
+ * aproximado y honesto ("~5 min") a hacer esperar al pasajero.
+ *
+ * Devuelve null cuando no hay con qué calcular; el llamador decide qué decir entonces.
+ */
+async function driverStatusLine(tripId: string): Promise<{ texto: string; lat: number; lng: number } | null> {
+  try {
+    const supabase = db();
+    const { data: trip } = await supabase
+      .from('ag_trip_requests')
+      .select('driver_id, origin_lat, origin_lng, driver_stage')
+      .eq('id', tripId)
+      .maybeSingle();
+    if (!trip?.driver_id) return null;
+
+    const { data: loc } = await supabase
+      .from('ag_driver_locations')
+      .select('lat, lng, updated_at')
+      .eq('driver_id', trip.driver_id as string)
+      .maybeSingle();
+    if (!loc?.lat || !loc?.lng) return null;
+
+    const oLat = trip.origin_lat as number | null;
+    const oLng = trip.origin_lng as number | null;
+    if (oLat == null || oLng == null) return null;
+
+    const km = haversineKm(loc.lat as number, loc.lng as number, oLat, oLng);
+    // Muy cerca: dar minutos exactos suena falso, es mejor decir que ya está llegando.
+    if (km < 0.3) return { texto: 'Tu conductor ya está llegando al punto de recogida 📍', lat: loc.lat as number, lng: loc.lng as number };
+
+    const min = Math.max(1, Math.round(km / 25 * 60));
+    return {
+      texto: `Tu conductor está a *${km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km'}* de ti — unos *${min} min* 🚗`,
+      lat: loc.lat as number,
+      lng: loc.lng as number,
+    };
+  } catch (e) {
+    console.error('[WA] driverStatusLine error:', e);
+    return null;
+  }
+}
+
 async function handleConversation(
   phone: string,
   contactName: string,
@@ -1965,7 +2019,10 @@ async function handleConversation(
   // ahí el viaje YA terminó, no hay nada que cancelar, y "cancelar" en ese
   // punto se reprocesa como mensaje nuevo (ver bloque awaiting_rating) en vez
   // de mostrar el falso "Solicitud cancelada" de un viaje ya completado.
-  if (isCancel(text) && state !== 'idle' && state !== 'awaiting_rating') {
+  // 'trip_cancel' es el botón que acompaña al estado del viaje mientras el pasajero
+  // espera: su título ("❌ Cancelar viaje") no calza con isCancel(), que exige match
+  // exacto de la palabra sola. Se reconoce por id, que es lo estable.
+  if ((msgBtnId === 'trip_cancel' || isCancel(text)) && state !== 'idle' && state !== 'awaiting_rating') {
     const tripId = session.trip_request_id as string | null;
     let assignedDriverId: string | null = null;
 
@@ -3230,7 +3287,11 @@ async function handleConversation(
     // Telnyx -- pedido explícito del usuario 2026-08-11. Se revisa ANTES que el
     // puente de chat de más abajo para que "llamar" no se reenvíe como si fuera un
     // mensaje de texto normal.
-    if (/^llam/i.test(text.trim())) {
+    // El botón 'trip_call' entra por acá igual que la palabra escrita: su título es
+    // "📞 Llamarlo" y empieza por emoji, así que el regex de texto no lo agarraría.
+    // Nadie lee instrucciones cuando está esperando y angustiado -- por eso "llamar"
+    // dejó de ser solo una palabra mágica mencionada una vez.
+    if (msgBtnId === 'trip_call' || /^llam/i.test(text.trim())) {
       const tripId = session.trip_request_id as string | null;
       if (tripId) {
         const supabase = db();
@@ -3414,7 +3475,9 @@ async function handleConversation(
         const supabase = db();
         const { data: trip } = await supabase
           .from('ag_trip_requests')
-          .select('driver_id')
+          // driver_stage se trae para saber si el conductor todavía viene en camino:
+          // solo en ese caso vale la pena responder con posición, ETA y botones.
+          .select('driver_id, driver_stage')
           .eq('id', tripId)
           .maybeSingle();
 
@@ -3449,15 +3512,43 @@ async function handleConversation(
             }
           }
 
-          await sendText(phone, `✅ Le avisamos a tu ${driverNoun}.`);
+          // Antes acá solo iba "✅ Le avisamos a tu conductor." -- un acuse de recibo que,
+          // para alguien que lleva rato esperando, confirma que no pasa nada. Mientras el
+          // conductor viene en camino se le contesta con lo que de verdad necesita: dónde
+          // está, cuánto falta, y las dos salidas a un toque. Ver driverStatusLine().
+          const estado = trip.driver_stage === 'heading_to_pickup' || !trip.driver_stage
+            ? await driverStatusLine(tripId)
+            : null;
+          if (estado) {
+            await sendButtons(phone,
+              `✅ Le avisamos a tu ${driverNoun}.\n\n${estado.texto}`,
+              [
+                { id: 'trip_call',   title: '📞 Llamarlo' },
+                { id: 'trip_cancel', title: '❌ Cancelar viaje' },
+              ],
+            );
+            // El mapa va aparte: WhatsApp no permite adjuntar ubicación a un mensaje con
+            // botones, y verlo moverse es justo lo que calma la espera.
+            await sendLocation(phone, estado.lat, estado.lng, `Tu ${driverNoun}`, 'Viene en camino');
+          } else {
+            await sendText(phone, `✅ Le avisamos a tu ${driverNoun}.`);
+          }
           return;
         }
       }
     }
 
-    await sendText(phone, delivery
-      ? `Tu envío está en curso 📦\n\nEscribe *llamar* para hablar con tu ${driverNoun}, o *cancelar* si tienes algún problema.`
-      : `Tu viaje está en curso 🚗\n\nEscribe *llamar* para hablar con tu ${driverNoun}, o *cancelar* si tienes algún problema.`);
+    // Botones en vez de instrucciones escritas: "escribe *llamar*" obliga a leer y a
+    // acordarse justo cuando la persona está esperando y de mal humor. El texto se deja
+    // igual como respaldo por si el cliente de WhatsApp no pinta los botones.
+    const cuerpoEnCurso = delivery ? `Tu envío está en curso 📦` : `Tu viaje está en curso 🚗`;
+    const btns = await sendButtons(phone, cuerpoEnCurso, [
+      { id: 'trip_call',   title: '📞 Llamarlo' },
+      { id: 'trip_cancel', title: '❌ Cancelar' },
+    ]);
+    if (!btns.ok) {
+      await sendText(phone, `${cuerpoEnCurso}\n\nEscribe *llamar* para hablar con tu ${driverNoun}, o *cancelar* si tienes algún problema.`);
+    }
     return;
   }
 
