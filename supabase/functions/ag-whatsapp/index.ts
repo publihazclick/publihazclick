@@ -4437,9 +4437,36 @@ Responde SOLO un objeto JSON con estas claves:
 
 interface FaqDecision { action: 'answer' | 'search' | 'escalate'; answer: string | null; searchQuery: string | null; }
 
+/**
+ * Lo que el admin le ha enseñado al bot, listo para pegar al prompt (migración 271).
+ *
+ * Se inyecta como una sección más de la base de conocimiento, con instrucción explícita de
+ * que MANDA sobre lo demás: si el dueño de la operación ya respondió algo, esa es la verdad,
+ * no lo que el modelo deduzca. Devuelve '' cuando no hay nada aprendido todavía, así el
+ * prompt queda exactamente igual que antes.
+ */
+async function bloqueAprendido(canal: 'conductor' | 'pasajero'): Promise<string> {
+  try {
+    const { data, error } = await db().rpc('ag_wa_faq_activas', { p_canal: canal });
+    if (error || !Array.isArray(data) || !data.length) return '';
+    const lineas = data
+      .map((f: Record<string, unknown>) => `P: ${f.pregunta}\nR: ${f.respuesta}`)
+      .join('\n\n');
+    return `\n\n═══ RESPUESTAS QUE YA DIO EL DUEÑO DE MOVI (MÁXIMA PRIORIDAD) ═══\n` +
+      `Estas las respondió personalmente el dueño de la operación ante preguntas reales. ` +
+      `Si la pregunta de ahora es igual o muy parecida a alguna de estas, responde con eso ` +
+      `("answer"), aunque no aparezca en las secciones de arriba -- son la fuente más ` +
+      `confiable que tienes. Si se contradice con algo de arriba, MANDA esto.\n\n${lineas}`;
+  } catch (e) {
+    console.error('[WA-Support] bloqueAprendido error:', e);
+    return '';
+  }
+}
+
 async function answerDriverFaq(question: string): Promise<FaqDecision> {
   const apiKey = Deno.env.get('OPENAI_API_KEY');
   if (!apiKey) return { action: 'escalate', answer: null, searchQuery: null };
+  const aprendido = await bloqueAprendido('conductor');
   try {
     const r = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -4449,7 +4476,7 @@ async function answerDriverFaq(question: string): Promise<FaqDecision> {
         response_format: { type: 'json_object' },
         temperature: 0.3,
         messages: [
-          { role: 'system', content: DRIVER_FAQ_SYSTEM_PROMPT },
+          { role: 'system', content: DRIVER_FAQ_SYSTEM_PROMPT + aprendido },
           { role: 'user', content: question },
         ],
       }),
@@ -4599,16 +4626,105 @@ async function notifyAdminNewConversation(
   }
 }
 
+/** Saca el id del mensaje (wamid) de la respuesta cruda de Meta. */
+function wamidDe(res: WaResult): string | null {
+  try {
+    const j = JSON.parse(res.body ?? '{}');
+    return (j?.messages?.[0]?.id as string) ?? null;
+  } catch { return null; }
+}
+
 async function escalateSupportConversation(phone: string, name: string, lastMessage: string): Promise<void> {
-  const detalle = `${name} (${phone}): "${lastMessage}" — responde desde la bandeja de WhatsApp Business del número Movi Conductores.`;
+  const detalle = `${name} (${phone}): "${lastMessage}" — RESPONDE ESTE MENSAJE con la respuesta y se la mando yo, además la aprendo para la próxima.`;
   await Promise.all([
     upsertSupportSession(phone, { escalated: true, escalated_at: new Date().toISOString() }),
     sendSupportText(phone, 'Ya te conecto con un asesor de Movi 🙌 En un momento te escribe por acá mismo.'),
     (async () => {
-      await sendAdminAlert(SUPPORT_PHONE, '🧑‍✈️ Un conductor espera respuesta', detalle,
-        `🧑‍✈️ *Movi Conductores* — conversación escalada\n\n${name} (${phone})\n"${lastMessage}"\n\nResponde directo desde la bandeja de entrada de WhatsApp Business (número Movi Conductores).`);
+      const res = await sendAdminAlert(SUPPORT_PHONE, '🧑‍✈️ Un conductor espera respuesta', detalle,
+        `🧑‍✈️ *Movi Conductores* — conversación escalada\n\n${name} (${phone})\n"${lastMessage}"\n\nResponde ESTE mensaje con la respuesta: se la mando yo y la aprendo para la próxima.`);
+
+      // Queda pendiente de enseñanza. El wamid del aviso es lo que permite saber después
+      // a CUÁL pregunta está contestando el admin, aunque le lleguen varias seguidas:
+      // si responde citando ese mensaje, WhatsApp nos devuelve ese mismo id (migración 271).
+      try {
+        await db().from('ag_wa_faq_aprendido').insert({
+          canal:          'conductor',
+          pregunta:       lastMessage,
+          preguntada_por: phone,
+          wamid_aviso:    wamidDe(res),
+        });
+      } catch (e) { console.error('[WA] no se pudo registrar la pregunta pendiente:', e); }
     })(),
   ]);
+}
+
+/**
+ * El admin le enseña una respuesta al bot.
+ *
+ * Corre ANTES del flujo normal, y solo para el número del admin. Devuelve true si consumió
+ * el mensaje.
+ *
+ * CUÁNDO SE TOMA COMO ENSEÑANZA -- el guard importa, porque el admin también usa este mismo
+ * número como pasajero de prueba y sería inaceptable tragarse un "quiero un carro":
+ *   1. Si CITÓ el aviso de la escalada -> es enseñanza, sin ninguna duda.
+ *   2. Si no citó, solo si hay una pregunta pendiente de las últimas 24h Y su sesión de
+ *      WhatsApp está en 'idle' (no está en medio de pedir un viaje).
+ * Además siempre se confirma qué se guardó y se ofrece deshacer, para que un error del
+ * punto 2 se pueda revertir en un toque.
+ */
+async function maybeHandleAdminTeaching(text: string, quotedId?: string): Promise<boolean> {
+  const t = (text ?? '').trim();
+  if (!t) return false;
+
+  // Deshacer lo último aprendido: útil justo cuando el bot guardó en la pregunta equivocada.
+  const undo = /^(deshacer|borrar|no|mal)$/i.test(t);
+  if (undo) {
+    const { data: ult } = await db()
+      .from('ag_wa_faq_aprendido')
+      .select('id, pregunta')
+      .eq('estado', 'activa')
+      .order('respondida_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!ult) return false;
+    await db().rpc('ag_wa_faq_archivar', { p_id: ult.id });
+    await sendText(SUPPORT_PHONE, `🗑️ Listo, olvidé lo último que aprendí:\n"${ult.pregunta}"`);
+    return true;
+  }
+
+  const { data: pend } = await db()
+    .from('ag_wa_faq_aprendido')
+    .select('id')
+    .eq('estado', 'pendiente')
+    .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .limit(1);
+  if (!pend?.length) return false;
+
+  // Sin cita, se exige que no esté en medio de un flujo de viaje.
+  if (!quotedId) {
+    const ses = await getSession(SUPPORT_PHONE);
+    const estado = (ses?.state as string) ?? 'idle';
+    if (estado !== 'idle') return false;
+  }
+
+  const { data: fila } = await db().rpc('ag_wa_faq_responder', { p_respuesta: t, p_wamid: quotedId ?? null });
+  const f = Array.isArray(fila) ? fila[0] : fila;
+  if (!f) return false;
+
+  // Mandarle la respuesta a quien la estaba esperando, por el número que corresponde.
+  if (f.preguntada_por) {
+    const paraConductor = f.canal === 'conductor';
+    const cuerpo = `${t}\n\n_Movi_`;
+    if (paraConductor) await sendSupportText(f.preguntada_por, cuerpo);
+    else               await sendText(f.preguntada_por, cuerpo);
+    // Se cierra la escalada para que el bot vuelva a atenderlo con normalidad.
+    if (paraConductor) await upsertSupportSession(f.preguntada_por, { escalated: false, escalated_at: null });
+  }
+
+  await sendText(SUPPORT_PHONE,
+    `✅ Se la mandé y la aprendí.\n\n*Pregunta:* ${f.pregunta}\n\n` +
+    `De ahora en adelante la respondo yo sin molestarte.\n_Si me equivoqué de pregunta, responde *deshacer*._`);
+  return true;
 }
 
 // Auditoría de cada interacción -- qué preguntó, qué acción tomó el bot y con
@@ -5051,6 +5167,10 @@ serve(async (req) => {
         let msgLng: number | undefined;
         // ID del boton pulsado (solo en mensajes interactivos). Ver mas abajo por que importa.
         let msgBtnId: string | undefined;
+        // ID del mensaje CITADO, cuando alguien responde a un mensaje concreto en vez de
+        // escribir suelto. Es la señal exacta que permite saber a cuál de varias preguntas
+        // pendientes está contestando el admin cuando le enseña algo al bot (migración 271).
+        const msgQuotedId = ((msg.context as Record<string, unknown>)?.id as string) ?? undefined;
 
         if (msgType === 'text') {
           msgText = ((msg.text as Record<string, unknown>)?.body as string) ?? '';
@@ -5104,6 +5224,16 @@ serve(async (req) => {
             name,
             msgType === 'text' ? msgText : `[${msgType}]`,
           ).catch(() => {});
+        }
+
+        // El admin enseñándole una respuesta al bot (migración 271). Va antes que todo
+        // lo demás, pero solo se activa si de verdad hay una pregunta pendiente y él no
+        // está en medio de un flujo de viaje -- si no aplica, devuelve false y el mensaje
+        // sigue su curso normal como cualquier otro.
+        if (toE164(fromPhone) === toE164(SUPPORT_PHONE) && msgType === 'text') {
+          if (await maybeHandleAdminTeaching(msgText, msgQuotedId)) {
+            return new Response('ok', { status: 200 });
+          }
         }
 
         // Pedido de codigo de verificacion por WhatsApp -- corre ANTES del bot normal
