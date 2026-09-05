@@ -58,3 +58,7 @@ supabase/functions/.env
 *-firebase-adminsdk-*.json
 **/firebase-admin.json
 
+
+# Subproductos de herramientas locales (no son del proyecto)
+deno.lock
+supabase/.temp/
