@@ -775,7 +775,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <span style="color:#22d3ee;font-size:15px;font-weight:900;flex:1;text-align:center">{{ formatCOP(inlineCounterValue()) }}</span>
                   <button (click)="inlineCounterValue.set(inlineCounterValue() > 2500 ? inlineCounterValue() - 500 : 2000)"
                     style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:rgba(255,255,255,0.1);color:#94a3b8;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">−</button>
-                  <button (click)="inlineCounterValue.set(inlineCounterValue() + 500)"
+                  <!-- El + se detiene en el techo (150% del sugerido, ver maxOfferFor): antes
+                       subía sin límite y se podía mandar una oferta que la base iba a rechazar. -->
+                  <button (click)="raiseInlineCounter(req)"
+                    [disabled]="inlineCounterValue() >= maxOfferFor(req)"
+                    [style.opacity]="inlineCounterValue() >= maxOfferFor(req) ? '0.35' : '1'"
                     style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:#0891b2;color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>
                   <button (click)="submitInlineCounter(req)" [disabled]="sendingOffer()"
                     style="padding:6px 12px;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:12px;font-weight:900;flex-shrink:0;opacity:1"
@@ -18393,6 +18397,41 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // viaje según el canal. Este helper replica EXACTO el mismo cálculo (MIN_PRICE=5000 y fórmula
   // 0.7523 deben coincidir con MIN_PRICE/recommendedMin en ag-whatsapp/index.ts) para que el piso
   // sea el mismo sin importar por dónde se pida el viaje.
+  /**
+   * Techo de la contraoferta del conductor: 150% del precio sugerido (migración 268).
+   *
+   * Espejo del piso de arriba. El piso protege al conductor de un pasajero que ofrece muy
+   * poco; este protege al pasajero de un conductor que pide demasiado. Caso real que lo
+   * motivó (2026-09-02): El Llano → Cenabastos, 6,2 km, sugerido $12.000, el pasajero ofreció
+   * $16.000 y un conductor pidió $25.000. Medido sobre 126 ofertas reales, las que pasaban
+   * del +50% sobre el sugerido se aceptaron 1 de 14 -- no venden, solo dejan al pasajero con
+   * mala impresión de la app.
+   *
+   * Se ancla al precio SUGERIDO, no a lo que pidió el pasajero: el pasajero ofrece entre el
+   * 79% y el 133% del sugerido, así que usarlo de ancla haría que un pasajero generoso le
+   * desbloqueara al conductor un techo más alto -- al revés de lo que se busca.
+   *
+   * La fórmula debe coincidir con suggestPrice() en ag-whatsapp/index.ts, _calcPrice() acá
+   * mismo, y ag_enforce_max_offer_price() en la base. La base redondea el techo hacia ARRIBA
+   * y este también, pero la base es la que manda: makeOffer() inserta directo en
+   * ag_trip_offers, así que sin el trigger esta validación se saltaría llamando a la API.
+   */
+  maxOfferFor(req: any): number {
+    const km = Number(req?.distance_km ?? 0);
+    // Sin distancia no hay sugerido que valga: no se limita, igual que el trigger.
+    if (!isFinite(km) || km <= 0) return Number.POSITIVE_INFINITY;
+    const minutes = km / 30 * 60;
+    const raw = req?.service_type === 'domicilio'
+      ? Math.max(5000, km * 1500)
+      : req?.vehicle_type === 'moto'
+      ? Math.max(3000, 2500 + km * 800 + minutes * 80)
+      : Math.max(4500, 4000 + km * 1000 + minutes * 150);
+    // Se prefiere el surge guardado en la solicitud sobre el del conductor: es el que usó la
+    // base al calcular su propio techo, así no se rechaza acá algo que la base sí aceptaría.
+    const surge = Number(req?.surge_multiplier ?? this.surgeMultiplier() ?? 1) || 1;
+    return Math.ceil(raw * surge * 1.5 / 500) * 500;
+  }
+
   private _recommendedMinPrice(): number {
     const suggested = this.tripService() === 'domicilio'
       ? this.domEstPrice()
@@ -19490,6 +19529,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
   }
 
+  /** Sube la contraoferta en $500 sin pasarse del techo (ver maxOfferFor). */
+  raiseInlineCounter(req: any): void {
+    const max = this.maxOfferFor(req);
+    const siguiente = this.inlineCounterValue() + 500;
+    this.inlineCounterValue.set(isFinite(max) ? Math.min(max, siguiente) : siguiente);
+  }
+
   async submitInlineCounter(req: AgTripRequest) {
     this.makingOfferFor.set(req);
     this.driverOfferPrice.set(this.inlineCounterValue());
@@ -19531,6 +19577,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         alert(`Saldo insuficiente. Necesitas al menos ${this.formatCOP(commission)} para cubrir la comisión de este viaje.`);
         return;
       }
+    }
+
+    // Techo de la contraoferta (ver maxOfferFor). Se valida acá para poder decirle al
+    // conductor el máximo real en vez de dejarlo mandar y que la base se lo rechace con un
+    // mensaje envuelto en "intenta cerrar sesión", que no tiene nada que ver.
+    const maxOffer = this.maxOfferFor(req);
+    if (isFinite(maxOffer) && this.driverOfferPrice() > maxOffer) {
+      alert(
+        `La oferta máxima para este viaje es ${this.formatCOP(maxOffer)}.\n\n` +
+        `Ofreciste ${this.formatCOP(this.driverOfferPrice())}, muy por encima del precio sugerido — ` +
+        `los pasajeros casi nunca aceptan esas ofertas.`
+      );
+      return;
     }
 
     this.sendingOffer.set(true);

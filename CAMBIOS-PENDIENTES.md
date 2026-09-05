@@ -13,7 +13,25 @@
 
 ## Pendiente de subir
 
-_(vacío — todo lo de hoy ya está en producción)_
+### Techo a las contraofertas del conductor (150% del precio sugerido)
+- **Qué**: un conductor ya no puede ofertar más del 150% del precio sugerido. Si lo
+  intenta, se le dice cuál es el máximo real de ese viaje en vez de solo negarle.
+- **Por qué**: caso del 2 de septiembre, El Llano → Cenabastos (6,2 km). El sugerido era
+  $12.000, el pasajero ofreció $16.000 y un conductor pidió $25.000. Medido sobre 126
+  ofertas reales: las que pasan del +50% sobre el sugerido se aceptan **1 de 14** — no
+  venden, solo dejan al pasajero con mala impresión de la app. Simulado sobre los últimos
+  25 días, habría bloqueado 4 ofertas y **las 4 eran de viajes que se cancelaron**;
+  ningún viaje completado se habría impedido.
+- **Toca**: `ambos`
+- **Estado**:
+  - ✅ **Base de datos ya aplicada** (migración 268, trigger sobre `ag_trip_offers`).
+    Es la que de verdad garantiza la regla: `makeOffer()` inserta directo desde el
+    cliente, así que sin el trigger la validación de la app se saltaría llamando a la API.
+    Probada en vivo: bloquea $25.000 diciendo "el máximo es $18.500" y deja pasar $15.000.
+  - ⏳ **App pendiente de subir**: el botón `+` se detiene en el techo y el aviso queda
+    limpio. Sin esto la regla YA funciona, pero al conductor le sale el mensaje envuelto en
+    "intenta cerrar sesión y volver a entrar", que no aplica.
+- **Commit**: (este)
 
 <!--
 FORMATO de cada entrada:
