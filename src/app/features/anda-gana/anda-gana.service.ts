@@ -2010,6 +2010,35 @@ export class AndaGanaService {
     return out.data ?? [];
   }
 
+  /**
+   * Responde una conversación de WhatsApp desde el panel admin. `role` decide por
+   * cuál de los dos números sale (soporte a conductores o pedidos de pasajeros).
+   *
+   * Devuelve el error en español en vez de lanzar: el caso más común no es un fallo
+   * técnico sino la ventana de servicio de 24h de WhatsApp cerrada, y eso hay que
+   * explicárselo al admin, no mostrarle una excepción.
+   */
+  async adminSendWaReply(
+    phone: string,
+    role: 'conductor' | 'pasajero',
+    message: string,
+    publihazclickToken: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      await this.callAdminAction(publihazclickToken, { action: 'send_wa_reply', phone, role, message });
+      return { ok: true };
+    } catch (e) {
+      const msg = (e as Error)?.message ?? '';
+      if (msg.includes('window_closed')) {
+        return { ok: false, error: 'Pasaron más de 24 horas desde su último mensaje. WhatsApp no deja escribirle hasta que esa persona vuelva a escribir.' };
+      }
+      if (msg.includes('send_failed')) {
+        return { ok: false, error: 'WhatsApp rechazó el mensaje. Intenta de nuevo en un momento.' };
+      }
+      return { ok: false, error: msg || 'No se pudo enviar el mensaje.' };
+    }
+  }
+
   async adminApproveDriver(driverId: string, publihazclickToken: string): Promise<boolean> {
     try {
       await this.callAdminAction(publihazclickToken, { action: 'approve_driver', driver_id: driverId });

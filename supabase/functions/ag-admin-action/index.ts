@@ -230,6 +230,59 @@ Deno.serve(async (req) => {
         }));
         return json({ ok: true, data: out });
       }
+      // Responder desde el panel admin -- pedido explícito del usuario 2026-09-05.
+      //
+      // El candado de las 24h se valida ACÁ, en el servidor, no solo en la pantalla:
+      // WhatsApp solo entrega texto libre dentro de las 24h siguientes al último
+      // mensaje que esa persona nos escribió, y fuera de esa ventana Meta responde
+      // 200 OK y lo descarta EN SILENCIO. Eso ya dejó a 6 conductores esperando a un
+      // asesor que nunca supo de ellos. Si se validara solo en el frontend, un panel
+      // desactualizado (la ventana se vence sola con el tiempo, sin recargar la
+      // página) volvería a dar por enviado algo que no llegó.
+      case 'send_wa_reply': {
+        if (!body.phone)   return json({ error: 'missing_phone' }, 400);
+        if (!body.message) return json({ error: 'missing_message' }, 400);
+        const texto = String(body.message).trim();
+        if (!texto)             return json({ error: 'empty_message' }, 400);
+        if (texto.length > 4000) return json({ error: 'message_too_long' }, 400);
+        const rol = body.role === 'conductor' ? 'conductor' : 'pasajero';
+
+        const { data: ultimoIn, error: inErr } = await movi
+          .from('ag_wa_message_log')
+          .select('created_at')
+          .eq('wa_phone', body.phone)
+          .eq('direction', 'in')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (inErr) throw inErr;
+
+        const msDesde = ultimoIn?.created_at
+          ? Date.now() - new Date(ultimoIn.created_at as string).getTime()
+          : Number.POSITIVE_INFINITY;
+        if (msDesde > 24 * 60 * 60 * 1000) {
+          return json({
+            error: 'window_closed',
+            message: 'Pasaron más de 24 horas desde su último mensaje. WhatsApp no deja escribirle texto libre hasta que esa persona vuelva a escribir.',
+            last_in_at: ultimoIn?.created_at ?? null,
+          }, 409);
+        }
+
+        const waRes = await fetch(`${MOVI_URL}/functions/v1/ag-whatsapp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${MOVI_SERVICE_KEY}` },
+          body: JSON.stringify({ phone: body.phone, message: texto, as: rol }),
+        });
+        const waJson = await waRes.json().catch(() => ({}));
+        if (!waRes.ok || !waJson?.sent) {
+          return json({ error: 'send_failed', detail: waJson?.error ?? `status ${waRes.status}` }, 502);
+        }
+        // ag-whatsapp ya registra el mensaje en ag_wa_message_log al enviarlo, así que
+        // acá NO se vuelve a insertar -- duplicarlo fue justo el bug del código de
+        // verificación que aparecía dos veces en el log.
+        return json({ ok: true });
+      }
+
       case 'get_stats': {
         // Antes el panel admin sacaba estos conteos con la clave anon
         // directo contra las tablas -- las políticas RLS de ag_users/

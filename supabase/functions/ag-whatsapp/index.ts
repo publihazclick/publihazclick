@@ -4661,8 +4661,17 @@ serve(async (req) => {
     }
 
     if (text) {
-      const waResult = await sendText(toE164(targetPhone), text);
-      return new Response(JSON.stringify({ sent: waResult.ok }), {
+      // `as` elige DESDE cuál de los dos números sale el mensaje. Los dos comparten
+      // WABA pero tienen phone_number_id distintos, y para la persona son dos chats
+      // separados: responderle a un conductor desde el número de pasajeros llegaría
+      // a una conversación que él no reconoce. Lo usa la bandeja del panel admin
+      // (ag-admin-action → send_wa_reply). Sin `as`, sale por el de pasajeros, que
+      // es el comportamiento que ya tenían todos los llamadores anteriores.
+      const comoConductor = (body as Record<string, unknown>).as === 'conductor';
+      const waResult = comoConductor
+        ? await sendSupportText(toE164(targetPhone), text)
+        : await sendText(toE164(targetPhone), text);
+      return new Response(JSON.stringify({ sent: waResult.ok, status: waResult.status, error: waResult.ok ? null : (waResult.body ?? '').slice(0, 300) }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

@@ -893,7 +893,11 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
           </div>
           <div class="flex flex-col items-end gap-1 flex-shrink-0">
             <span class="text-[10px] text-slate-600">{{ c.last_at | date:'dd/MM HH:mm' }}</span>
-            <span class="text-[10px] text-slate-600">{{ c.msg_count }} msj</span>
+            @if (waConvWindowOpen(c)) {
+              <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/15 text-emerald-400">Puedes responder</span>
+            } @else {
+              <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-white/5 text-slate-500">Ventana cerrada</span>
+            }
           </div>
         </button>
       }
@@ -925,6 +929,56 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
           }
           @if (waMessages().length === 0) {
             <p class="text-center text-slate-600 text-sm py-10">Sin mensajes registrados para este número.</p>
+          }
+        </div>
+
+        <!-- Responder. La ventana de 24h de WhatsApp no es una regla nuestra: fuera
+             de ella Meta descarta el mensaje en silencio, así que en vez de dejar
+             escribir en vano se explica por qué no se puede y qué falta. -->
+        <div class="mt-3 rounded-2xl p-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+          @if (waWindowOpen()) {
+            <div class="flex items-center gap-1.5 mb-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <p class="text-[11px] text-emerald-400 font-bold">
+                Puedes responder por {{ waHoursLeft() }}h más
+                <span class="text-slate-500 font-normal">· sale desde {{ waRole() === 'conductor' ? 'Movi Conductores' : 'Movi' }}</span>
+              </p>
+            </div>
+            <textarea
+              [ngModel]="waReplyText()" (ngModelChange)="waReplyText.set($event)"
+              [disabled]="waSending()"
+              rows="3" maxlength="4000"
+              placeholder="Escribe tu respuesta…"
+              class="w-full rounded-xl px-3 py-2 text-sm text-slate-100 resize-none"
+              style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.08);outline:none"></textarea>
+            @if (waSendError()) {
+              <p class="text-rose-400 text-[11px] mt-2">{{ waSendError() }}</p>
+            }
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-[10px] text-slate-600">{{ waReplyText().length }}/4000</span>
+              <button (click)="sendWaReply()"
+                [disabled]="waSending() || !waReplyText().trim()"
+                class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase text-lime-950 disabled:opacity-40"
+                style="background:#a3e635">
+                <span class="material-symbols-outlined" style="font-size:15px">send</span>
+                {{ waSending() ? 'Enviando…' : 'Enviar' }}
+              </button>
+            </div>
+          } @else {
+            <div class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-amber-400 flex-shrink-0" style="font-size:18px">schedule</span>
+              <div>
+                <p class="text-[12px] text-amber-400 font-bold">No puedes escribirle ahora</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">
+                  @if (waLastInAt()) {
+                    Pasaron más de 24 horas desde su último mensaje. WhatsApp solo permite escribir texto libre dentro de ese plazo.
+                  } @else {
+                    Esta persona nunca nos ha escrito, así que WhatsApp no permite iniciarle una conversación con texto libre.
+                  }
+                  Se abre de nuevo apenas ella vuelva a escribir.
+                </p>
+              </div>
+            </div>
           }
         </div>
       }
@@ -971,6 +1025,41 @@ export class AndaGanaAdminComponent implements OnInit {
   waSelectedPhone   = signal<string | null>(null);
   waMessages        = signal<any[]>([]);
   waLoadingMessages = signal(false);
+  waReplyText       = signal('');
+  waSending         = signal(false);
+  waSendError       = signal<string | null>(null);
+
+  // Ventana de servicio de 24h de WhatsApp: solo se puede escribir texto libre
+  // dentro de las 24h siguientes al último mensaje que ESA persona nos mandó.
+  // Fuera de la ventana Meta responde 200 OK y descarta el mensaje en silencio --
+  // sin este aviso el admin creería que respondió y la persona no recibiría nada
+  // (fue justo lo que dejó a 6 conductores esperando a un asesor).
+  // Se calcula desde los mensajes ya cargados del hilo, así que no depende de que
+  // la lista de conversaciones esté fresca.
+  waLastInAt = computed<number | null>(() => {
+    let ultimo: number | null = null;
+    for (const m of this.waMessages()) {
+      if (m?.direction !== 'in' || !m?.created_at) continue;
+      const t = new Date(m.created_at).getTime();
+      if (!ultimo || t > ultimo) ultimo = t;
+    }
+    return ultimo;
+  });
+  waWindowOpen  = computed(() => {
+    const t = this.waLastInAt();
+    return t != null && Date.now() - t < 24 * 60 * 60 * 1000;
+  });
+  waHoursLeft = computed(() => {
+    const t = this.waLastInAt();
+    if (t == null) return 0;
+    return Math.max(0, Math.floor((24 * 60 * 60 * 1000 - (Date.now() - t)) / 3600000));
+  });
+
+  /** Ventana abierta para una fila de la lista (usa last_in_at del RPC). */
+  waConvWindowOpen(c: { last_in_at?: string | null }): boolean {
+    if (!c?.last_in_at) return false;
+    return Date.now() - new Date(c.last_in_at).getTime() < 24 * 60 * 60 * 1000;
+  }
 
   // Ciudad a Ciudad (migración 226/227 -- antes el admin no tenía forma de ver
   // estos viajes en absoluto, ver informe de comparación con InDrive)
@@ -1162,10 +1251,45 @@ export class AndaGanaAdminComponent implements OnInit {
     const token = this.authService.getAccessToken();
     if (!token) return;
     this.waSelectedPhone.set(phone);
+    this.waSendError.set(null);
     this.waLoadingMessages.set(true);
     const data = await this.agService.adminListWaMessages(phone, token);
     this.waMessages.set(data ?? []);
     this.waLoadingMessages.set(false);
+  }
+
+  /**
+   * Responde desde el panel. El mensaje sale por el número que corresponde al rol
+   * de la conversación (soporte a conductores o pedidos de pasajeros): los dos
+   * comparten WABA pero son chats distintos para la persona, así que responderle a
+   * un conductor desde el número de pasajeros llegaría a un chat que él no reconoce.
+   *
+   * El límite de las 24h también lo valida el servidor -- acá se bloquea el botón
+   * solo para no dejar escribir en vano, pero la verdad la tiene ag-admin-action.
+   */
+  async sendWaReply(): Promise<void> {
+    const phone = this.waSelectedPhone();
+    const texto = this.waReplyText().trim();
+    if (!phone || !texto || this.waSending()) return;
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+
+    this.waSending.set(true);
+    this.waSendError.set(null);
+    try {
+      const res = await this.agService.adminSendWaReply(phone, this.waRole(), texto, token);
+      if (!res.ok) {
+        this.waSendError.set(res.error ?? 'No se pudo enviar el mensaje.');
+        return;
+      }
+      this.waReplyText.set('');
+      // Se recarga el hilo desde la base en vez de agregar el mensaje a mano:
+      // así lo que se ve en pantalla es lo que de verdad quedó registrado.
+      await this.openWaConversation(phone);
+      this.loadWaConversations();
+    } finally {
+      this.waSending.set(false);
+    }
   }
 
   async loadActiveTrips(): Promise<void> {
