@@ -15,11 +15,14 @@
 
 ### La ubicación en vivo por WhatsApp llevaba semanas sin llegar
 - **Qué**: el cron que le manda al pasajero la posición del conductor cada 4 minutos
-  reventaba en cada corrida. Corregido (era  donde va ).
-- **Por qué**: Yolima esperó 15 minutos sin saber dónde venía su conductor. Escribió ?
-  tres veces. El cron corrió 5 veces en ese lapso y falló las 5.
-- **Toca**: - **Estado**: ✅ aplicada (migración 269) y probada forzando una corrida con viaje activo.
-- **Commit**: (este)
+  reventaba en cada corrida. Corregido (era `::text` donde va `::jsonb`).
+- **Por qué**: Yolima esperó 15 minutos sin saber dónde venía su conductor. Escribió "?"
+  tres veces. El cron corrió 5 veces en ese lapso y falló las 5. Pasaba desapercibido
+  porque el cron reporta 99,7% de éxito: las corridas sin viajes activos no hacen nada
+  y cuentan como exitosas.
+- **Toca**: `supabase`
+- **Estado**: ✅ aplicada (migración 269) y probada forzando una corrida con viaje activo.
+- **Commit**: `ea40015`
 
 
 ### Techo a las contraofertas del conductor (150% del precio sugerido)
