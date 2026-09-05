@@ -13,6 +13,15 @@
 
 ## Pendiente de subir
 
+### La ubicación en vivo por WhatsApp llevaba semanas sin llegar
+- **Qué**: el cron que le manda al pasajero la posición del conductor cada 4 minutos
+  reventaba en cada corrida. Corregido (era  donde va ).
+- **Por qué**: Yolima esperó 15 minutos sin saber dónde venía su conductor. Escribió ?
+  tres veces. El cron corrió 5 veces en ese lapso y falló las 5.
+- **Toca**: - **Estado**: ✅ aplicada (migración 269) y probada forzando una corrida con viaje activo.
+- **Commit**: (este)
+
+
 ### Techo a las contraofertas del conductor (150% del precio sugerido)
 - **Qué**: un conductor ya no puede ofertar más del 150% del precio sugerido. Si lo
   intenta, se le dice cuál es el máximo real de ese viaje en vez de solo negarle.
