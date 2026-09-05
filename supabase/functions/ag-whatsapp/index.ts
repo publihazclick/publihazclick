@@ -1651,10 +1651,37 @@ function bogotaHour(): number {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Bogota', hour: 'numeric', hour12: false }).formatToParts(new Date());
   return parseInt(parts.find(p => p.type === 'hour')?.value ?? '12', 10);
 }
+/**
+ * El nombre de perfil de WhatsApp lo escribe cada quien y muchas veces no es un
+ * nombre. Casos reales vistos en el soporte a conductores: ".", "A OTRO NIVEL",
+ * "🌲 CARLOS CACERES 🍀", "mayrakatherinepelaezrinco", "Y2DYAZMH" -- todos salieron
+ * tal cual en el saludo ("¡Hola, .!", "¡Qué tal, mayrakatherinepelaezrinco!"), que
+ * se ve descuidado justo en el primer mensaje. Si no parece un nombre de persona,
+ * es mejor saludar sin nombre que saludar mal.
+ */
+function cleanDisplayName(raw?: string | null): string | null {
+  if (!raw) return null;
+  // Fuera emojis, símbolos y espacios de más; queda solo texto legible.
+  const limpio = raw
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, ' ')
+    .replace(/[^\p{L}\p{M}\s'-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!limpio) return null;
+  const primero = limpio.split(' ')[0];
+  if (primero.length < 3 || primero.length > 15) return null;
+  // Un token largo sin espacios y todo en minúscula suele ser un usuario o correo
+  // ("mayrakatherinepelaezrinco"), no un nombre escrito por una persona.
+  if (!limpio.includes(' ') && primero === primero.toLowerCase() && primero.length > 12) return null;
+  // Nombre propio: primera en mayúscula, resto en minúscula (arregla "CARLOS").
+  return primero.charAt(0).toUpperCase() + primero.slice(1).toLowerCase();
+}
+
 function greetingOpener(realName?: string | null): string {
   const h = bogotaHour();
   const period = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
-  const who = realName ? `, ${realName}` : '';
+  const limpio = cleanDisplayName(realName);
+  const who = limpio ? `, ${limpio}` : '';
   const variants = [
     `¡Hola${who}! 👋`,
     `¡${period}${who}! 👋`,
@@ -1718,11 +1745,51 @@ function isDriverJobInquiry(t: string): boolean {
   return qualifier.some(q => n.includes(q));
 }
 function driverJobInquiryReply(): string {
+  // El número va también en texto plano, no solo como link: si el mensaje se
+  // reenvía o se lee en un equipo donde wa.me no abre, el link no sirve de nada
+  // y la persona igual tiene que poder guardar o marcar el número.
   return `¡Qué bueno que quieras unirte a Movi! 🚗🏍️\n\n` +
     `Este número es solo para pedir viajes -- para todo lo de registro como conductor ` +
-    `(requisitos, documentos, comisión, bonos) escríbenos directo aquí:\n` +
+    `(requisitos, documentos, comisión, bonos) escríbenos al *300 964 5697*:\n` +
     `https://wa.me/${DRIVER_SUPPORT_PHONE}\n\n` +
     `Ahí te ayudamos con todo el proceso.`;
+}
+
+// Pregunta por la descarga de la app -- pedido explícito del usuario 2026-09-05,
+// después de ver que 4 de 16 conductores preguntaron esto y 3 dijeron "no la
+// encuentro". El bot contestaba "búscala en Play Store" y llegó a inventarse una
+// app inexistente ("MoviSur"). Se resuelve con un detector fijo (sin IA, sin
+// búsqueda web) que garantiza que el link salga SIEMPRE, en los dos números.
+function isAppDownloadInquiry(t: string): boolean {
+  const n = t.toLowerCase()
+    .normalize('NFD').replace(/\p{M}/gu, '')
+    .replace(/[¿?¡!.,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Frases que por sí solas ya no significan otra cosa en este contexto.
+  const solas = [
+    'como descargo', 'donde descargo', 'como la descargo', 'donde la descargo',
+    'como se descarga', 'donde se descarga', 'como bajo la', 'donde bajo la',
+    'no la encuentro', 'no la veo', 'no la consigo',
+    'cual es el logo', 'cual es el icono',
+    'playstore', 'play store', 'app store', 'appstore', 'tienda de aplicaciones',
+  ];
+  if (solas.some(w => n.includes(w))) return true;
+
+  // Si no, se exige que nombre la app Y una acción de conseguirla. Esto evita
+  // capturar pedidos reales de servicio -- "necesito descargar un trasteo" es un
+  // flete, no una pregunta por la app.
+  const menciona = ['app', 'aplicacion', 'aplicativo', 'aplicasion', 'movi'].some(w => n.includes(w));
+  const accion = ['descarg', 'instal', 'bajar', 'encuentr', 'consig', 'link', 'enlace', 'logo', 'busco', 'buscar']
+    .some(w => n.includes(w));
+  return menciona && accion;
+}
+
+function appDownloadReply(): string {
+  return `📲 Este es el link oficial para descargar Movi:\n${APP_DOWNLOAD_LINK}\n\n` +
+    `En Play Store aparece como *Movi - Transporte Urbano*. Es la misma app para pedir viajes y para trabajar como conductor.\n\n` +
+    `_Por ahora solo está disponible para Android._`;
 }
 
 // ─── Disparar alerta SOS para un usuario de WhatsApp ──────────────────────────
@@ -1962,6 +2029,11 @@ async function handleConversation(
       await sendText(phone, driverJobInquiryReply());
       return;
     }
+    // Pregunta por la descarga -- se responde con el link oficial, siempre.
+    if (isAppDownloadInquiry(text)) {
+      await sendText(phone, appDownloadReply());
+      return;
+    }
     // Si ya escribió/dictó una solicitud completa desde el primer mensaje
     // ("hola necesito un carro para el aeropuerto"), no obligarlo a repetirla.
     if (text.length >= 8) {
@@ -1991,6 +2063,11 @@ async function handleConversation(
     // "moto" dentro del texto y lo tomaría como si hubiera elegido ese servicio).
     if (isDriverJobInquiry(text)) {
       await sendText(phone, driverJobInquiryReply());
+      return;
+    }
+    // Pregunta por la descarga -- se responde con el link oficial, siempre.
+    if (isAppDownloadInquiry(text)) {
+      await sendText(phone, appDownloadReply());
       return;
     }
     const map: Record<string, string> = {
@@ -3845,11 +3922,16 @@ async function handleOtpCodeRequest(
                  && /(verific|registr|ingres|entrar|acced|acces|activar|sms|no me lleg|no lleg|nunca lleg)/.test(t);
   if (!explicita && !generica) return false;
 
-  const rol: 'conductor' | 'pasajero' = isSupportNumber ? 'conductor' : 'pasajero';
+  // El log lo hacen sendText()/sendSupportGraph() por dentro. Antes se llamaba
+  // logWaMessage() otra vez acá, así que cada código de verificación aparecía DOS
+  // veces en ag_wa_message_log -- el mensaje salía una sola vez (verificado por los
+  // timestamps: las dos filas caen con 3-13 ms de diferencia), pero el log hacía
+  // pensar que al conductor le llegaba duplicado. Mismo tipo de engaño que el
+  // "[NO ENTREGADO]" que se arregló el 2026-09-02: el log tiene que reflejar lo que
+  // de verdad pasó, o las revisiones posteriores salen mal.
   const responder = async (texto: string) => {
     if (isSupportNumber) await sendSupportText(fromPhone, texto);
     else                 await sendText(fromPhone, texto);
-    logWaMessage(fromPhone, rol, 'out', texto);
   };
 
   // Un BSUID no es un número de teléfono (ver isBsuid/toE164), así que no hay forma de
@@ -4075,8 +4157,19 @@ const DRIVER_FAQ_SYSTEM_PROMPT = `Eres el asistente de soporte de conductores de
 
 Usa SOLO la información real de abajo -- si algo no está aquí y no lo puedes deducir con certeza, es mejor escalar que inventar.
 
+═══ DÓNDE SE DESCARGA LA APP (PREGUNTA MUY FRECUENTE) ═══
+- El link oficial y ÚNICO es: ${APP_DOWNLOAD_LINK}
+- SIEMPRE que alguien pregunte cómo descargar, dónde bajarla, que no la encuentra, cuál es el logo, o cómo saber cuál es la de verdad -- MANDA EL LINK COMPLETO, tal cual, en el mensaje. Nunca digas solo "búscala en Play Store": hay muchas apps llamadas "Movi" y la gente termina instalando la equivocada o rindiéndose (pasó de verdad con varios conductores).
+- En Play Store aparece como *Movi - Transporte Urbano*, del desarrollador TECNOMULTIMEDIA. Es una sola app: la misma sirve para pasajero y para conductor.
+- Por ahora solo hay versión de Android. Si alguien pregunta por iPhone/iOS, dilo claro: todavía no hay versión para iPhone.
+
+═══ DÓNDE OPERA MOVI ═══
+- Movi funciona en TODA Colombia. Si preguntan por una ciudad concreta, la respuesta es sí.
+- Nunca listes ciudades específicas ni prometas cuántos pasajeros o conductores hay en una ciudad -- eso no lo sabes.
+
 ═══ CÓMO REGISTRARSE COMO CONDUCTOR ═══
 - Se hace desde la app Movi (no desde WhatsApp): entrar a "Quiero ser conductor" y completar 4 pasos -- Datos personales, Documentos de identidad, Licencia, Vehículo. Llenar el formulario toma unos 5 minutos.
+- *El PRIMER viaje se puede hacer SIN haber enviado la documentación* -- se puede empezar a trabajar de una. Pero para hacer el SEGUNDO viaje sí hay que haber enviado los documentos. Dilo cuando pregunten cuánto se demora en empezar: se empieza ya, no hay que esperar la revisión para el primer viaje.
 - Datos personales pedidos: nombre completo, fecha de nacimiento, país, departamento, ciudad, número de cédula. Debe escribirse exactamente como aparece en los documentos oficiales.
 - Documentos del CONDUCTOR: cédula (documento colombiano -- es obligatorio ser colombiano para conducir en Movi), foto de la cédula, licencia de conducción vigente, y una selfie de rostro SIN la cédula (para que el pasajero lo reconozca al llegar).
 - Documentos del VEHÍCULO: SOAT vigente, tarjeta de propiedad (foto frontal y trasera), revisión tecnomecánica vigente, fotos del vehículo. El seguro de responsabilidad civil ya NO se pide (no es obligatorio en Colombia como el SOAT).
@@ -4105,7 +4198,9 @@ Un mismo conductor puede recibir solicitudes de varios de estos servicios según
 ═══ DINERO: CÓMO SE PAGA UN CONDUCTOR ═══
 - El pasajero le paga al conductor DIRECTO (no pasa por Movi). Movi cobra su comisión de la billetera prepagada del conductor, no del pago del viaje.
 - Comisión de Movi: 12% fijo sobre el valor de cada viaje, se descuenta automáticamente de la billetera del conductor.
-- El conductor debe mantener saldo en su billetera para poder seguir recibiendo viajes; se recarga desde la app con tarjeta o PSE.
+- El conductor debe mantener saldo en su billetera para poder seguir recibiendo viajes; se recarga desde la app con tarjeta o PSE. *La recarga mínima es de $10.000 COP.*
+- *¿Cuánto se puede ganar?* Sé honesto: depende del tiempo que el conductor tenga disponible y de cuántos servicios acepte -- eso no lo define Movi, lo define él. Lo que sí puedes decirle con certeza es cómo se reparte cada viaje: él cobra el 100% del valor directo del pasajero y Movi solo descuenta el 12% de su billetera. NUNCA inventes un ingreso mensual, diario ni por hora, ni des rangos "estimados": no los sabes.
+- *Precio sugerido de un viaje en carro:* arranca en $4.000 y suma alrededor de $1.300 por kilómetro. En la práctica, un viaje típico de ciudad de unos 5 km sale en unos $10.500 (o sea alrededor de $2.000 por kilómetro), y entre más largo el viaje, menos pesa el cobro base. En horas de alta demanda el sugerido sube automáticamente. Es solo un SUGERIDO: el pasajero puede ofrecer otro precio y el conductor puede aceptar o contraofertar.
 - Si un pasajero cancela DESPUÉS de que el conductor ya aceptó (y ya se cobró la comisión): si el pasajero nunca llegó a abordar el vehículo, la comisión se devuelve automáticamente al saldo del conductor; si el pasajero ya iba a bordo cuando se canceló, el viaje se considera hecho y no hay devolución. Esto no depende de quién cancela, depende de si hubo servicio real (validado con el GPS real del conductor, no solo con un botón).
 - Bonos en efectivo por hitos de viajes completados de por vida (no se resetean cada mes): al llegar a 10 viajes, $2.000; a 25 viajes, $3.500; a 50 viajes, $6.000; de ahí en adelante, $24.000 adicionales cada 100 viajes más.
 
@@ -4135,6 +4230,9 @@ Un mismo conductor puede recibir solicitudes de varios de estos servicios según
 ═══ CONFIANZA / "¿VALE LA PENA?" ═══
 Si preguntan si Movi es confiable, si vale la pena, cuánto se puede ganar en general, o algo similar (no es un reclamo, es duda genuina antes de animarse) -- respóndeles tú mismo, con confianza y calidez, usando lo de arriba: comisión fija transparente del 12%, bonos por hitos de viajes, programa de invitados con 2% de por vida, pasajeros y conductores se califican mutuamente, verificación de identidad en el registro, llamada enmascarada y SOS en cada viaje. Esto NO es motivo para escalar.
 
+═══ SI ESCRIBEN PIDIENDO UN SERVICIO (NO SON CONDUCTORES) ═══
+Este número es SOLO soporte a conductores. Si alguien escribe pidiendo un viaje, una carrera, un domicilio, un flete o mandar un paquete -- no es un conductor con una duda, es un cliente que se equivocó de número. NO escales: respóndele tú mismo, con amabilidad, que para pedir viajes o servicios debe escribir al *316 630 2106*, y dale el link directo https://wa.me/573166302106 para que solo tenga que tocarlo. Es una respuesta ("answer"), no una escalada.
+
 ═══ QUÉ HACER CUANDO NO SABES ALGO ═══
 No toda pregunta de un conductor es sobre la política interna de Movi -- muchas son preguntas generales de trámites/documentos en Colombia que SÍ tienen una respuesta real buscable (ej. "¿qué es el RUNT?", "¿dónde saco la tecnomecánica en Bucaramanga?", "¿cuánto cuesta el SOAT de una moto?", "¿qué pasa si me para un agente de tránsito sin tecnomecánica?"). Para esas, NO escales -- se resuelven con una búsqueda.
 
@@ -4142,7 +4240,7 @@ Si la pregunta es vaga pero claramente relacionada con seguridad durante un viaj
 
 Elige exactamente una acción:
 - "answer": para todo lo que puedas responder con confianza usando la información de arriba (política y funcionamiento real de Movi).
-- "search": para preguntas informativas/factuales que NO son política interna de Movi pero sí tienen una respuesta real y objetiva que se puede buscar (trámites, requisitos legales de tránsito en Colombia, definiciones, precios de mercado, etc.).
+- "search": para preguntas informativas/factuales que NO son política interna de Movi pero sí tienen una respuesta real y objetiva que se puede buscar (trámites, requisitos legales de tránsito en Colombia, definiciones, precios de mercado, etc.). *NUNCA uses "search" para nada sobre Movi* -- ni la app, ni dónde descargarla, ni en qué ciudades opera, ni sus precios, comisiones o condiciones. Todo eso está arriba. En internet hay OTRAS empresas llamadas "Movi" y buscar termina dando respuestas falsas (pasó de verdad: el bot llegó a mandar a un conductor a instalar una app inexistente y a prometer ciudades que no le constaban). Si es sobre Movi y no está arriba, es "escalate", nunca "search".
 - "escalate": SOLO si la persona pide explícitamente hablar con un humano/asesor; es un reclamo o problema puntual de SU cuenta (ej. "me cobraron mal", "un pasajero me trató mal", "perdí un objeto"); reporta una emergencia o situación de seguridad real; o la pregunta no tiene ninguna relación con ser conductor ni con trámites/vehículos. No escales solo porque la pregunta venga informal o mal escrita -- primero intenta "answer" o "search".
 
 Responde SOLO un objeto JSON con estas claves:
@@ -4201,7 +4299,7 @@ async function searchWebAnswer(originalQuestion: string, searchQuery: string): P
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         tools: [{ type: 'web_search_preview' }],
-        input: `Eres el asistente de soporte de conductores de Movi (app de viajes/domicilios en Colombia), respondiendo por WhatsApp. Un conductor preguntó: "${originalQuestion}"\n\nBusca en internet lo necesario para responderle con información real y actualizada de Colombia. Responde en español de Colombia, corto y directo (máximo 5-6 líneas, es un chat de WhatsApp, no un artículo). No repitas la pregunta ni digas "según mi búsqueda", solo da la respuesta como si ya la supieras. IMPORTANTE: texto plano sin formato Markdown -- nunca uses enlaces tipo [texto](url) ni asteriscos de encabezado; si necesitas citar una fuente, solo el nombre (ej. "según la Policía Nacional"), nunca la URL completa.\n\nConsulta sugerida: ${searchQuery}`,
+        input: `Eres el asistente de soporte de conductores de Movi (app de viajes/domicilios en Colombia), respondiendo por WhatsApp. Un conductor preguntó: "${originalQuestion}"\n\nBusca en internet lo necesario para responderle con información real y actualizada de Colombia.\n\nREGLA ABSOLUTA: esta búsqueda es SOLO para temas generales de Colombia (trámites, SOAT, tecnomecánica, RUNT, normas de tránsito, precios de mercado). NUNCA respondas nada sobre la empresa Movi, su app, dónde descargarla, en qué ciudades opera, sus precios, comisiones o condiciones: en internet hay otras empresas con nombres parecidos ("Movi", "MoviSur", etc.) y confundirlas hace que le demos información FALSA a un conductor real. Si la pregunta resulta ser sobre Movi, responde exactamente y solo: "NO_APLICA". Responde en español de Colombia, corto y directo (máximo 5-6 líneas, es un chat de WhatsApp, no un artículo). No repitas la pregunta ni digas "según mi búsqueda", solo da la respuesta como si ya la supieras. IMPORTANTE: texto plano sin formato Markdown -- nunca uses enlaces tipo [texto](url) ni asteriscos de encabezado; si necesitas citar una fuente, solo el nombre (ej. "según la Policía Nacional"), nunca la URL completa.\n\nConsulta sugerida: ${searchQuery}`,
       }),
     });
     if (!r.ok) { console.error('[WA-Support] searchWebAnswer error', r.status, await r.text()); return null; }
@@ -4222,6 +4320,10 @@ async function searchWebAnswer(originalQuestion: string, searchQuery: string): P
       }
     }
     if (!text) return null;
+    // El modelo detectó que la pregunta era sobre Movi -- devolver null hace que
+    // el caller escale a un humano en vez de soltar una respuesta inventada sobre
+    // otra empresa con nombre parecido.
+    if (/NO_APLICA/i.test(text)) return null;
     // Red de seguridad por si el modelo igual mete un link Markdown -- en
     // WhatsApp se ve como "[texto](url?utm_source=openai)" literal, feo y
     // roto (no es clickeable). Se deja solo el texto de la cita.
@@ -4229,11 +4331,27 @@ async function searchWebAnswer(originalQuestion: string, searchQuery: string): P
   } catch (e) { console.error('[WA-Support] searchWebAnswer error:', e); return null; }
 }
 
+// BUG REAL 2026-09-05: las 6 escaladas que hubo entre el 29 de agosto y el 4 de
+// septiembre NUNCA le llegaron al asesor. El aviso se mandaba con sendText(), o sea
+// texto libre, y Meta solo entrega texto libre si el destinatario le escribió al bot
+// en las últimas 24h -- responde 200 OK igual y lo descarta en silencio. Se cruzaron
+// las fechas: en las 6 la ventana estaba cerrada. Seis conductores quedaron esperando
+// a un asesor que jamás supo que existían.
+// Ahora se manda primero por la plantilla aprobada trip_error_alert (no depende de la
+// ventana de 24h, ver movi_trip_error_alerts) y solo se cae al texto libre si la
+// plantilla falla. El pedido del usuario es recibirlas a cualquier hora.
 async function escalateSupportConversation(phone: string, name: string, lastMessage: string): Promise<void> {
+  const detalle = `${name} (${phone}): "${lastMessage}" — responde desde la bandeja de WhatsApp Business del número Movi Conductores.`;
   await Promise.all([
     upsertSupportSession(phone, { escalated: true, escalated_at: new Date().toISOString() }),
     sendSupportText(phone, 'Ya te conecto con un asesor de Movi 🙌 En un momento te escribe por acá mismo.'),
-    sendText(SUPPORT_PHONE, `🧑‍✈️ *Movi Conductores* — conversación escalada\n\n${name} (${phone})\n"${lastMessage}"\n\nResponde directo desde la bandeja de entrada de WhatsApp Business (número Movi Conductores).`),
+    (async () => {
+      const tpl = await sendTemplate(toE164(SUPPORT_PHONE), 'trip_error_alert', 'es_CO',
+        ['🧑‍✈️ Conductor espera respuesta', detalle], ['contexto', 'detalle']);
+      if (!tpl.ok) {
+        await sendText(SUPPORT_PHONE, `🧑‍✈️ *Movi Conductores* — conversación escalada\n\n${name} (${phone})\n"${lastMessage}"\n\nResponde directo desde la bandeja de entrada de WhatsApp Business (número Movi Conductores).`);
+      }
+    })(),
   ]);
 }
 
@@ -4280,6 +4398,18 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
       `Escribe tu pregunta y te respondo.`;
     await sendSupportText(phone, menuText);
     await logSupportInteraction(phone, msgText, 'greeting_menu', menuText);
+    return;
+  }
+
+  // Descarga de la app -- respuesta fija ANTES de la IA. Era la pregunta que más
+  // se repetía (4 de 16 conductores) y la que peor se respondía: el bot decía
+  // "búscala en Play Store", el conductor contestaba "no la encuentro", y la
+  // búsqueda web terminaba inventándose una app que no existe. Con el link fijo
+  // no depende de que ningún modelo acierte.
+  if (isAppDownloadInquiry(msgText)) {
+    const reply = appDownloadReply();
+    await sendSupportText(phone, reply);
+    await logSupportInteraction(phone, msgText, 'app_download', reply);
     return;
   }
 
