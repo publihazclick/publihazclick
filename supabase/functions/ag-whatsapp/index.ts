@@ -4340,6 +4340,81 @@ async function searchWebAnswer(originalQuestion: string, searchQuery: string): P
 // Ahora se manda primero por la plantilla aprobada trip_error_alert (no depende de la
 // ventana de 24h, ver movi_trip_error_alerts) y solo se cae al texto libre si la
 // plantilla falla. El pedido del usuario es recibirlas a cualquier hora.
+/**
+ * Aviso al admin cuando alguien INICIA una conversación -- pedido explícito del
+ * usuario 2026-09-05: "quiero ir de inmediato a contestar en el chat de
+ * publihazclick".
+ *
+ * Una vez por conversación, no por mensaje: en la última semana entraron 421
+ * mensajes de pasajeros y 54 de conductores, y un aviso por cada uno se vuelve
+ * ruido que se deja de mirar a los dos días. El corte de 24h lo lleva la base
+ * (ag_wa_claim_conversation_alert, migración 267) con un reclamo atómico, porque
+ * dos mensajes seguidos entran como dos invocaciones simultáneas de esta función.
+ *
+ * Va por la plantilla aprobada, no por texto libre: el admin puede llevar días sin
+ * escribirle al bot y fuera de la ventana de 24h Meta descarta el texto en silencio
+ * -- que es justo lo que dejó 6 escaladas sin llegar. El usuario lo quiere "a
+ * cualquier hora".
+ *
+ * Best-effort de punta a punta: si algo falla acá, el conductor o pasajero igual
+ * recibe su respuesta normal. Nunca debe tumbar la conversación.
+ */
+async function notifyAdminNewConversation(
+  phone: string,
+  role: 'conductor' | 'pasajero',
+  waProfileName: string,
+  firstMessage: string,
+): Promise<void> {
+  try {
+    const { data: claimed, error } = await db().rpc('ag_wa_claim_conversation_alert', {
+      p_phone: phone, p_role: role,
+    });
+    if (error) { console.error('[WA] claim conversation alert:', error); return; }
+    if (!claimed) return; // ya se avisó por esta conversación en las últimas 24h
+
+    const { data: info } = await db().rpc('ag_wa_contact_summary', { p_phone: phone });
+    const c = (info ?? {}) as Record<string, unknown>;
+
+    const nombre = (c.nombre as string) || cleanDisplayName(waProfileName) || 'Sin nombre registrado';
+    const partes: string[] = [nombre, phone];
+
+    if (c.encontrado) {
+      if (c.es_conductor) {
+        const estado = c.estado === 'quick' ? 'sin documentos aún'
+          : c.estado === 'approved' ? 'aprobado'
+          : c.estado === 'pending_docs' ? 'le faltan documentos'
+          : String(c.estado ?? 'estado desconocido');
+        partes.push(`conductor ${estado}`);
+        if (c.vehiculo) partes.push(`${c.vehiculo}${c.placa ? ` ${c.placa}` : ''}`);
+      } else {
+        const v = Number(c.viajes ?? 0);
+        partes.push(v > 0 ? `pasajero con ${v} viaje${v === 1 ? '' : 's'}` : 'pasajero sin viajes aún');
+      }
+      if (c.ciudad) partes.push(String(c.ciudad));
+    } else {
+      partes.push('NO está registrado en Movi');
+    }
+
+    const texto = (firstMessage ?? '').trim();
+    if (texto) partes.push(`dijo: "${texto.slice(0, 120)}"`);
+    partes.push('respóndele en publihazclick.com/admin/anda-gana');
+
+    const contexto = role === 'conductor'
+      ? '💬 Chat nuevo — soporte a CONDUCTORES'
+      : '💬 Chat nuevo — soporte a PASAJEROS';
+
+    // tplParam() aplana los saltos de línea (Meta rechaza con 400 las variables que
+    // los traigan), así que el detalle se arma con separadores en una sola línea.
+    const tpl = await sendTemplate(toE164(SUPPORT_PHONE), 'trip_error_alert', 'es_CO',
+      [contexto, partes.join(' · ')], ['contexto', 'detalle']);
+    if (!tpl.ok) {
+      await sendText(SUPPORT_PHONE, `${contexto}\n\n${partes.join('\n')}`);
+    }
+  } catch (e) {
+    console.error('[WA] notifyAdminNewConversation error:', e);
+  }
+}
+
 async function escalateSupportConversation(phone: string, name: string, lastMessage: string): Promise<void> {
   const detalle = `${name} (${phone}): "${lastMessage}" — responde desde la bandeja de WhatsApp Business del número Movi Conductores.`;
   await Promise.all([
@@ -4834,6 +4909,19 @@ serve(async (req) => {
         }
 
         logWaMessage(fromPhone, isSupportNumber ? 'conductor' : 'pasajero', 'in', msgText, msgType);
+
+        // Aviso al admin si esta persona está iniciando conversación. Fire-and-forget
+        // a propósito: no puede agregarle ni un milisegundo a la respuesta que espera
+        // el conductor o el pasajero. Se excluye el propio número del admin -- no tiene
+        // sentido avisarle de sí mismo cuando prueba el bot.
+        if (toE164(fromPhone) !== toE164(SUPPORT_PHONE)) {
+          notifyAdminNewConversation(
+            fromPhone,
+            isSupportNumber ? 'conductor' : 'pasajero',
+            name,
+            msgType === 'text' ? msgText : `[${msgType}]`,
+          ).catch(() => {});
+        }
 
         // Pedido de codigo de verificacion por WhatsApp -- corre ANTES del bot normal
         // (viajes o soporte) y corta el procesamiento si consumio el mensaje. Si el mensaje
