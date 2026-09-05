@@ -1912,6 +1912,24 @@ async function triggerWaSos(phone: string, contactName: string, session: Record<
  *
  * Devuelve null cuando no hay con qué calcular; el llamador decide qué decir entonces.
  */
+/**
+ * Distancia y tiempo estimado desde donde va el conductor hasta el punto de recogida.
+ *
+ * Línea recta a 25 km/h (velocidad urbana real de Cúcuta con semáforos), NO ruta de Mapbox:
+ * esto corre tanto en el camino caliente de un mensaje entrante como en el cron que sale
+ * cada 4 minutos para cada viaje activo. Una llamada externa ahí sería cara y lenta, y para
+ * "¿cuánto falta?" un número aproximado y honesto vale más que uno exacto que tarda.
+ *
+ * Devuelve null cuando ya está prácticamente encima: dar minutos ahí suena falso.
+ */
+function etaAlPunto(dLat: number, dLng: number, oLat: number, oLng: number): { km: number; min: number; texto: string } | null {
+  const km = haversineKm(dLat, dLng, oLat, oLng);
+  if (!isFinite(km) || km < 0.3) return null;
+  const min = Math.max(1, Math.round(km / 25 * 60));
+  const dist = km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+  return { km, min, texto: `a ${dist} — unos ${min} min` };
+}
+
 async function driverStatusLine(tripId: string): Promise<{ texto: string; lat: number; lng: number } | null> {
   try {
     const supabase = db();
@@ -1933,13 +1951,12 @@ async function driverStatusLine(tripId: string): Promise<{ texto: string; lat: n
     const oLng = trip.origin_lng as number | null;
     if (oLat == null || oLng == null) return null;
 
-    const km = haversineKm(loc.lat as number, loc.lng as number, oLat, oLng);
-    // Muy cerca: dar minutos exactos suena falso, es mejor decir que ya está llegando.
-    if (km < 0.3) return { texto: 'Tu conductor ya está llegando al punto de recogida 📍', lat: loc.lat as number, lng: loc.lng as number };
-
-    const min = Math.max(1, Math.round(km / 25 * 60));
+    const eta = etaAlPunto(loc.lat as number, loc.lng as number, oLat, oLng);
+    // Sin ETA significa que ya está prácticamente encima (ver etaAlPunto).
     return {
-      texto: `Tu conductor está a *${km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km'}* de ti — unos *${min} min* 🚗`,
+      texto: eta
+        ? `Tu conductor está *${eta.texto}* 🚗`
+        : 'Tu conductor ya está llegando al punto de recogida 📍',
       lat: loc.lat as number,
       lng: loc.lng as number,
     };
@@ -3981,11 +3998,26 @@ Cuando quieras intentar de nuevo, solo escribe *hola* y lo pedimos en un minuto.
 
     const delivery = isDeliveryService(payload.service_type as string | undefined);
     const forNameLive = travelerLabelFromForOther(payload.for_other);
-    const label = stage === 'heading_to_pickup'
+    let label = stage === 'heading_to_pickup'
       ? (delivery ? 'Va en camino a recoger tu paquete' : forNameLive ? `Va en camino a recoger a ${forNameLive}` : 'Va en camino a recogerte')
       : stage === 'arrived_at_pickup'
         ? 'Llegó al punto de recogida'
         : 'Va en camino';
+
+    // "¿Cuánto falta?" es la pregunta que el mapa solo NO responde -- el pasajero ve un
+    // punto pero no sabe si son 2 minutos o 15. El ETA va dentro de la etiqueta del mapa
+    // en vez de en un mensaje aparte: aparece justo donde la persona está mirando y no
+    // gasta un mensaje más. Solo mientras viene en camino; si ya llegó, sobra.
+    // Las coordenadas del punto de recogida vienen en el payload del cron (migración 270)
+    // para no consultar la base una vez por pasajero cada 4 minutos.
+    if (stage === 'heading_to_pickup' || !stage) {
+      const oLat = payload.origin_lat as number | null;
+      const oLng = payload.origin_lng as number | null;
+      if (oLat != null && oLng != null) {
+        const eta = etaAlPunto(lat, lng, oLat, oLng);
+        if (eta) label += ` · llega en ~${eta.min} min`;
+      }
+    }
 
     // Mensaje de ubicación nativo de WhatsApp -- se ve como un mapa real
     // dentro del chat, no como un link de texto que hay que tocar y esperar
