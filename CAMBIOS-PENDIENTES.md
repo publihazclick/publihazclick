@@ -13,6 +13,15 @@
 
 ## Pendiente de subir
 
+_(vacío — todo subido en el push del 2026-09-05)_
+
+---
+
+## Subido el 2026-09-05 (1 solo build)
+
+Ocho commits en un push. Lo único que de verdad necesitaba build era el techo de
+contraofertas en la app; el resto ya estaba corriendo en Supabase y viajó gratis.
+
 ### La ubicación en vivo por WhatsApp llevaba semanas sin llegar
 - **Qué**: el cron que le manda al pasajero la posición del conductor cada 4 minutos
   reventaba en cada corrida. Corregido (era `::text` donde va `::jsonb`).
