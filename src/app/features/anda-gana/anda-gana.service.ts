@@ -167,7 +167,11 @@ export class AndaGanaService {
       fetch(`${environment.andaGana.functionsBaseUrl}/ag-whatsapp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: 'admin', event: 'error_alert', data: { context, message: err.message } }),
+        // kind:'error' es lo que separa un fallo real de sistema de los eventos
+        // informativos que comparten este mismo canal (eventos en vivo del viaje,
+        // monitor de capacidad, reportes de push). Solo estos cuentan como
+        // type='trip_error' y solo estos alimentan la señal 3 de ag_health_check.
+        body: JSON.stringify({ to: 'admin', event: 'error_alert', data: { context, message: err.message, kind: 'error' } }),
       }).catch(() => {});
     }
   }

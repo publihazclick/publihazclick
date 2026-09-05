@@ -240,7 +240,29 @@ async function sendText(to: string, text: string): Promise<{ ok: boolean; status
  * paramNames opcional: si viene, se manda parameter_name en cada variable (plantillas NAMED);
  * si no viene, se mandan por posicion como siempre (plantillas POSITIONAL).
  */
+/**
+ * BUG REAL 2026-09-05: Meta rechaza con 400 cualquier variable de plantilla que traiga
+ * saltos de linea, tabulaciones o 5+ espacios seguidos. Es la causa de que los avisos
+ * largos al admin (el reporte diario "Conductores sin notificaciones", que lista un
+ * conductor por linea) SIEMPRE cayeran al texto libre de respaldo -- y el texto libre
+ * solo se entrega si la ventana de servicio de 24h esta abierta, asi que ese reporte
+ * podia no llegar nunca. Se ve claro en ag_wa_message_log del 2026-09-05: el unico
+ * mensaje del dia con saltos de linea es el unico marcado [NO ENTREGADO 400].
+ * Se aplana aca, dentro de sendTemplate, para que valga para TODAS las plantillas.
+ * El respaldo en texto libre conserva el formato original (ahi si se permiten saltos).
+ */
+function tplParam(text: string): string {
+  const plano = (text ?? '')
+    .replace(/[\r\n]+/g, ' · ')
+    .replace(/\t/g, ' ')
+    .replace(/ {4,}/g, '   ')
+    .trim();
+  // Meta limita cada variable de cuerpo a 1024 caracteres; se corta antes por seguridad.
+  return plano.length > 900 ? plano.slice(0, 897) + '...' : plano;
+}
+
 async function sendTemplate(to: string, templateName: string, langCode: string, bodyParams: string[], paramNames?: string[]): Promise<{ ok: boolean; status?: number; body?: string }> {
+  bodyParams = bodyParams.map(tplParam);
   try {
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
@@ -4418,21 +4440,35 @@ serve(async (req) => {
     // para no depender de la ventana de 24h de conversacion -- si la plantilla
     // todavia no fue aprobada por Meta (o falla por cualquier motivo), cae de
     // vuelta al texto libre de siempre como respaldo.
+    // FALSA ALARMA REAL 2026-09-05: este canal dejo de ser solo de errores. Desde la
+    // migracion 249 tambien trae los eventos normales en vivo (nueva solicitud, oferta,
+    // aceptada, conductor en camino...), los avisos del propio monitor de capacidad, los
+    // reportes de push y el aviso de conductores sin notificaciones. TODOS se guardaban
+    // como type='trip_error', y la señal 3 de ag_health_check cuenta exactamente esas
+    // filas: >=5 en 15 min dispara "revisa Sentry". Resultado: un viaje normal con dos
+    // ofertas (1 solicitud + 2 ofertas + aceptada + en camino = 5 filas) disparo la
+    // alarma sin que hubiera pasado nada malo -- y peor, un pico de errores de verdad
+    // habria quedado indistinguible del trafico normal.
+    // Ahora se distingue con data.kind: 'error' lo manda unicamente reportTripError()
+    // del frontend; todo lo demas es informativo y se guarda como type='admin_info'.
     if (event === 'error_alert') {
       const contexto = msgData.context ?? 'desconocido';
       const detalle  = msgData.message ?? '';
+      const esError  = msgData.kind === 'error';
       const tplResult = await sendTemplate(toE164(targetPhone), 'trip_error_alert', 'es_CO', [contexto, detalle], ['contexto', 'detalle']);
       let waResult: WaResult = tplResult;
       let txtResult: WaResult | null = null;
       if (!waResult.ok) {
-        txtResult = await sendText(toE164(targetPhone), `🔴 *Movi* — Error en el flujo de viaje\n\n📍 Contexto: ${contexto}\n⚠️ ${detalle}`);
+        txtResult = await sendText(toE164(targetPhone), esError
+          ? `🔴 *Movi* — Error en el flujo de viaje\n\n📍 Contexto: ${contexto}\n⚠️ ${detalle}`
+          : `🔔 *Movi* — ${contexto}\n\n${detalle}`);
         waResult = txtResult;
       }
       try {
         const supabase = db();
         await supabase.from('ag_admin_notifications').insert({
-          type:  'trip_error',
-          title: `Error en flujo de viaje: ${contexto}`,
+          type:  esError ? 'trip_error' : 'admin_info',
+          title: esError ? `Error en flujo de viaje: ${contexto}` : contexto,
           body:  detalle,
         });
       } catch (e) { console.error('[WA] error_alert notification insert error:', e); }
