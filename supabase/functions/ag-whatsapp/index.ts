@@ -298,6 +298,70 @@ async function sendTemplate(to: string, templateName: string, langCode: string, 
 
 type WaResult = { ok: boolean; status?: number; body?: string };
 
+/**
+ * Aviso al admin, con el título REAL de lo que pasó.
+ *
+ * BUG DE FONDO (2026-09-05): todos los avisos al admin salían por la plantilla
+ * `trip_error_alert`, cuyo ENCABEZADO es fijo y dice literalmente
+ * "Movi - Error en el flujo de viaje". Se revisó el histórico: 101 mensajes salieron
+ * por esa plantilla y **solo 7 eran errores de verdad**. Los 40 más frecuentes eran
+ * registros nuevos. O sea que el admin recibía cada buena noticia rotulada como falla,
+ * y cuando llegaba una falla real no se distinguía de las demás -- exactamente el
+ * problema que llevó a ignorar la alerta de capacidad.
+ *
+ * `movi_aviso_admin` tiene el título como VARIABLE de encabezado, así que cada aviso
+ * llega con su nombre real ("Nuevo registro", "Chat nuevo", "Monitoreo de capacidad")
+ * y eso es lo que se ve en la notificación del celular sin abrir el chat.
+ *
+ * Cadena de respaldo, en orden: plantilla nueva → plantilla vieja (fea pero llega,
+ * mientras Meta aprueba la nueva) → texto libre (solo entrega dentro de la ventana de
+ * 24h, por eso va de último). No hace falta tocar nada cuando la nueva se apruebe: el
+ * primer intento deja de fallar solo.
+ */
+async function sendAdminTemplate(to: string, titulo: string, detalle: string): Promise<WaResult> {
+  try {
+    const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        ...recipientField(to),
+        type: 'template',
+        template: {
+          name: 'movi_aviso_admin',
+          language: { code: 'es_CO' },
+          components: [
+            { type: 'header', parameters: [{ type: 'text', parameter_name: 'titulo', text: titulo }] },
+            { type: 'body',   parameters: [{ type: 'text', parameter_name: 'detalle', text: detalle }] },
+          ],
+        },
+      }),
+    });
+    const bodyText = await res.text();
+    if (!res.ok) console.error('[WA] sendAdminTemplate Meta error:', res.status, bodyText);
+    const marca = res.ok ? '' : `[NO ENTREGADO ${res.status}] `;
+    logWaMessage(to, 'pasajero', 'out', `${marca}[plantilla movi_aviso_admin] ${titulo} | ${detalle}`, 'template');
+    return { ok: res.ok, status: res.status, body: bodyText };
+  } catch (e) {
+    console.error('[WA] sendAdminTemplate fetch error:', e);
+    return { ok: false, body: String(e) };
+  }
+}
+
+async function sendAdminAlert(to: string, titulo: string, detalle: string, textoRespaldo?: string): Promise<WaResult> {
+  // El encabezado de Meta no admite saltos de línea y es corto; el cuerpo sí aguanta más.
+  const t = tplParam(titulo).slice(0, 55) || 'Aviso';
+  const d = tplParam(detalle) || '(sin detalle)';
+
+  const nueva = await sendAdminTemplate(toE164(to), t, d);
+  if (nueva.ok) return nueva;
+
+  const vieja = await sendTemplate(toE164(to), 'trip_error_alert', 'es_CO', [t, d], ['contexto', 'detalle']);
+  if (vieja.ok) return vieja;
+
+  return await sendText(toE164(to), textoRespaldo ?? `*${titulo}*\n\n${detalle}`);
+}
+
 // ─── Marcar leído + mostrar "escribiendo..." mientras el bot procesa ─────────
 // Antes las respuestas llegaban instantáneas incluso después de geocodificar
 // una dirección o llamar a OpenAI (varios segundos), lo que se siente robótico
@@ -4337,9 +4401,9 @@ async function searchWebAnswer(originalQuestion: string, searchQuery: string): P
 // en las últimas 24h -- responde 200 OK igual y lo descarta en silencio. Se cruzaron
 // las fechas: en las 6 la ventana estaba cerrada. Seis conductores quedaron esperando
 // a un asesor que jamás supo que existían.
-// Ahora se manda primero por la plantilla aprobada trip_error_alert (no depende de la
-// ventana de 24h, ver movi_trip_error_alerts) y solo se cae al texto libre si la
-// plantilla falla. El pedido del usuario es recibirlas a cualquier hora.
+// Ahora va por sendAdminAlert(), que arranca con una plantilla aprobada (no depende
+// de la ventana de 24h, ver movi_trip_error_alerts) y solo cae al texto libre si
+// ninguna plantilla pasa. El pedido del usuario es recibirlas a cualquier hora.
 /**
  * Aviso al admin cuando alguien INICIA una conversación -- pedido explícito del
  * usuario 2026-09-05: "quiero ir de inmediato a contestar en el chat de
@@ -4405,11 +4469,8 @@ async function notifyAdminNewConversation(
 
     // tplParam() aplana los saltos de línea (Meta rechaza con 400 las variables que
     // los traigan), así que el detalle se arma con separadores en una sola línea.
-    const tpl = await sendTemplate(toE164(SUPPORT_PHONE), 'trip_error_alert', 'es_CO',
-      [contexto, partes.join(' · ')], ['contexto', 'detalle']);
-    if (!tpl.ok) {
-      await sendText(SUPPORT_PHONE, `${contexto}\n\n${partes.join('\n')}`);
-    }
+    await sendAdminAlert(SUPPORT_PHONE, contexto, partes.join(' · '),
+      `${contexto}\n\n${partes.join('\n')}`);
   } catch (e) {
     console.error('[WA] notifyAdminNewConversation error:', e);
   }
@@ -4421,11 +4482,8 @@ async function escalateSupportConversation(phone: string, name: string, lastMess
     upsertSupportSession(phone, { escalated: true, escalated_at: new Date().toISOString() }),
     sendSupportText(phone, 'Ya te conecto con un asesor de Movi 🙌 En un momento te escribe por acá mismo.'),
     (async () => {
-      const tpl = await sendTemplate(toE164(SUPPORT_PHONE), 'trip_error_alert', 'es_CO',
-        ['🧑‍✈️ Conductor espera respuesta', detalle], ['contexto', 'detalle']);
-      if (!tpl.ok) {
-        await sendText(SUPPORT_PHONE, `🧑‍✈️ *Movi Conductores* — conversación escalada\n\n${name} (${phone})\n"${lastMessage}"\n\nResponde directo desde la bandeja de entrada de WhatsApp Business (número Movi Conductores).`);
-      }
+      await sendAdminAlert(SUPPORT_PHONE, '🧑‍✈️ Un conductor espera respuesta', detalle,
+        `🧑‍✈️ *Movi Conductores* — conversación escalada\n\n${name} (${phone})\n"${lastMessage}"\n\nResponde directo desde la bandeja de entrada de WhatsApp Business (número Movi Conductores).`);
     })(),
   ]);
 }
@@ -4660,15 +4718,14 @@ serve(async (req) => {
       const contexto = msgData.context ?? 'desconocido';
       const detalle  = msgData.message ?? '';
       const esError  = msgData.kind === 'error';
-      const tplResult = await sendTemplate(toE164(targetPhone), 'trip_error_alert', 'es_CO', [contexto, detalle], ['contexto', 'detalle']);
-      let waResult: WaResult = tplResult;
-      let txtResult: WaResult | null = null;
-      if (!waResult.ok) {
-        txtResult = await sendText(toE164(targetPhone), esError
-          ? `🔴 *Movi* — Error en el flujo de viaje\n\n📍 Contexto: ${contexto}\n⚠️ ${detalle}`
-          : `🔔 *Movi* — ${contexto}\n\n${detalle}`);
-        waResult = txtResult;
-      }
+      // El título es lo que se ve en la notificación del celular sin abrir el chat,
+      // así que tiene que decir QUÉ pasó. Solo los fallos reales llevan la marca de
+      // error; todo lo demás llega con su nombre propio.
+      const titulo = esError ? `⚠️ Error en ${contexto}` : contexto;
+      const tplResult = await sendAdminAlert(targetPhone, titulo, detalle, esError
+        ? `🔴 *Movi* — Error en el flujo de viaje\n\n📍 Contexto: ${contexto}\n⚠️ ${detalle}`
+        : `🔔 *Movi* — ${contexto}\n\n${detalle}`);
+      const waResult: WaResult = tplResult;
       try {
         const supabase = db();
         await supabase.from('ag_admin_notifications').insert({
@@ -4685,8 +4742,11 @@ serve(async (req) => {
       if (urlDbg.searchParams.get('debug') === '1') {
         return new Response(JSON.stringify({
           sent: waResult.ok,
-          plantilla: { ok: tplResult.ok, status: tplResult.status, body: (tplResult.body ?? '').slice(0, 500) },
-          texto: txtResult ? { ok: txtResult.ok, status: txtResult.status, body: (txtResult.body ?? '').slice(0, 500) } : 'no hizo falta',
+          titulo,
+          // sendAdminAlert() intenta en orden: movi_aviso_admin (encabezado con el
+          // título real) -> trip_error_alert (dice "Error" pero llega) -> texto libre.
+          // Este es el resultado del intento que finalmente respondió.
+          ultimo_intento: { ok: waResult.ok, status: waResult.status, body: (waResult.body ?? '').slice(0, 500) },
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       return new Response(JSON.stringify({ sent: waResult.ok }), {
@@ -4703,10 +4763,10 @@ serve(async (req) => {
     if (event === 'new_registration') {
       const contexto = msgData.context ?? 'Nuevo registro en Movi';
       const detalle  = msgData.message ?? '';
-      let waResult = await sendTemplate(toE164(targetPhone), 'trip_error_alert', 'es_CO', [contexto, detalle], ['contexto', 'detalle']);
-      if (!waResult.ok) {
-        waResult = await sendText(toE164(targetPhone), `🆕 *Movi* — ${contexto}\n\n${detalle}`);
-      }
+      // Era el aviso MÁS frecuente al admin (40 de 101) y llegaba con el encabezado
+      // "Error en el flujo de viaje". Un registro nuevo es justo lo contrario.
+      const waResult = await sendAdminAlert(targetPhone, contexto, detalle,
+        `🆕 *Movi* — ${contexto}\n\n${detalle}`);
       try {
         const supabase = db();
         await supabase.from('ag_admin_notifications').insert({
