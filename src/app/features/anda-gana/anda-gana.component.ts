@@ -408,6 +408,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           </div>
 
+          <!-- Se cumplieron los 4 minutos: decide el conductor, nunca el sistema.
+               Antes el contador llegaba a 0 y ahí se quedaba congelado sin que
+               pasara nada (caso real 2026-09-05: el viaje se quedó a la deriva
+               hasta que un cron ajeno lo mató al minuto ~14 sin avisarle a nadie). -->
+          @if (driverArrivalTimer()! <= 0) {
+            <div style="background:rgba(251,191,36,0.10);border:1px solid rgba(251,191,36,0.35);border-radius:14px;padding:12px 14px">
+              <p style="color:#fbbf24;font-size:13px;font-weight:800;margin:0 0 10px;line-height:1.35">
+                Se cumplió el tiempo de espera. ¿Lo sigues esperando?
+              </p>
+              <button (click)="driverKeepWaiting()" [disabled]="extendingWait()"
+                style="width:100%;padding:12px;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:900;color:#fff"
+                [style.opacity]="extendingWait() ? '0.6' : '1'">
+                <span class="material-symbols-outlined" style="font-size:19px;font-variation-settings:'FILL' 1">more_time</span>
+                {{ extendingWait() ? 'Un momento…' : 'Sigo esperando — 4 minutos más' }}
+              </button>
+            </div>
+          }
+
           <!-- Botón Pasajero a Bordo -->
           <button (click)="driverPassengerBoarded()"
             style="width:100%;padding:16px;border-radius:16px;border:none;cursor:pointer;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:900;color:#fff;letter-spacing:0.01em;box-shadow:0 6px 24px rgba(0,229,255,0.3)">
@@ -10645,6 +10663,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // 2b. Modal conductor esperando al pasajero en pickup
   driverArrivalTrip           = signal<any | null>(null);
   driverArrivalTimer          = signal<number | null>(null);
+  extendingWait               = signal(false);
   private _driverArrivalTimerInterval: any = null;
   // 3. Recibo/resumen del viaje al finalizar
   tripReceiptModal       = signal(false);
@@ -16157,6 +16176,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       }
     }
 
+    // Mientras espera parqueado en el punto de recogida, el GPS tiene que seguir
+    // reportando aunque no se mueva -- si no, el servidor lo da por desconectado y
+    // le cancela el viaje (ver _setBgStationaryMode).
+    this._setBgStationaryMode(stage === 'arrived_at_pickup').catch(() => {});
+
     // Conductor llegó al punto de recogida: cerrar fullscreen + abrir modal de espera
     if (stage === 'arrived_at_pickup') {
       this._speak('Llegaste al punto de recogida. Esperando al pasajero.');
@@ -17814,15 +17838,51 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   private _bgWatcherId: string | null = null;
   private _bgLastCheck = 0;
   private _bgNotifiedIds = new Set<string>();
+  private _bgDriverId: string | null = null;
+  private _bgStationaryMode = false;
 
-  private async _startBackgroundTracking(driverId: string): Promise<void> {
+  /**
+   * BUG REAL 2026-09-05: a un conductor que llegó al punto de recogida y esperaba
+   * parqueado se le canceló el viaje "porque perdió conexión". No la había perdido
+   * -- seguía `is_online = true` -- simplemente había dejado de reportar GPS.
+   *
+   * Por qué: el watcher de BackgroundGeolocation solo emite cuando el conductor se
+   * MUEVE más de `distanceFilter` metros, y el latido que compensaba eso
+   * (`_locationHeartbeatId`) es un `setInterval` del WebView, que Android congela
+   * cuando la app pasa a segundo plano -- exactamente lo que hace quien llega, se
+   * parquea y se guarda el celular. Resultado: `ag_driver_locations.updated_at` se
+   * quedaba viejo y el servidor lo leía como "desconectado".
+   *
+   * Arreglo: mientras el conductor espera parqueado, el filtro de distancia baja a 0,
+   * así el plugin nativo entrega las posiciones que da el sistema aunque no se mueva
+   * -- sin depender de ningún temporizador de JavaScript. Se restaura el filtro normal
+   * apenas avanza de etapa: el gasto extra de batería dura solo esos minutos, no todo
+   * el día que el conductor pasa en línea.
+   */
+  private async _setBgStationaryMode(stationary: boolean): Promise<void> {
+    if (stationary === this._bgStationaryMode) return;
+    const driverId = this._bgDriverId;
+    if (!driverId) return;
+    if (!(window as any).Capacitor?.isNativePlatform?.()) return;
+    try {
+      await this._stopBackgroundTracking();
+      await this._startBackgroundTracking(driverId, stationary ? 0 : undefined);
+      // El estado se marca al final a propósito: si el reinicio del watcher falla,
+      // la bandera se queda como estaba y el próximo intento lo vuelve a probar en
+      // vez de creer que ya está en el modo correcto.
+      this._bgStationaryMode = stationary;
+    } catch (e) { console.warn('BG stationary mode:', e); }
+  }
+
+  private async _startBackgroundTracking(driverId: string, distanceFilterOverride?: number): Promise<void> {
     try {
       const w = window as any;
       const cap = w.Capacitor;
       if (!cap?.isNativePlatform?.()) return;
       const BackgroundGeolocation = cap.Plugins?.BackgroundGeolocation;
       if (!BackgroundGeolocation) return;
-      const distanceFilter = await this.agService.getDistanceFilter();
+      this._bgDriverId = driverId;
+      const distanceFilter = distanceFilterOverride ?? await this.agService.getDistanceFilter();
       this._bgWatcherId = await BackgroundGeolocation.addWatcher({
         backgroundMessage: 'Movi Conductor: hay solicitudes disponibles',
         backgroundTitle: '🚗 Movi — En línea',
@@ -17890,6 +17950,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       clearInterval(this._locationHeartbeatId);
       this._locationHeartbeatId = null;
     }
+    // El conductor sale de línea: el modo estacionario deja de aplicar, así que la
+    // próxima vez que entre en línea el watcher arranca con el filtro normal.
+    this._bgStationaryMode = false;
     this._stopBackgroundTracking();
   }
 
@@ -22381,6 +22444,27 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     if (this._driverArrivalTimerInterval) {
       clearInterval(this._driverArrivalTimerInterval);
       this._driverArrivalTimerInterval = null;
+    }
+  }
+
+  /** "Sigo esperando": el conductor decide seguir en el punto de recogida cuando se
+   * cumplen los 4 minutos. Reinicia el contador visual y, sobre todo, avisa al
+   * servidor (migración 265) para que el viaje no quede a la deriva ni lo cancele
+   * el cron de abandono mientras él sigue ahí de verdad. */
+  async driverKeepWaiting(): Promise<void> {
+    const trip = this.driverArrivalTrip();
+    const tripReqId = trip?.trip_request_id ?? trip?.ag_trip_requests?.id;
+    if (!tripReqId || this.extendingWait()) return;
+    this.extendingWait.set(true);
+    try {
+      const res = await this.agService.driverExtendWait(tripReqId);
+      if (!res.ok) { alert(res.error ?? 'No se pudo extender la espera.'); return; }
+      this._startDriverArrivalTimer();
+      // El aviso al pasajero ("tu conductor te sigue esperando") lo manda el propio
+      // RPC, no esta pantalla: `ag_get_my_active_trips` no le devuelve wa_phone al
+      // cliente, así que desde acá nunca habría salido en los viajes de WhatsApp.
+    } finally {
+      this.extendingWait.set(false);
     }
   }
 

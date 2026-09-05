@@ -2173,6 +2173,20 @@ export class AndaGanaService {
     return { ok: true };
   }
 
+  /** "Sigo esperando": reinicia los 4 minutos de espera en el punto de recogida
+   * (migración 265). Antes el contador llegaba a 0 y no pasaba nada -- el viaje
+   * quedaba a la deriva hasta que el cron de abandono lo mataba al minuto ~14 sin
+   * avisarle a nadie (caso real 2026-09-05). Ahora decide el conductor, y decir
+   * "sigo acá" también lo protege de esa cancelación por otros 10 minutos. */
+  async driverExtendWait(tripRequestId: string): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await this.supabase.rpc('ag_driver_extend_wait', {
+      p_trip_request_id: tripRequestId,
+    });
+    if (error) this.reportTripError('driverExtendWait', error, { critical: true, extra: { tripRequestId } });
+    if (error || !data?.ok) return { ok: false, error: data?.error ?? error?.message ?? 'No se pudo extender la espera' };
+    return { ok: true };
+  }
+
   async updateTripOfferedPrice(tripId: string, price: number): Promise<void> {
     await this.supabase.from('ag_trip_requests')
       .update({ offered_price: price, updated_at: new Date().toISOString() })
