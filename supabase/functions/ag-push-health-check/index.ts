@@ -232,12 +232,17 @@ serve(async (req: Request) => {
       .map((c) => `• ${c.nombre ?? 'sin nombre'} (${c.telefono}) — ${c.vehiculo}, ${c.ciudad ?? 'sin ciudad'}`)
       .join('\n');
     const extra = afectados.length > 10 ? `\n…y ${afectados.length - 10} más` : '';
-    const modo = dryRun ? ' [SIMULACIÓN — no se envió ningún SMS]' : '';
+    // Desde el 2026-09-05 el cron corre con dry_run:true por pedido del usuario ("ya no
+    // gastes más SMS"). El informe sigue llegando completo -- lo que se apagó es el envío,
+    // no la vigilancia. Decirlo así y no "SIMULACIÓN", que sonaba a prueba y no a decisión.
+    const modo = dryRun
+      ? '\n\n_Los SMS están apagados: revisa la lista y escríbele tú a quien valga la pena._'
+      : '';
 
     adminAvisado = await avisarAdmin(
       'Conductores sin notificaciones',
       `${afectados.length} de ${reporte.total} conductores no pueden recibir solicitudes porque no tienen `
-      + `notificaciones activas. Se avisó por SMS a ${enviadosOk}.${modo}\n\n${lista}${extra}`,
+      + `notificaciones activas.${dryRun ? '' : ` Se avisó por SMS a ${enviadosOk}.`}\n\n${lista}${extra}${modo}`,
     );
   }
 
