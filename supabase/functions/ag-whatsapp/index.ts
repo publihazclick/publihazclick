@@ -5211,6 +5211,23 @@ serve(async (req) => {
           }
         }
 
+        // Código de la publicación de Facebook que trajo a esta persona (migración 274).
+        // El link del post es wa.me/...?text=Hola%2C%20quiero%20un%20viaje%20%23g7, así que
+        // el primer mensaje llega con "#g7" al final.
+        //
+        // SE QUITA DEL TEXTO ANTES DE TODO LO DEMÁS, a propósito: si el "#g7" siguiera en el
+        // mensaje, el flujo de viaje intentaría interpretarlo como parte de una dirección y
+        // podría romper el pedido de la persona. Capturar el origen NUNCA debe cambiar lo que
+        // vive el pasajero.
+        const mOrigen = msgText.match(/#g([a-z0-9]{1,12})\b/i);
+        if (mOrigen) {
+          msgText = msgText.replace(/#g[a-z0-9]{1,12}\b/i, '').replace(/\s{2,}/g, ' ').trim();
+          // Fire-and-forget: solo se guarda el PRIMER código de cada teléfono (la RPC hace
+          // ON CONFLICT DO NOTHING), y si falla no debe afectar la conversación.
+          db().rpc('ag_registrar_origen', { p_phone: fromPhone, p_codigo: mOrigen[1] })
+            .then(({ error }: { error: unknown }) => { if (error) console.error('[WA] origen:', error); });
+        }
+
         logWaMessage(fromPhone, isSupportNumber ? 'conductor' : 'pasajero', 'in', msgText, msgType);
 
         // Aviso al admin si esta persona está iniciando conversación. Fire-and-forget
