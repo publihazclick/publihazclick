@@ -10120,6 +10120,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
       </div>
+      <!-- Respuestas rapidas: un toque en vez de escribir. El conductor va manejando, y
+           teclear al volante es lo que de verdad hay que evitar. -->
+      <div class="flex-shrink-0 flex gap-2 px-4 pt-2 overflow-x-auto" style="scrollbar-width:none">
+        @for (r of respuestasRapidas; track r) {
+          <button type="button" (click)="enviarRespuestaRapida(r)" [disabled]="chatSending()"
+            class="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold disabled:opacity-40"
+            style="background:rgba(37,99,235,0.18);border:1px solid rgba(59,130,246,0.35);color:#bfd4ff;white-space:nowrap">{{ r }}</button>
+        }
+      </div>
       <!-- Input -->
       <div class="flex-shrink-0 flex gap-2 px-4 py-3" style="border-top:1px solid rgba(255,255,255,0.08);padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
         <input [(ngModel)]="chatInput" name="chatInput"
@@ -20122,17 +20131,79 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   chatUnread = signal(0);
   private _chatChannel: RealtimeChannel | null = null;
 
+  /**
+   * Respuestas de un toque para el conductor.
+   *
+   * Son las cosas que de verdad se dicen en un viaje, en el orden en que suelen hacer falta.
+   * Escritas como se habla, sin mayusculas de formulario: al pasajero le llegan tal cual,
+   * y si viene de WhatsApp las recibe como un mensaje normal del conductor.
+   *
+   * Por que existen: el conductor va manejando. Teclear al volante es justo lo que hay que
+   * evitar, y el silencio -- que es lo que pasa hoy cuando escribir es incomodo -- es lo que
+   * hace que el pasajero cancele.
+   */
+  readonly respuestasRapidas = [
+    'Voy en camino',
+    'Estoy afuera',
+    'Dame 2 minutos',
+    'Ya llegué',
+    '¿Me confirmas la dirección?',
+    'Hay mucho trafico',
+  ];
+
+  async enviarRespuestaRapida(texto: string): Promise<void> {
+    const reqId = this.chatRequestId();
+    const yo = this.agProfile();
+    if (!reqId || !yo || this.chatSending()) return;
+    this.chatSending.set(true);
+    try {
+      await this.agService.sendChatMessage(reqId, yo.id, texto);
+      this._scrollChatToBottom('driver-chat-messages');
+    } finally {
+      this.chatSending.set(false);
+    }
+  }
+
+  /**
+   * Refresca el globo de "sin leer" preguntandole a la base, no a la memoria.
+   *
+   * Antes el contador era solo una señal del componente: cerrar la app lo ponia en cero
+   * aunque los mensajes siguieran sin leer, y si el conductor nunca tuvo la app abierta
+   * cuando llego el mensaje, el contador jamas llegaba a subir (solo lo incrementaba la
+   * suscripcion en tiempo real). Ahora el "sin leer" es un hecho guardado en la base
+   * (columna read_at, migracion 277).
+   */
+  async refrescarChatSinLeer(requestId: string | null | undefined): Promise<void> {
+    const yo = this.agProfile()?.id;
+    if (!requestId || !yo) return;
+    try {
+      this.chatUnread.set(await this.agService.contarChatSinLeer(requestId, yo));
+      this.cdr.markForCheck();
+    } catch { /* el globo no es motivo para romper la pantalla */ }
+  }
+
+  /** Al abrir el chat, lo que me escribio el otro queda leido. */
+  private async _marcarChatLeido(requestId: string): Promise<void> {
+    const yo = this.agProfile()?.id;
+    if (!yo) return;
+    try {
+      await this.agService.marcarChatLeido(requestId, yo);
+      this.chatUnread.set(0);
+      this.cdr.markForCheck();
+    } catch { /* si falla, el peor caso es que el globo siga mostrando el numero */ }
+  }
+
   async openTripChat(): Promise<void> {
     const offer = this.tripAccepted();
     if (!offer?.trip_request_id) return;
     const requestId = offer.trip_request_id;
     this.chatRequestId.set(requestId);
-    this.chatUnread.set(0);
 
     // Cargar mensajes existentes
     const messages = await this.agService.getChatMessages(requestId);
     this.chatMessages.set(messages);
     this.showChatModal.set(true);
+    await this._marcarChatLeido(requestId);
 
     // Suscribirse a nuevos mensajes
     this._unsubscribeChat();
@@ -20146,11 +20217,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const requestId = trip.ag_trip_requests?.id ?? trip.trip_request_id;
     if (!requestId) return;
     this.chatRequestId.set(requestId);
-    this.chatUnread.set(0);
 
     const messages = await this.agService.getChatMessages(requestId);
     this.chatMessages.set(messages);
     this.showChatModal.set(true);
+    await this._marcarChatLeido(requestId);
 
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(requestId, (msg) => {
@@ -20214,6 +20285,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (this.chatRequestId() === tripRequestId && this._chatChannel) return;
     this._unsubscribeChat();
     this.chatRequestId.set(tripRequestId);
+    // El globo arranca con lo que diga la BASE, no en cero. Este metodo corre al abrir la
+    // pantalla con un viaje activo: sin esto, los mensajes que llegaron con la app cerrada
+    // no aparecian por ningun lado, porque el contador solo subia desde la suscripcion en
+    // vivo -- que por definicion no estaba escuchando.
+    void this.refrescarChatSinLeer(tripRequestId);
     this._chatChannel = this.agService.subscribeToChatMessages(tripRequestId, (msg: any) => {
       if (msg.sender_ag_user_id !== this.agProfile()?.id) this._playChatSound();
       if (!this.showChatModal() || this.chatRequestId() !== tripRequestId) {
@@ -21451,9 +21527,11 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       ?? this.chatRequestId();
     if (!tripId) return;
     this.chatRequestId.set(tripId);
-    this.chatUnread.set(0);
     this.chatMessages.set([]);
     this.chatOpen.set(true);
+    // Marca de leido de verdad, en la base: poner el globo en cero a secas hacia que los
+    // mensajes se vieran como leidos hasta recargar, y entonces reaparecian.
+    void this._marcarChatLeido(tripId);
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
       if (msg.sender_ag_user_id !== this.agProfile()?.id) this._playChatSound();

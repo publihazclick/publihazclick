@@ -481,13 +481,180 @@ function toE164(phone: string): string {
 // mismo patrón que usa ag-masked-call/index.ts (la función que ya usa la app para
 // conductor->pasajero) -- ver ese archivo para el detalle de por qué este endpoint
 // especifico (no exige account_sid) y por qué no hay "sid" en la respuesta.
+// ─── Llamada al conductor: primero hay que saber a CUÁL ──────────────────────
+// Un pasajero de WhatsApp puede tener varios viajes vivos a la vez (botón "🚗 Otro
+// vehículo", ver migración 222). La conversación lleva un solo cursor
+// (`session.trip_request_id`), que apunta al viaje del que se está hablando ahora --
+// así que "llamar" a secas le llegaba SIEMPRE al conductor de ese viaje, y el
+// conductor del otro quedaba incomunicado sin que nada lo avisara.
+// Con dos o más viajes vivos se pregunta con botones, y el id del botón lleva el
+// viaje exacto para no volver a depender del cursor.
+async function viajesVivosDelPasajero(phone: string): Promise<Array<{ id: string; quien: string; conductor: string }>> {
+  const supabase = db();
+  const { data } = await supabase
+    .from('ag_trip_requests')
+    .select('id, driver_id, passenger_name, for_other, status')
+    .eq('wa_phone', phone)
+    // Un viaje en curso vive con status='accepted' todo el tiempo: lo que avanza es
+    // `driver_stage` (heading_to_pickup -> ... -> completed). Verificado contra la base:
+    // los únicos otros valores son 'searching', 'cancelled' y 'completed'.
+    .eq('status', 'accepted')
+    .not('driver_id', 'is', null)
+    .order('created_at', { ascending: true });
+
+  const salida = [];
+  for (const t of (data ?? []) as Array<Record<string, unknown>>) {
+    const { data: d } = await supabase.from('ag_drivers').select('ag_user_id').eq('id', t.driver_id as string).maybeSingle();
+    const { data: u } = d?.ag_user_id
+      ? await supabase.from('ag_users').select('full_name').eq('id', d.ag_user_id as string).maybeSingle()
+      : { data: null };
+    salida.push({
+      id: String(t.id),
+      // Para quién es el viaje: con varios en curso, "Juan" a secas no distingue nada.
+      // Solo el primer nombre, de los dos: el botón de WhatsApp admite 20 caracteres y
+      // "Wilmer Alejandro · Maria Fernanda" se cortaba a la mitad de una palabra.
+      quien: t.for_other && t.passenger_name ? String(t.passenger_name).trim().split(' ')[0] : 'ti',
+      conductor: String((u as { full_name?: string } | null)?.full_name ?? 'Tu conductor').split(' ')[0],
+    });
+  }
+  return salida;
+}
+
+/**
+ * A cuál de los viajes vivos le está escribiendo el pasajero.
+ *
+ * Con uno solo (el 99% de los casos) devuelve el del cursor y no cuesta nada extra.
+ * Con varios, respeta lo que el pasajero eligió; si nunca eligió, o si el viaje elegido
+ * ya terminó, vuelve al del cursor -- nunca deja el chat sin destino.
+ */
+async function destinoDelChat(phone: string, session: Record<string, unknown>): Promise<string | null> {
+  const cursor = (session.trip_request_id as string | null) ?? null;
+  const elegido = (session.chat_trip_id as string | null) ?? null;
+  if (!elegido || elegido === cursor) return cursor;
+  const vivos = await viajesVivosDelPasajero(phone);
+  return vivos.some(v => v.id === elegido) ? elegido : cursor;
+}
+
+/**
+ * Si hay más de un viaje vivo, agrega al acuse la línea de "le estás escribiendo a X" con
+ * el botón para cambiar. Se manda aparte y solo cuando hace falta: preguntar en cada
+ * mensaje sería insoportable, y con un solo viaje no hay nada que aclarar.
+ */
+async function avisarDestinoDelChat(phone: string, tripId: string | null): Promise<void> {
+  const vivos = await viajesVivosDelPasajero(phone);
+  if (vivos.length < 2 || !tripId) return;
+  const actual = vivos.find(v => v.id === tripId);
+  if (!actual) return;
+  await sendButtons(phone,
+    `Tienes ${vivos.length} viajes en curso. Le estás escribiendo a *${actual.conductor}* (va por ${actual.quien}).`,
+    [{ id: 'chat_switch', title: '🔁 Cambiar' }],
+  );
+}
+
+async function pedirLlamada(phone: string, session: Record<string, unknown>): Promise<void> {
+  const vivos = await viajesVivosDelPasajero(phone);
+
+  if (vivos.length === 0) {
+    // Sin viajes con conductor asignado: puede pasar si el pasajero escribe "llamar"
+    // mientras todavía se está buscando quién lo lleve.
+    await sendText(phone, `Todavía no tienes un conductor asignado 😅\n\nApenas alguien acepte tu viaje te avisamos y podrás llamarlo.`);
+    return;
+  }
+  if (vivos.length === 1) {
+    await llamarAlConductorDelViaje(phone, vivos[0].id, session);
+    return;
+  }
+
+  // Los botones de WhatsApp son máximo 3 y el título máximo 20 caracteres.
+  await sendButtons(phone,
+    `Tienes ${vivos.length} viajes en curso 🚗\n\n¿A cuál conductor quieres llamar?`,
+    vivos.slice(0, 3).map(v => ({ id: `call_trip_${v.id}`, title: `${v.conductor} · ${v.quien}`.slice(0, 20) })),
+  );
+}
+
+// Hace la llamada al conductor de UN viaje concreto. Recibe el id del viaje en vez de
+// leerlo de la sesión, justamente para que el botón de "¿a cuál?" no dependa del cursor.
+async function llamarAlConductorDelViaje(phone: string, tripId: string, session: Record<string, unknown>): Promise<void> {
+  const driverNoun = svcCopy(session.service_type as string).driverNoun;
+  const supabase = db();
+
+  const { data: trip } = await supabase
+    .from('ag_trip_requests').select('driver_id, wa_phone').eq('id', tripId).maybeSingle();
+
+  // El viaje tiene que ser de ESTE teléfono: sin esta comprobación, alguien podría mandar
+  // un id de viaje ajeno y hacer que el sistema llame al conductor de otra persona.
+  if (!trip || String((trip as Record<string, unknown>).wa_phone ?? '') !== phone) {
+    await sendText(phone, `No encontramos ese viaje 😔`);
+    return;
+  }
+
+  const { data: driver } = trip.driver_id
+    ? await supabase.from('ag_drivers').select('ag_user_id').eq('id', trip.driver_id as string).maybeSingle()
+    : { data: null };
+  const { data: driverUser } = driver?.ag_user_id
+    ? await supabase.from('ag_users').select('phone').eq('id', driver.ag_user_id as string).maybeSingle()
+    : { data: null };
+
+  // La llamada enmascarada marca por PSTN de verdad (Telnyx) -- necesita un número real,
+  // no sirve con un BSUID (pasajero con "username" de WhatsApp activado, sin número
+  // visible). Se avisa claro en vez de intentar marcar un identificador que no es teléfono.
+  if (isBsuid(phone)) {
+    await sendText(phone, `No podemos hacer la llamada porque tu WhatsApp no comparte tu número 😔\n\nEscríbele por aquí en el chat, o desactiva el nombre de usuario en Ajustes de WhatsApp para poder llamarte.`);
+    return;
+  }
+  if (!driverUser?.phone) {
+    await sendText(phone, `No encontramos el número de tu ${driverNoun} 😔`);
+    return;
+  }
+
+  // Tope de 3 llamadas por viaje, contando las del pasajero Y las del conductor (ambos
+  // escriben en ag_masked_calls). No es "una sola" a propósito: si el conductor no
+  // contesta la primera -- va manejando, tiene el celular guardado -- el pasajero se
+  // queda sin recurso y cancela, que es justo lo que ya pasó el 2026-08-30.
+  const { count: yaHechas } = await supabase
+    .from('ag_masked_calls').select('id', { count: 'exact', head: true })
+    .eq('trip_request_id', tripId).eq('ok', true);
+
+  if ((yaHechas ?? 0) >= 3) {
+    await sendText(phone, `Ya usaste las 3 llamadas de este viaje 📞\n\nEscríbele por aquí: le llega al instante a su celular.`);
+    return;
+  }
+
+  const result = await startMaskedCall(toE164(phone), toE164(driverUser.phone as string));
+  // Las fallidas también se registran: son la señal de que algo está roto (saldo agotado,
+  // país no habilitado) y no tenerlas fue lo que dejó pasar meses sin que nadie notara
+  // que la llamada nunca había funcionado.
+  await supabase.from('ag_masked_calls').insert({
+    trip_request_id: tripId, quien: 'passenger',
+    ok: result.ok, error: result.ok ? null : String(result.error ?? '').slice(0, 500),
+  });
+
+  if (result.ok) {
+    const quedan = 3 - (yaHechas ?? 0) - 1;
+    await sendText(phone,
+      `📞 Te estamos llamando... contesta y te conectamos con tu ${driverNoun}.` +
+      (quedan > 0 ? `\n\n_Te quedan ${quedan} llamada${quedan === 1 ? '' : 's'} en este viaje._` : ''));
+  } else {
+    // El mensaje deja de ser "intenta de nuevo" a secas: si el problema es de
+    // configuración o de saldo, reintentar no lo arregla y solo desespera más.
+    await sendText(phone, `No pudimos hacer la llamada 😔\n\nEscríbele por aquí: le llega al instante a su celular.`);
+    await sendAdminAlert(SUPPORT_PHONE, 'Falló una llamada',
+      `Viaje ${tripId.slice(0, 8)} · ${String(result.error ?? 'sin detalle').slice(0, 300)}`,
+      `⚠️ Falló la llamada enmascarada en el viaje ${tripId.slice(0, 8)}: ${String(result.error ?? '').slice(0, 200)}`);
+  }
+}
+
 async function startMaskedCall(from: string, to: string): Promise<{ ok: boolean; error?: string }> {
   if (!TELNYX_API_KEY || !TELNYX_APPLICATION_ID || !TELNYX_MASKING_PHONE) {
     console.error('[WA] startMaskedCall: Telnyx no configurado');
     return { ok: false, error: 'not_configured' };
   }
   try {
-    const texml = `<Response><Dial callerId="${TELNYX_MASKING_PHONE}" timeLimit="600">${to}</Dial></Response>`;
+    // 180 s = 3 minutos. Antes eran 600 (10 minutos), un techo que no correspondía a
+    // nada: una llamada real de "¿dónde estás?" dura menos de un minuto. Con Colombia
+    // habilitada en Telnyx cada minuto cuesta, y son DOS piernas de llamada a la vez
+    // (al pasajero y al conductor), así que el minuto de conversación se paga doble.
+    const texml = `<Response><Dial callerId="${TELNYX_MASKING_PHONE}" timeLimit="180">${to}</Dial></Response>`;
     const params = new URLSearchParams({ To: from, From: TELNYX_MASKING_PHONE, Texml: texml });
     const res = await fetch(`https://api.telnyx.com/v2/texml/calls/${TELNYX_APPLICATION_ID}`, {
       method: 'POST',
@@ -947,6 +1114,9 @@ async function resetSession(phone: string) {
     dest_name: null, dest_lat: null, dest_lng: null,
     offered_price: null, package_desc: null,
     trip_request_id: null, active_offer_id: null,
+    // Se olvida a cuál conductor le estaba escribiendo: si no, al pedir otro vehículo el
+    // chat seguiría apuntando al viaje anterior, que es el mismo error al revés.
+    chat_trip_id: null,
     driver_name: null, driver_price: null, driver_phone: null,
     driver_vehicle: null, driver_plate: null,
     matching_started_at: null, pending_dest_text: null,
@@ -1195,6 +1365,55 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
 }
 
 // ─── Transcribir nota de voz (Meta media → OpenAI Whisper) ────────────────────
+/**
+ * Manda al pasajero la nota de voz que grabó el conductor en la app.
+ *
+ * Meta no acepta una URL cualquiera para el audio: hay que SUBIRLE el archivo primero y
+ * mandar el id que devuelve. Por eso el bucket puede quedarse privado -- si en cambio se le
+ * pasara un enlace público, las grabaciones de voz de la gente quedarían accesibles a
+ * cualquiera que adivine la dirección.
+ *
+ * Devuelve false en vez de reventar: una nota de voz que no se pudo entregar tiene que
+ * avisarle al pasajero, no dejar la conversación colgada.
+ */
+async function enviarNotaDeVozAWhatsApp(phone: string, mediaPath: string, driverName: string): Promise<boolean> {
+  try {
+    const supabase = db();
+    const { data: archivo, error } = await supabase.storage.from('movi-chat-audio').download(mediaPath);
+    if (error || !archivo) { console.error('[WA] nota de voz: no se pudo bajar del bucket', error?.message); return false; }
+
+    // Subir a Meta para obtener el id del medio.
+    const form = new FormData();
+    form.append('messaging_product', 'whatsapp');
+    form.append('type', 'audio/ogg');
+    form.append('file', archivo, 'nota.ogg');
+
+    const subida = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/media`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${WA_TOKEN}` },
+      body: form,
+    });
+    if (!subida.ok) { console.error('[WA] nota de voz: Meta rechazo la subida', subida.status, await subida.text()); return false; }
+    const { id: mediaId } = await subida.json();
+    if (!mediaId) return false;
+
+    // El audio de WhatsApp no admite pie de foto, así que el nombre del conductor va en un
+    // mensaje corto aparte -- si no, al pasajero le llega una nota de voz sin saber de quién.
+    await sendText(phone, `🎤 *${driverName}* te mandó una nota de voz:`);
+
+    const envio = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to: toE164(phone), type: 'audio', audio: { id: mediaId } }),
+    });
+    if (!envio.ok) { console.error('[WA] nota de voz: Meta rechazo el envio', envio.status, await envio.text()); return false; }
+    return true;
+  } catch (e) {
+    console.error('[WA] nota de voz:', e);
+    return false;
+  }
+}
+
 async function transcribeAudio(mediaId: string): Promise<string | null> {
   const apiKey = Deno.env.get('OPENAI_API_KEY');
   if (!apiKey) return null;
@@ -2029,6 +2248,40 @@ async function handleConversation(
   // tener la app abierta ni de haber navegado ningún menú.
   if (isSos(text)) {
     await triggerWaSos(phone, contactName, session);
+    return;
+  }
+
+  // Respuesta a "¿a cuál conductor llamo?" -- se atiende ANTES de la máquina de estados,
+  // y a propósito. Un pasajero puede tener varios viajes a la vez (botón "🚗 Otro
+  // vehículo"), y la conversación lleva un solo cursor: para cuando toca el botón, el
+  // estado puede haber cambiado o apuntar a otro viaje. El id del botón trae el viaje
+  // exacto, así que no depende del cursor para nada.
+  if (msgBtnId && msgBtnId.startsWith('call_trip_')) {
+    await llamarAlConductorDelViaje(phone, msgBtnId.replace('call_trip_', ''), session);
+    return;
+  }
+
+  // "Cambiar" de conductor en el chat, y la elección. Igual que la llamada, se atiende
+  // antes de la máquina de estados: el id del botón trae el viaje exacto, así que no
+  // depende del cursor de la conversación, que es justo lo que fallaba.
+  if (msgBtnId === 'chat_switch') {
+    const vivos = await viajesVivosDelPasajero(phone);
+    if (vivos.length < 2) {
+      await sendText(phone, `Solo tienes un viaje en curso 🙂`);
+      return;
+    }
+    await sendButtons(phone, `¿A cuál conductor le quieres escribir?`,
+      vivos.slice(0, 3).map(v => ({ id: `chat_to_${v.id}`, title: `${v.conductor} · ${v.quien}`.slice(0, 20) })));
+    return;
+  }
+
+  if (msgBtnId && msgBtnId.startsWith('chat_to_')) {
+    const elegido = msgBtnId.replace('chat_to_', '');
+    const vivos = await viajesVivosDelPasajero(phone);
+    const v = vivos.find(x => x.id === elegido);
+    if (!v) { await sendText(phone, `Ese viaje ya no está en curso 😅`); return; }
+    await upsertSession(phone, { chat_trip_id: elegido });
+    await sendText(phone, `Listo ✅ Lo que escribas ahora le llega a *${v.conductor}* (va por ${v.quien}).`);
     return;
   }
 
@@ -3309,38 +3562,10 @@ async function handleConversation(
     // Nadie lee instrucciones cuando está esperando y angustiado -- por eso "llamar"
     // dejó de ser solo una palabra mágica mencionada una vez.
     if (msgBtnId === 'trip_call' || /^llam/i.test(text.trim())) {
-      const tripId = session.trip_request_id as string | null;
-      if (tripId) {
-        const supabase = db();
-        const { data: trip } = await supabase
-          .from('ag_trip_requests')
-          .select('driver_id')
-          .eq('id', tripId)
-          .maybeSingle();
-        const { data: driver } = trip?.driver_id
-          ? await supabase.from('ag_drivers').select('ag_user_id').eq('id', trip.driver_id as string).maybeSingle()
-          : { data: null };
-        const { data: driverUser } = driver?.ag_user_id
-          ? await supabase.from('ag_users').select('phone').eq('id', driver.ag_user_id as string).maybeSingle()
-          : { data: null };
-
-        // La llamada enmascarada marca por PSTN de verdad (Telnyx) -- necesita
-        // un número real, no sirve con un BSUID (pasajero con "username" de
-        // WhatsApp activado, sin número visible). Se avisa claro en vez de
-        // intentar marcar un identificador que no es un teléfono.
-        if (isBsuid(phone)) {
-          await sendText(phone, `No podemos hacer la llamada porque tu WhatsApp no comparte tu número 😔\n\nEscríbele por aquí en el chat, o desactiva el nombre de usuario en Ajustes de WhatsApp para poder llamarte.`);
-        } else if (driverUser?.phone) {
-          const result = await startMaskedCall(toE164(phone), toE164(driverUser.phone as string));
-          await sendText(phone, result.ok
-            ? `📞 Te estamos llamando... contesta y te conectamos con tu ${driverNoun}.`
-            : `No pudimos iniciar la llamada 😔 Intenta de nuevo en unos segundos.`);
-        } else {
-          await sendText(phone, `No encontramos el número de tu ${driverNoun} 😔`);
-        }
-        return;
-      }
+      await pedirLlamada(phone, session);
+      return;
     }
+
 
     // Confirmación de "ya estoy a bordo" (pasajero) / "ya se lo entregué"
     // (domicilio) -- botón que sale junto al aviso de llegada del conductor
@@ -3486,7 +3711,11 @@ async function handleConversation(
     // completo en ambos sentidos). El sentido contrario, conductor -> WA, lo
     // resuelve el trigger de la migración 212 (ag_wa_chat_relay_to_passenger_fn).
     if (msgType === 'text' && text.length > 0) {
-      const tripId         = session.trip_request_id as string | null;
+      // Con varios viajes vivos, el cursor de la conversación no basta para saber a quién
+      // le está escribiendo: apunta siempre al último pedido, así que el conductor del
+      // primero quedaba incomunicado. `chat_trip_id` (migración 278) recuerda la elección
+      // del pasajero; si no ha elegido, o si el viaje elegido ya terminó, se cae al cursor.
+      const tripId         = await destinoDelChat(phone, session);
       const senderAgUserId = session.ag_user_id as string | null;
       if (tripId && senderAgUserId) {
         const supabase = db();
@@ -3505,29 +3734,17 @@ async function handleConversation(
             message: text,
           });
 
-          // Push directo -- el chat de la app solo tiene suscripción en
-          // tiempo real (sirve solo con la app abierta), igual que ya se
-          // hace para "a bordo" y para avisar cancelaciones -- para que le
-          // llegue al conductor aunque tenga la app cerrada.
-          const { data: driver } = await supabase
-            .from('ag_drivers').select('ag_user_id').eq('id', trip.driver_id as string).maybeSingle();
-          if (driver?.ag_user_id) {
-            const { data: driverUser } = await supabase
-              .from('ag_users').select('auth_user_id').eq('id', driver.ag_user_id as string).maybeSingle();
-            if (driverUser?.auth_user_id) {
-              fetch(`${SUPABASE_URL}/functions/v1/ag-send-push`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
-                body: JSON.stringify({
-                  user_ids: [driverUser.auth_user_id],
-                  title: delivery ? '💬 Mensaje sobre tu domicilio' : '💬 Mensaje de tu pasajero',
-                  body:  text.slice(0, 150),
-                  url:   `/anda-gana?trip_request_id=${tripId}`,
-                  tag:   `chat-${tripId}`,
-                }),
-              }).catch((e) => console.error('[WA] push chat a conductor error:', e));
-            }
-          }
+          // El push al conductor lo dispara ahora el trigger ag_chat_push_trigger
+          // (migración 276) sobre el INSERT de arriba. Antes se mandaba desde aquí, y ese
+          // era el problema: existía SOLO en esta rama, así que un pasajero escribiendo
+          // desde la app no le hacía sonar nada al conductor. En la base de datos cubre
+          // los dos caminos y no se puede volver a olvidar. Se quitó también la consulta
+          // del conductor que solo servía para armar ese push.
+
+          // Si tiene más de un viaje vivo, se le dice a cuál conductor le acaba de escribir
+          // y se le da el botón para cambiar. Solo en ese caso: con un viaje no hay nada
+          // que aclarar y el aviso sería ruido.
+          await avisarDestinoDelChat(phone, tripId);
 
           // Antes acá solo iba "✅ Le avisamos a tu conductor." -- un acuse de recibo que,
           // para alguien que lleva rato esperando, confirma que no pasa nada. Mientras el
@@ -3936,6 +4153,18 @@ Cuando quieras intentar de nuevo, solo escribe *hola* y lo pedimos en un minuto.
   if (event === 'chat_message') {
     const driverName = payload.driver_name as string ?? 'Tu conductor';
     const message     = (payload.message as string ?? '').trim();
+    const mediaPath   = payload.media_path as string | null;
+
+    // Nota de voz del conductor. Va antes del texto porque, cuando hay audio, el texto
+    // suele ser solo la etiqueta ("🎤 Nota de voz") y lo que importa es escucharlo.
+    if (mediaPath && payload.media_type === 'audio') {
+      const ok = await enviarNotaDeVozAWhatsApp(phone, mediaPath, driverName);
+      if (!ok && !message) {
+        await sendText(phone, `💬 *${driverName}* te mandó una nota de voz, pero no pudimos entregarla 😔\n\nEscríbele por aquí y te responde.`);
+      }
+      if (ok) return;
+    }
+
     if (message) {
       await sendText(phone, `💬 *${driverName}:*\n${message}`);
     }

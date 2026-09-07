@@ -700,13 +700,87 @@ export class AndaGanaService {
   }
 
   // ── Chat pasajero-conductor ───────────────────────────────────
-  async getChatMessages(requestId: string): Promise<{ id: string; sender_ag_user_id: string; message: string; created_at: string }[]> {
+  async getChatMessages(requestId: string): Promise<{ id: string; sender_ag_user_id: string; message: string; created_at: string; media_path?: string | null; media_type?: string | null; media_seconds?: number | null }[]> {
     const { data } = await this.supabase
       .from('ag_chat_messages')
-      .select('id, sender_ag_user_id, message, created_at')
+      .select('id, sender_ag_user_id, message, created_at, media_path, media_type, media_seconds')
       .eq('request_id', requestId)
       .order('created_at', { ascending: true });
     return data ?? [];
+  }
+
+  /**
+   * Envía una nota de voz al chat del viaje.
+   *
+   * El conductor va manejando: escribir es incómodo y peligroso, y decir "estoy en la esquina
+   * de la panadería de toldo azul" toma tres segundos. Si el pasajero es de WhatsApp, el
+   * trigger de la migración 279 se encarga de que le llegue allá como nota de voz de verdad.
+   *
+   * El archivo va a un bucket PRIVADO: son grabaciones de personas reales diciendo dónde están.
+   * La carpeta es el id del viaje, que es lo que usa la política de acceso para dejar entrar
+   * solo a los dos participantes.
+   */
+  async sendChatVoiceNote(
+    requestId: string,
+    senderAgUserId: string,
+    audio: Blob,
+    segundos: number,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const ext = audio.type.includes('webm') ? 'webm' : audio.type.includes('mp4') ? 'm4a' : 'ogg';
+    const ruta = `${requestId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+    const { error: errSubida } = await this.supabase.storage
+      .from('movi-chat-audio')
+      .upload(ruta, audio, { contentType: audio.type || 'audio/ogg', upsert: false });
+    if (errSubida) return { ok: false, error: errSubida.message };
+
+    const { error } = await this.supabase.from('ag_chat_messages').insert({
+      request_id: requestId,
+      sender_ag_user_id: senderAgUserId,
+      // El texto queda como etiqueta para las pantallas que solo saben mostrar texto, y para
+      // que el push diga algo con sentido en vez de llegar vacío.
+      message: '🎤 Nota de voz',
+      media_path: ruta,
+      media_type: 'audio',
+      media_seconds: Math.max(1, Math.round(segundos)),
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
+  /** URL temporal para escuchar una nota de voz. El bucket es privado a propósito. */
+  async urlNotaDeVoz(mediaPath: string): Promise<string | null> {
+    const { data } = await this.supabase.storage
+      .from('movi-chat-audio')
+      .createSignedUrl(mediaPath, 60 * 60);
+    return data?.signedUrl ?? null;
+  }
+
+  /**
+   * Cuántos mensajes me escribió el otro y todavía no he leído, en ese viaje.
+   *
+   * Se pregunta a la base y no se lleva la cuenta en memoria: antes el contador vivía solo
+   * en una señal del componente, así que cerrar la app lo ponía en cero aunque los mensajes
+   * siguieran sin leer — y si el conductor nunca tuvo la app abierta cuando llegó el
+   * mensaje, el contador jamás llegaba a subir.
+   */
+  async contarChatSinLeer(requestId: string, miAgUserId: string): Promise<number> {
+    const { count } = await this.supabase
+      .from('ag_chat_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('request_id', requestId)
+      .neq('sender_ag_user_id', miAgUserId)
+      .is('read_at', null);
+    return count ?? 0;
+  }
+
+  /** Marca como leídos los mensajes que me escribió el otro. Devuelve cuántos marcó. */
+  async marcarChatLeido(requestId: string, miAgUserId: string): Promise<number> {
+    const { data } = await this.supabase.rpc('ag_chat_marcar_leido', {
+      p_request_id: requestId,
+      p_mi_ag_user_id: miAgUserId,
+    });
+    return Number(data ?? 0);
   }
 
   async sendChatMessage(requestId: string, senderAgUserId: string, message: string): Promise<void> {

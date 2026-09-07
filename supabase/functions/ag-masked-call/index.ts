@@ -111,11 +111,27 @@ Deno.serve(async (req) => {
     const from = normE164(fromPhone);
     const to   = normE164(toPhone);
 
+    // Tope de 3 llamadas por viaje, compartido con el botón "Llamar" del pasajero en
+    // WhatsApp: ambos lados escriben en ag_masked_calls, así que el límite es del VIAJE,
+    // no de cada persona. Puesto el 2026-09-06, cuando se habilitó Colombia en Telnyx y
+    // las llamadas empezaron a costar de verdad (antes se rechazaban todas, así que
+    // ningún tope hacía falta -- ni existía).
+    const { count: yaHechas } = await supabase
+      .from('ag_masked_calls')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_request_id', trip_request_id)
+      .eq('ok', true);
+    if ((yaHechas ?? 0) >= 3) {
+      return json({ error: 'Ya se usaron las 3 llamadas de este viaje. Escríbele por el chat.' }, 429);
+    }
+
     // TeXML inline: Telnyx llamará a `from` y cuando conteste, el <Dial> marcará a `to`.
     // La llamada conectada muestra TELNYX_MASKING_PHONE para ambos lados. timeLimit en
-    // segundos (600 = 10 min), mismo tope que ya se usaba con Twilio como protección de
-    // costo ante una llamada que se quede conectada sin colgar.
-    const texml = `<Response><Dial callerId="${TELNYX_MASKING_PHONE}" timeLimit="600">${to}</Dial></Response>`;
+    // segundos: 180 = 3 minutos. Antes eran 600 (10 min), un techo heredado de Twilio que
+    // no correspondía a nada -- una llamada real de "¿dónde estás?" dura menos de un
+    // minuto, y con Colombia habilitada cada minuto se paga por partida doble (son dos
+    // piernas de llamada a la vez).
+    const texml = `<Response><Dial callerId="${TELNYX_MASKING_PHONE}" timeLimit="180">${to}</Dial></Response>`;
     const params = new URLSearchParams({
       To: from,
       From: TELNYX_MASKING_PHONE,
@@ -129,8 +145,15 @@ Deno.serve(async (req) => {
     if (!tnxRes.ok) {
       const err = await tnxRes.text();
       console.error('[telnyx-call]', tnxRes.status, err);
+      // Las fallidas también se registran: son la señal de que algo está roto (saldo
+      // agotado, país no habilitado), y no tenerlas fue lo que dejó pasar meses sin que
+      // nadie notara que la llamada nunca había funcionado.
+      await supabase.from('ag_masked_calls').insert({
+        trip_request_id, quien: 'driver', ok: false, error: String(err).slice(0, 500),
+      });
       return json({ error: 'Telnyx error', detail: err }, 502);
     }
+    await supabase.from('ag_masked_calls').insert({ trip_request_id, quien: 'driver', ok: true });
     const out = await tnxRes.json();
     // A diferencia de Twilio, la respuesta de este endpoint de Telnyx NO trae un "sid" --
     // solo { from, to, status } (verificado contra la documentación oficial). call_sid queda
