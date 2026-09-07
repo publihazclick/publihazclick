@@ -20150,7 +20150,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // ── Chat en viaje ────────────────────────────────────────────
   showChatModal = signal(false);
-  chatMessages = signal<{ id: string; sender_ag_user_id: string; message: string; created_at: string }[]>([]);
+  // Los campos de audio van en el tipo o la plantilla no compila: Angular revisa los tipos
+  // DENTRO de la plantilla, y `tsc` por su cuenta no lo hace -- por eso el chequeo de tipos
+  // pasaba limpio y el build de Cloudflare fallaba igual (2026-09-06).
+  chatMessages = signal<{
+    id: string; sender_ag_user_id: string; message: string; created_at: string;
+    media_path?: string | null; media_type?: string | null; media_seconds?: number | null;
+  }[]>([]);
   chatInput = '';
   chatSending = signal(false);
   chatRequestId = signal<string | null>(null);
