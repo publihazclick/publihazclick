@@ -13,37 +13,7 @@
 
 ## Pendiente de subir
 
-### Notas de voz del conductor (2026-09-06)
-
-**Ya está en producción la parte de servidor:** bucket privado `movi-chat-audio`, columnas
-`media_path`/`media_type`/`media_seconds`, el trigger que reenvía a WhatsApp ampliado, y la
-función del bot que sube el audio a Meta y se lo manda al pasajero (migración 279).
-
-**Falta el botón de grabar en la app** — es lo único que queda para que funcione de punta a
-punta. El servicio ya tiene `sendChatVoiceNote()` y `urlNotaDeVoz()`; falta la interfaz:
-mantener pulsado para grabar, soltar para enviar, y un reproductor en la burbuja del chat.
-
-**Ojo con el sentido contrario:** el pasajero YA puede mandar notas de voz desde antes. El bot
-las transcribe con Whisper y las mete al chat como texto — mejor que reenviar el audio, porque
-el conductor lee de un vistazo en vez de ponerse a escuchar mientras maneja.
-
-### Marca de leído del chat (2026-09-06)
-
-**Qué cambia en la web:** el globo rojo de mensajes sin leer deja de vivir en la memoria del
-navegador y pasa a leerse de la base de datos.
-
-Antes: el conductor recibía tres mensajes, cerraba la app, la volvía a abrir — y el globo
-aparecía en cero aunque nadie los hubiera leído. Y si nunca tuvo la app abierta cuando llegó
-el mensaje, el contador jamás llegaba a subir, porque solo lo incrementaba la suscripción en
-tiempo real.
-
-Archivos: `anda-gana.service.ts` (métodos `contarChatSinLeer` y `marcarChatLeido`) y
-`anda-gana.component.ts` (`refrescarChatSinLeer`, `_marcarChatLeido`, y el globo sembrado
-desde la base al abrir la pantalla del viaje).
-
-**Ya está en producción la parte de base de datos** (migración 277: columna `read_at` +
-función `ag_chat_marcar_leido`). Es compatible hacia atrás: sin el frontend nuevo, la columna
-simplemente no se usa y nada se rompe. Por eso se puede esperar al próximo build.
+_(vacío — todo subido en el push del 2026-09-06)_
 
 ---
 

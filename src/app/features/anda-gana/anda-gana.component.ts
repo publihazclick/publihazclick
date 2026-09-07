@@ -10110,7 +10110,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               [style.background]="isMyChatMessage(msg) ? '#2563eb' : 'rgba(255,255,255,0.08)'"
               [style.borderRadius]="isMyChatMessage(msg) ? '18px 18px 4px 18px' : '18px 18px 18px 4px'"
               [style.border]="isMyChatMessage(msg) ? 'none' : '1px solid rgba(255,255,255,0.1)'">
-              <p class="text-sm leading-snug" style="color:#fff">{{ msg.message }}</p>
+              @if (msg.media_type === 'audio') {
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined" style="font-size:18px;color:#fff">mic</span>
+                  <audio controls preload="none" [src]="urlAudio(msg)" style="height:32px;max-width:190px"></audio>
+                  @if (msg.media_seconds) {
+                    <span class="text-[10px]" style="color:rgba(255,255,255,0.6)">{{ msg.media_seconds }}s</span>
+                  }
+                </div>
+              } @else {
+                <p class="text-sm leading-snug" style="color:#fff">{{ msg.message }}</p>
+              }
               <p class="text-[10px] mt-1"
                 [style.color]="isMyChatMessage(msg) ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)'"
                 [style.textAlign]="isMyChatMessage(msg) ? 'right' : 'left'">
@@ -10129,8 +10139,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             style="background:rgba(37,99,235,0.18);border:1px solid rgba(59,130,246,0.35);color:#bfd4ff;white-space:nowrap">{{ r }}</button>
         }
       </div>
+      <!-- Grabando: reemplaza la fila de escribir mientras dura -->
+      @if (grabando()) {
+        <div class="flex-shrink-0 flex items-center gap-3 px-4 py-3" style="border-top:1px solid rgba(255,255,255,0.08);padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
+          <span class="w-3 h-3 rounded-full animate-pulse flex-shrink-0" style="background:#ef4444"></span>
+          <span class="text-sm font-bold flex-1" style="color:#fff">Grabando... {{ segundosGrabando() }}s</span>
+          <button type="button" (click)="cancelarGrabacion()"
+            class="px-3 py-2 rounded-xl text-xs font-bold" style="background:rgba(255,255,255,0.1);color:#fca5a5">Cancelar</button>
+          <button type="button" (click)="enviarGrabacion()"
+            class="px-4 py-2 rounded-xl text-xs font-black" style="background:#2563eb;color:#fff">Enviar</button>
+        </div>
+      }
       <!-- Input -->
-      <div class="flex-shrink-0 flex gap-2 px-4 py-3" style="border-top:1px solid rgba(255,255,255,0.08);padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
+      <div class="flex-shrink-0 flex gap-2 px-4 py-3" [style.display]="grabando() ? 'none' : 'flex'" style="border-top:1px solid rgba(255,255,255,0.08);padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
+        <button type="button" (click)="iniciarGrabacion()" [disabled]="chatSending()"
+          class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 disabled:opacity-40"
+          style="background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.12)" title="Nota de voz">
+          <span class="material-symbols-outlined" style="font-size:20px;color:#93c5fd">mic</span>
+        </button>
         <input [(ngModel)]="chatInput" name="chatInput"
           placeholder="Escribe un mensaje..."
           (keydown.enter)="sendChatMsg()"
@@ -20150,6 +20176,113 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     '¿Me confirmas la dirección?',
     'Hay mucho trafico',
   ];
+
+  // ── Notas de voz del conductor ──────────────────────────────────────────────
+  // Se graba con un toque y se envía con otro, en vez de "mantener pulsado". Al volante,
+  // sostener el dedo en la pantalla es peor que dar dos toques, y si el dedo se resbala
+  // con "mantener pulsado" se pierde la grabación.
+  grabando = signal(false);
+  segundosGrabando = signal(0);
+  private _rec: MediaRecorder | null = null;
+  private _recTrozos: Blob[] = [];
+  private _recStream: MediaStream | null = null;
+  private _recTimer: ReturnType<typeof setInterval> | null = null;
+  private _audioUrls = new Map<string, string>();
+
+  /** Tipo de audio que este navegador sabe grabar, prefiriendo el que WhatsApp acepta. */
+  private _tipoAudio(): string {
+    // WhatsApp solo acepta ogg/opus entre los que un navegador suele producir. Chrome de
+    // Android normalmente solo graba webm; en ese caso el servidor transcribe y lo manda
+    // como texto, para que al pasajero le llegue igual en vez de perderse.
+    for (const t of ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']) {
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(t)) return t;
+    }
+    return '';
+  }
+
+  async iniciarGrabacion(): Promise<void> {
+    if (this.grabando()) return;
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      alert('Tu teléfono no permite grabar audio desde aquí. Escribe el mensaje.');
+      return;
+    }
+    try {
+      this._recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      alert('Necesitamos permiso del micrófono para grabar la nota de voz.');
+      return;
+    }
+    const tipo = this._tipoAudio();
+    this._recTrozos = [];
+    this._rec = new MediaRecorder(this._recStream, tipo ? { mimeType: tipo } : undefined);
+    this._rec.ondataavailable = (e) => { if (e.data?.size) this._recTrozos.push(e.data); };
+    this._rec.start();
+    this.grabando.set(true);
+    this.segundosGrabando.set(0);
+    this._recTimer = setInterval(() => {
+      this.segundosGrabando.update(n => n + 1);
+      this.cdr.markForCheck();
+      // Tope de 60 s: una nota de voz de viaje es corta, y así ningún archivo se dispara
+      // de tamaño ni se queda grabando porque alguien olvidó soltar.
+      if (this.segundosGrabando() >= 60) void this.enviarGrabacion();
+    }, 1000);
+    this.cdr.markForCheck();
+  }
+
+  private _pararGrabacion(): void {
+    if (this._recTimer) { clearInterval(this._recTimer); this._recTimer = null; }
+    try { this._rec?.stop(); } catch { /* ya estaba parada */ }
+    this._recStream?.getTracks().forEach(t => t.stop());
+    this._recStream = null;
+    this.grabando.set(false);
+    this.cdr.markForCheck();
+  }
+
+  cancelarGrabacion(): void {
+    this._recTrozos = [];
+    this._pararGrabacion();
+  }
+
+  async enviarGrabacion(): Promise<void> {
+    if (!this._rec || !this.grabando()) return;
+    const segundos = this.segundosGrabando();
+    const tipo = this._rec.mimeType || 'audio/ogg';
+    // El último trozo llega en el evento de parada, así que hay que esperarlo: sin esto
+    // se enviaba el audio cortado (o vacío, en grabaciones de 1-2 segundos).
+    const listo = new Promise<void>((resolve) => { this._rec!.onstop = () => resolve(); });
+    this._pararGrabacion();
+    await listo;
+
+    const audio = new Blob(this._recTrozos, { type: tipo });
+    this._recTrozos = [];
+    if (audio.size < 1000) { alert('La nota quedó muy corta. Intenta de nuevo.'); return; }
+
+    const reqId = this.chatRequestId();
+    const yo = this.agProfile();
+    if (!reqId || !yo) return;
+
+    this.chatSending.set(true);
+    try {
+      const r = await this.agService.sendChatVoiceNote(reqId, yo.id, audio, segundos);
+      if (!r.ok) alert('No se pudo enviar la nota de voz: ' + (r.error ?? 'error'));
+      else this._scrollChatToBottom('driver-chat-messages');
+    } finally {
+      this.chatSending.set(false);
+    }
+  }
+
+  /** URL firmada para escuchar una nota de voz. Se pide una vez por mensaje y se recuerda. */
+  urlAudio(msg: { id: string; media_path?: string | null }): string | null {
+    if (!msg.media_path) return null;
+    const ya = this._audioUrls.get(msg.id);
+    if (ya) return ya;
+    // Marcador para no pedir la misma URL en cada ciclo de render de Angular.
+    this._audioUrls.set(msg.id, '');
+    void this.agService.urlNotaDeVoz(msg.media_path).then((url) => {
+      if (url) { this._audioUrls.set(msg.id, url); this.cdr.markForCheck(); }
+    });
+    return null;
+  }
 
   async enviarRespuestaRapida(texto: string): Promise<void> {
     const reqId = this.chatRequestId();

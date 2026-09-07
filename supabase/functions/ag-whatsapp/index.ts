@@ -1414,6 +1414,37 @@ async function enviarNotaDeVozAWhatsApp(phone: string, mediaPath: string, driver
   }
 }
 
+/**
+ * Transcribe una nota de voz guardada en el bucket. Es el respaldo de cuando Meta rechaza
+ * el audio por formato: el mensaje llega igual, en texto, en vez de perderse.
+ * Whisper acepta webm, ogg, mp4 y demás, así que no importa cómo lo haya grabado el celular.
+ */
+async function transcribirNotaDeVoz(mediaPath: string): Promise<string | null> {
+  const apiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!apiKey) return null;
+  try {
+    const supabase = db();
+    const { data: archivo } = await supabase.storage.from('movi-chat-audio').download(mediaPath);
+    if (!archivo) return null;
+
+    const form = new FormData();
+    form.append('file', archivo, mediaPath.split('/').pop() ?? 'nota.webm');
+    form.append('model', 'whisper-1');
+    form.append('language', 'es');
+
+    const r = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+    });
+    if (!r.ok) { console.error('[WA] transcribir nota de voz:', r.status, await r.text()); return null; }
+    return ((await r.json())?.text as string)?.trim() || null;
+  } catch (e) {
+    console.error('[WA] transcribir nota de voz:', e);
+    return null;
+  }
+}
+
 async function transcribeAudio(mediaId: string): Promise<string | null> {
   const apiKey = Deno.env.get('OPENAI_API_KEY');
   if (!apiKey) return null;
@@ -4159,10 +4190,21 @@ Cuando quieras intentar de nuevo, solo escribe *hola* y lo pedimos en un minuto.
     // suele ser solo la etiqueta ("🎤 Nota de voz") y lo que importa es escucharlo.
     if (mediaPath && payload.media_type === 'audio') {
       const ok = await enviarNotaDeVozAWhatsApp(phone, mediaPath, driverName);
-      if (!ok && !message) {
-        await sendText(phone, `💬 *${driverName}* te mandó una nota de voz, pero no pudimos entregarla 😔\n\nEscríbele por aquí y te responde.`);
-      }
       if (ok) return;
+
+      // WhatsApp solo acepta ogg/opus, y Chrome de Android suele grabar en webm: en ese
+      // caso Meta rechaza el audio. En vez de perder el mensaje, se transcribe y se manda
+      // como texto -- exactamente lo que ya se hace al revés con las notas de voz del
+      // pasajero, y que en la práctica funciona mejor que el audio.
+      const texto = await transcribirNotaDeVoz(mediaPath);
+      if (texto) {
+        await sendText(phone, `🎤 *${driverName}* (nota de voz):\n${texto}`);
+        return;
+      }
+      if (!message) {
+        await sendText(phone, `💬 *${driverName}* te mandó una nota de voz, pero no pudimos entregarla 😔\n\nEscríbele por aquí y te responde.`);
+        return;
+      }
     }
 
     if (message) {
