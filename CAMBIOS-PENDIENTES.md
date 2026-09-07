@@ -13,23 +13,43 @@
 
 ## Pendiente de subir
 
-### La bandeja de soporte no se actualizaba sola
-- **Qué**: la pestaña "Soporte WA" del panel admin ahora se refresca sola cada 15
-  segundos mientras está abierta — la bandeja y, si hay un hilo abierto, también sus
-  mensajes. El refresco es silencioso: no muestra "Cargando…" encima de lo que estás
-  leyendo, se salta el turno si estás enviando una respuesta, y se apaga solo si la
-  pestaña del navegador está en segundo plano o si sales del panel.
-- **Por qué**: antes la bandeja solo se cargaba al entrar o al tocar recargar a mano.
-  Si alguien escribía con la pantalla abierta, no pasaba nada. Reportado por el usuario
-  el 2026-09-07 como "no se está viendo reflejado en tiempo real".
-- **Toca**: `web` (necesita build de Cloudflare)
-- **Estado**: ⏳ hecho en local, sin subir. Typecheck en verde (`tsc --noEmit`); no se
-  pudo compilar entero por la RAM del PC (ver `movi_build_local_imposible_ram`).
+_(vacío — todo subido en el push del 2026-09-07)_
 
-> Las otras dos partes de este mismo arreglo **ya están vivas en producción** y no
-> dependían de este build: el orden de la bandeja (migración 280) y que el hilo
-> siempre traiga los mensajes más nuevos (`ag-admin-action`). Cada una es completa por
-> sí sola, así que no queda producción a medias.
+---
+
+## Subido el 2026-09-07 (1 solo build)
+
+Un commit. Las partes de Supabase de este mismo arreglo ya estaban vivas desde antes
+del push y viajaron gratis; lo único que necesitaba build era el refresco automático.
+
+### La bandeja de soporte no mostraba arriba lo más reciente
+- **Qué**: tres cosas distintas, mismo síntoma.
+  1. La bandeja salía ordenada **por número de teléfono**, no por fecha:
+     `ag_wa_conversations_summary` usa `DISTINCT ON (wa_phone)` y Postgres obliga a que
+     el `ORDER BY` empiece por esa expresión — eso solo elige *cuál* fila sobrevive por
+     teléfono, y nadie reordenaba por fecha después. Ahora el `DISTINCT ON` va dentro de
+     una subconsulta y se reordena por `last_at DESC` afuera.
+  2. Al abrir un hilo se pedían los **500 mensajes más viejos** (`ascending` + `limit`),
+     descartando los nuevos. Ahora se pide por el lado nuevo y se voltea.
+  3. No había refresco automático: la bandeja solo se cargaba al entrar o al recargar a
+     mano. Ahora se refresca sola cada 15 s, en silencio.
+- **Por qué**: medido en producción antes del arreglo — en conductores la conversación
+  de ese mismo día salía en la **posición 5**, entre otras del 28 y 29 de agosto; en
+  pasajeros, en la **12 de 24**. Los mensajes sí llegaban y sí se guardaban, pero
+  aparecían salpicados en mitad de una lista ordenada por número, y desde el panel se
+  veía igual que si no hubiera cargado nada. Lo del tope de 500 aún no se notaba, pero
+  ya había hilos en 428 y 358 mensajes creciendo hacia él.
+- **Toca**: `supabase` + `web`
+- **Estado**: ✅ migración 280 aplicada por Management API y verificada en los dos roles;
+  `ag-admin-action` desplegada con `--no-verify-jwt`; refresco automático en este push.
+  Typecheck en verde (`tsc --noEmit`); el build entero no cabe en la RAM del PC (ver
+  `movi_build_local_imposible_ram`).
+- **Commit**: `c5ec613`
+
+### Los mensajes DENTRO del chat siguen en orden normal
+Decisión confirmada por el usuario el 2026-09-07: "las más recientes arriba" aplica a la
+**lista de conversaciones**, no a los mensajes de un hilo. Dentro del chat se mantiene el
+orden de lectura (viejo arriba → nuevo abajo), como cualquier chat.
 
 ---
 
