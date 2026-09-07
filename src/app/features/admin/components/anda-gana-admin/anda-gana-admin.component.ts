@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SlicePipe, DatePipe } from '@angular/common';
 import { AndaGanaService, AgUser, AgDriver } from '../../../../features/anda-gana/anda-gana.service';
@@ -25,7 +25,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
            angostas (celular) la fila de pestañas no cabe completa y esta
            quedaba escondida al final, requiriendo deslizar mucho para
            encontrarla (reportado por el usuario 2026-08-28, dos veces). -->
-      <button (click)="tab.set('soporte'); loadWaConversations()"
+      <button (click)="abrirSoporte()"
         class="flex items-center gap-1.5 px-3 h-9 rounded-xl border transition-colors"
         [class]="tab() === 'soporte' ? 'bg-lime-500/15 border-lime-500/30 text-lime-400' : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'">
         <span class="material-symbols-outlined" style="font-size:18px">chat</span>
@@ -96,7 +96,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
       [class]="tab() === 'conductores' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-500 hover:text-slate-300'">
       Conductores
     </button>
-    <button (click)="tab.set('soporte'); loadWaConversations()"
+    <button (click)="abrirSoporte()"
       class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition flex items-center gap-1.5"
       [class]="tab() === 'soporte' ? 'text-lime-400 border-b-2 border-lime-400' : 'text-slate-500 hover:text-slate-300'">
       <span class="material-symbols-outlined" style="font-size:14px">chat</span>Soporte WA
@@ -988,7 +988,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
 </div>
   `,
 })
-export class AndaGanaAdminComponent implements OnInit {
+export class AndaGanaAdminComponent implements OnInit, OnDestroy {
 
   private readonly agService = inject(AndaGanaService);
   private readonly authService = inject(AuthService);
@@ -1098,6 +1098,11 @@ export class AndaGanaAdminComponent implements OnInit {
   async ngOnInit() {
     await this.load();
     await Promise.all([this.loadCommission(), this.loadDistanceFilter(), this.loadSos(), this.loadPendingWithdrawalsCount(), this.loadCcFlaggedCount()]);
+  }
+
+  /** Sin esto, el refresco de soporte seguiría corriendo tras salir del panel. */
+  ngOnDestroy(): void {
+    this.stopWaAutoRefresh();
   }
 
   async loadPendingWithdrawalsCount(): Promise<void> {
@@ -1231,6 +1236,67 @@ export class AndaGanaAdminComponent implements OnInit {
   }
 
   // ── Soporte WhatsApp ──────────────────────────────────────
+
+  /**
+   * Entra a la pestaña de soporte y deja el refresco automático andando.
+   *
+   * Antes la bandeja solo se cargaba al entrar o al tocar el botón de recargar: si
+   * alguien escribía mientras el admin tenía la pantalla abierta, no pasaba nada
+   * hasta que la recargara a mano. El usuario lo reportó como "no se ve en tiempo
+   * real" el 2026-09-07.
+   */
+  abrirSoporte(): void {
+    this.tab.set('soporte');
+    this.loadWaConversations();
+    this.startWaAutoRefresh();
+  }
+
+  private waAutoTimer: ReturnType<typeof setInterval> | null = null;
+  private waRefrescando = false;
+
+  private startWaAutoRefresh(): void {
+    this.stopWaAutoRefresh();
+    this.waAutoTimer = setInterval(() => { void this.refrescarSoporteSilencioso(); }, 15000);
+  }
+
+  private stopWaAutoRefresh(): void {
+    if (this.waAutoTimer) { clearInterval(this.waAutoTimer); this.waAutoTimer = null; }
+  }
+
+  /**
+   * Vuelve a pedir la bandeja (y el hilo abierto, si lo hay) SIN tocar los flags de
+   * carga: si los tocara, la pantalla mostraría "Cargando conversaciones…" cada 15
+   * segundos y el admin no podría ni leer. Por eso no reusa loadWaConversations().
+   *
+   * Se salta el turno si ya hay un refresco en vuelo, si se está enviando una
+   * respuesta (no pisar un envío a medias) o si la pestaña del navegador está en
+   * segundo plano (no gastar llamadas contra la función mientras nadie mira).
+   */
+  private async refrescarSoporteSilencioso(): Promise<void> {
+    if (this.tab() !== 'soporte') { this.stopWaAutoRefresh(); return; }
+    if (this.waRefrescando || this.waSending()) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
+
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+
+    this.waRefrescando = true;
+    try {
+      const convos = await this.agService.adminListWaConversations(this.waRole(), token);
+      this.waConversations.set(convos ?? []);
+      const phone = this.waSelectedPhone();
+      if (phone) {
+        const msgs = await this.agService.adminListWaMessages(phone, token);
+        this.waMessages.set(msgs ?? []);
+      }
+    } catch {
+      // Un fallo puntual de red no debe apagar el refresco ni mostrar un error
+      // encima de lo que ya está en pantalla: se reintenta solo en 15 segundos.
+    } finally {
+      this.waRefrescando = false;
+    }
+  }
+
   switchWaRole(role: 'conductor' | 'pasajero'): void {
     this.waRole.set(role);
     this.waSelectedPhone.set(null);

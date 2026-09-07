@@ -13,7 +13,23 @@
 
 ## Pendiente de subir
 
-_(vacío — todo subido en el push del 2026-09-06)_
+### La bandeja de soporte no se actualizaba sola
+- **Qué**: la pestaña "Soporte WA" del panel admin ahora se refresca sola cada 15
+  segundos mientras está abierta — la bandeja y, si hay un hilo abierto, también sus
+  mensajes. El refresco es silencioso: no muestra "Cargando…" encima de lo que estás
+  leyendo, se salta el turno si estás enviando una respuesta, y se apaga solo si la
+  pestaña del navegador está en segundo plano o si sales del panel.
+- **Por qué**: antes la bandeja solo se cargaba al entrar o al tocar recargar a mano.
+  Si alguien escribía con la pantalla abierta, no pasaba nada. Reportado por el usuario
+  el 2026-09-07 como "no se está viendo reflejado en tiempo real".
+- **Toca**: `web` (necesita build de Cloudflare)
+- **Estado**: ⏳ hecho en local, sin subir. Typecheck en verde (`tsc --noEmit`); no se
+  pudo compilar entero por la RAM del PC (ver `movi_build_local_imposible_ram`).
+
+> Las otras dos partes de este mismo arreglo **ya están vivas en producción** y no
+> dependían de este build: el orden de la bandeja (migración 280) y que el hilo
+> siempre traiga los mensajes más nuevos (`ag-admin-action`). Cada una es completa por
+> sí sola, así que no queda producción a medias.
 
 ---
 

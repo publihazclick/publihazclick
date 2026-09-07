@@ -376,16 +376,24 @@ Deno.serve(async (req) => {
         if (error) throw error;
         return json({ ok: true, data });
       }
+      // El tope de 500 se pide SIEMPRE por el lado nuevo del hilo (created_at DESC) y
+      // después se voltea para pintarlo en orden de lectura.
+      //
+      // Antes pedía `ascending: true` con `limit(500)`: eso devuelve los 500 mensajes
+      // MÁS VIEJOS y descarta los nuevos. Mientras ningún hilo pasara de 500 no se
+      // notaba, pero el 2026-09-07 ya había hilos en 428 y 358 mensajes creciendo --
+      // al cruzar el tope, el panel se habría quedado congelado en agosto y el admin
+      // no habría visto ni un mensaje nuevo, por más que recargara.
       case 'list_wa_messages': {
         if (!body.phone) return json({ error: 'missing_phone' }, 400);
         const { data, error } = await movi
           .from('ag_wa_message_log')
           .select('direction, msg_type, body, created_at')
           .eq('wa_phone', body.phone)
-          .order('created_at', { ascending: true })
+          .order('created_at', { ascending: false })
           .limit(500);
         if (error) throw error;
-        return json({ ok: true, data });
+        return json({ ok: true, data: (data ?? []).slice().reverse() });
       }
       case 'set_distance_filter': {
         if (body.meters == null) return json({ error: 'missing_meters' }, 400);
