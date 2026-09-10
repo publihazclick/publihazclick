@@ -19,6 +19,30 @@ function toE164(phone: string): string {
   return `+${digits}`;
 }
 
+// ─── Cobertura: por ahora Movi solo opera en Colombia ─────────────────────────
+// BUG REAL encontrado 2026-09-10 (al usuario le llegaban por WhatsApp mensajes "necesito mi
+// codigo de verificacion" de gente que nunca iba a poder registrarse): la app arma el telefono
+// como '+57' + lo que la persona escriba, sin selector de pais. Alguien en Mexico que escribe su
+// numero local 3329201647 termina guardado como +573329201647, un numero colombiano que no
+// existe -- el SMS se manda al vacio, y el respaldo por WhatsApp tampoco lo encuentra, porque su
+// WhatsApp real es 5213329201647. 13 intentos asi desde el 2026-08-04 (Mexico, Argentina,
+// EE.UU.), TODOS con used=false: ninguno completo el registro jamas.
+//
+// Se rechaza antes de insertar la fila y antes de gastar el SMS, con un mensaje honesto en vez
+// de dejarlos dando vueltas.
+//
+// La regla es DELIBERADAMENTE floja -- solo "+57 seguido de 10 digitos que empiecen por 3" -- y
+// NO una lista de prefijos validos. Esa lista se intento armar y se descarto a proposito: las
+// listas publicadas de prefijos colombianos estan desactualizadas (omiten 319 y 324, que SI
+// estan en uso por conductores reales de esta misma base), asi que cualquier allowlist corre el
+// riesgo de bloquear a un colombiano legitimo -- mucho peor que dejar pasar a un extranjero.
+// Los pocos numeros extranjeros de 10 digitos que empiezan por 3 (Guadalajara 332..., Rosario
+// 341...) se cuelan por aca a sabiendas: los atrapa la segunda capa, en ag-whatsapp, donde SI
+// se ve el codigo de pais real de quien escribe.
+function esCelularColombiano(e164: string): boolean {
+  return e164.length === 13 && e164.startsWith('+573') && /^[0-9]+$/.test(e164.slice(1));
+}
+
 /** Evolution API usa número sin '+', ej: 573134453649 */
 function toWaNumber(e164: string): string {
   return e164.replace('+', '');
@@ -165,6 +189,17 @@ Deno.serve(async (req) => {
 
     const normalized = toE164(phone);
     if (normalized.length < 10) return json({ error: 'Número de teléfono inválido' });
+
+    // Fuera de cobertura: se corta ACA, antes de insertar la fila en ag_otp_codes y antes de
+    // gastar un SMS que no va a llegar a ninguna parte. El flag `fuera_de_cobertura` es lo que
+    // mira la app para tratarlo como error duro del formulario y NO ofrecer el respaldo por
+    // WhatsApp -- que en este caso tampoco funcionaria y solo alargaria la frustracion.
+    if (!esCelularColombiano(normalized)) {
+      return json({
+        error: 'Por ahora Movi solo opera en Colombia 🇨🇴 Escribe un celular colombiano de 10 dígitos que empiece por 3.',
+        fuera_de_cobertura: true,
+      });
+    }
 
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,

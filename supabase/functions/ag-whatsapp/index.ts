@@ -459,8 +459,31 @@ async function sendImage(to: string, imageUrl: string, caption?: string): Promis
 }
 
 // ─── Ubicación como mapa nativo dentro del chat, no un link de texto ─────────
-async function sendLocation(to: string, lat: number, lng: number, name?: string, address?: string): Promise<WaResult> {
-  return sendGraph({ to, type: 'location', location: { latitude: lat, longitude: lng, name, address } });
+/**
+ * SOLO coordenadas. Nada de `name` ni `address`, a propósito.
+ *
+ * CASO REAL (2026-09-08, reportado por el usuario y reproducido con un mensaje de
+ * prueba): mandábamos `name: "Tu conductor"` y `address: "Va en camino a recogerte ·
+ * llega en ~3 min"`. Al tocar el mapa, la app **busca ese texto** en vez de ir a las
+ * coordenadas — y como "Tu conductor" no es ningún lugar del mundo, Google responde
+ * *"No se encontró ningún resultado"*. Al pasajero, que está esperando en la calle,
+ * eso le dice que el sistema no sabe dónde está su conductor. Pura desconfianza.
+ *
+ * Las coordenadas siempre estuvieron bien; el texto que las acompañaba secuestraba
+ * la búsqueda. Sin `name` ni `address` no hay nada que buscar y el mapa abre el
+ * punto exacto.
+ *
+ * La etiqueta útil ("va en camino · llega en ~3 min") NO se pierde: va como texto
+ * aparte, justo antes del mapa. Un mensaje de ubicación de WhatsApp no admite pie
+ * de foto, así que ese texto es el único lugar donde puede vivir sin romper el
+ * enlace al mapa.
+ *
+ * La firma no acepta `name`/`address` a propósito: si volvieran a ser parámetros,
+ * el próximo sitio que mande una ubicación los llenaría otra vez y el fallo vuelve
+ * en silencio. Son cinco los sitios que mandan ubicación en este archivo.
+ */
+async function sendLocation(to: string, lat: number, lng: number): Promise<WaResult> {
+  return sendGraph({ to, type: 'location', location: { latitude: lat, longitude: lng } });
 }
 
 // ─── Normalizar número a E.164 ────────────────────────────────────────────────
@@ -637,7 +660,13 @@ async function llamarAlConductorDelViaje(phone: string, tripId: string, session:
   } else {
     // El mensaje deja de ser "intenta de nuevo" a secas: si el problema es de
     // configuración o de saldo, reintentar no lo arregla y solo desespera más.
-    await sendText(phone, `No pudimos hacer la llamada 😔\n\nEscríbele por aquí: le llega al instante a su celular.`);
+    // Tampoco se promete que el mensaje "le llega al instante": si el conductor tiene la
+    // app en segundo plano puede no verlo, que es exactamente lo que pasó el 2026-09-08
+    // (el mensaje de la pasajera quedó sin leer). Se ofrece la salida que sí controlamos.
+    await sendText(phone,
+      `No pude conectar la llamada 😔\n\n` +
+      `Escríbele por aquí y le mando el aviso, aunque puede que tarde en verlo.\n\n` +
+      `Si prefieres, escribe *cancelar* y te consigo otro conductor de una.`);
     await sendAdminAlert(SUPPORT_PHONE, 'Falló una llamada',
       `Viaje ${tripId.slice(0, 8)} · ${String(result.error ?? 'sin detalle').slice(0, 300)}`,
       `⚠️ Falló la llamada enmascarada en el viaje ${tripId.slice(0, 8)}: ${String(result.error ?? '').slice(0, 200)}`);
@@ -2180,6 +2209,21 @@ function etaAlPunto(dLat: number, dLng: number, oLat: number, oLng: number): { k
   return { km, min, texto: `a ${dist} — unos ${min} min` };
 }
 
+/**
+ * Minutos que puede tener la última posición del conductor antes de que dar un ETA
+ * sobre ella sea mentir.
+ *
+ * CASO REAL (2026-09-08, viaje ab5093bc): el GPS del conductor reportó por última vez
+ * a las 22:10:02 y su app pasó a segundo plano (va en moto, pantalla apagada). El punto
+ * quedó congelado. Con ese punto muerto le dijimos a la pasajera cuatro veces
+ * -- 22:12, 22:16, 22:20 y 22:24 -- "va en camino · llega en ~3 min", y a las 22:18
+ * "está a 1.4 km — unos 3 min" con una posición de ocho minutos antes. Ella esperó
+ * 13 minutos en la calle a las 10 de la noche creyendo que estaba a la vuelta.
+ *
+ * `driverStatusLine` YA pedía `updated_at` en el select y no lo miraba nunca.
+ */
+const UBICACION_FRESCA_SEG = 4 * 60;
+
 async function driverStatusLine(tripId: string): Promise<{ texto: string; lat: number; lng: number } | null> {
   try {
     const supabase = db();
@@ -2200,6 +2244,23 @@ async function driverStatusLine(tripId: string): Promise<{ texto: string; lat: n
     const oLat = trip.origin_lat as number | null;
     const oLng = trip.origin_lng as number | null;
     if (oLat == null || oLng == null) return null;
+
+    // Si la posición está vieja, NO se da ETA: se dice la verdad. Un "llega en 3 min"
+    // calculado sobre un punto de hace 10 minutos es peor que no decir nada, porque
+    // la persona se queda quieta esperando en vez de decidir. Ver UBICACION_FRESCA_SEG.
+    const edadSeg = loc.updated_at
+      ? Math.max(0, Math.round((Date.now() - new Date(loc.updated_at as string).getTime()) / 1000))
+      : null;
+    if (edadSeg == null || edadSeg > UBICACION_FRESCA_SEG) {
+      const hace = edadSeg == null ? null : Math.max(1, Math.round(edadSeg / 60));
+      return {
+        texto: hace
+          ? `⚠️ No tengo su ubicación en este momento — la última que recibí es de hace *${hace} min*.\n\nPuede que tenga la app en segundo plano y siga en camino, pero no te lo puedo asegurar.`
+          : '⚠️ No tengo su ubicación en este momento.',
+        lat: loc.lat as number,
+        lng: loc.lng as number,
+      };
+    }
 
     const eta = etaAlPunto(loc.lat as number, loc.lng as number, oLat, oLng);
     // Sin ETA significa que ya está prácticamente encima (ver etaAlPunto).
@@ -3536,7 +3597,7 @@ async function handleConversation(
         );
         // Ubicación nativa del punto de recogida -- mismo motivo que el
         // seguimiento en vivo: un mapa real en el chat, no un link.
-        if (oLat && oLng) await sendLocation(phone, oLat, oLng, travelerLabel(session) ? 'Punto de recogida' : 'Tu punto de recogida');
+        if (oLat && oLng) await sendLocation(phone, oLat, oLng);
       }
     } else if (decision === 'no') {
       // Rechazar esta oferta y seguir buscando
@@ -3727,7 +3788,9 @@ async function handleConversation(
               : stage === 'arrived_at_pickup'
                 ? 'Llegó al punto de recogida'
                 : 'Va en camino';
-            await sendLocation(phone, loc.lat as number, loc.lng as number, `Tu ${driverNoun}`, label);
+            // La etiqueta va como texto: dentro del mapa rompía el enlace (ver sendLocation).
+            await sendText(phone, `📍 Tu ${driverNoun}: ${label}.`);
+            await sendLocation(phone, loc.lat as number, loc.lng as number);
             return;
           }
         }
@@ -3784,9 +3847,14 @@ async function handleConversation(
           const estado = trip.driver_stage === 'heading_to_pickup' || !trip.driver_stage
             ? await driverStatusLine(tripId)
             : null;
+          // "Le avisamos" afirmaba algo que no sabemos: que el mensaje le llegó y lo vio.
+          // En el caso real del 2026-09-08 el mensaje de la pasajera quedó con read_at
+          // en NULL -- el conductor NUNCA lo leyó -- y aun así le dijimos "✅ Le avisamos".
+          // Ella se quedó tranquila esperando por una certeza que no teníamos. Lo que sí
+          // podemos afirmar es que lo mandamos.
           if (estado) {
             await sendButtons(phone,
-              `✅ Le avisamos a tu ${driverNoun}.\n\n${estado.texto}`,
+              `📨 Le mandé tu mensaje.\n\n${estado.texto}`,
               [
                 { id: 'trip_call',   title: '📞 Llamarlo' },
                 { id: 'trip_cancel', title: '❌ Cancelar viaje' },
@@ -3794,9 +3862,10 @@ async function handleConversation(
             );
             // El mapa va aparte: WhatsApp no permite adjuntar ubicación a un mensaje con
             // botones, y verlo moverse es justo lo que calma la espera.
-            await sendLocation(phone, estado.lat, estado.lng, `Tu ${driverNoun}`, 'Viene en camino');
+            // Sin etiqueta: el mensaje de arriba ya dice dónde viene y cuánto falta.
+            await sendLocation(phone, estado.lat, estado.lng);
           } else {
-            await sendText(phone, `✅ Le avisamos a tu ${driverNoun}.`);
+            await sendText(phone, `📨 Le mandé tu mensaje a tu ${driverNoun}.`);
           }
           return;
         }
@@ -4058,7 +4127,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
         await sendText(phone, arrivedBody + (vehicleLine ? `\n\n${vehicleLine}` : ''));
       }
     }
-    if (lat != null && lng != null) await sendLocation(phone, lat, lng, forName ? 'Punto de recogida' : 'Tu punto de recogida');
+    if (lat != null && lng != null) await sendLocation(phone, lat, lng);
   }
 
   // Recordatorio a los ~2 minutos de que el conductor llegó y el pasajero
@@ -4281,19 +4350,33 @@ Cuando quieras intentar de nuevo, solo escribe *hola* y lo pedimos en un minuto.
     // gasta un mensaje más. Solo mientras viene en camino; si ya llegó, sobra.
     // Las coordenadas del punto de recogida vienen en el payload del cron (migración 270)
     // para no consultar la base una vez por pasajero cada 4 minutos.
-    if (stage === 'heading_to_pickup' || !stage) {
+    // El ETA solo sale si la posición es RECIENTE. La migración 281 manda `loc_age_sec`
+    // justo para esto: antes se recalculaba el ETA sobre el último punto conocido sin
+    // mirar de cuándo era, y con un GPS muerto salía "llega en ~3 min" cada 4 minutos,
+    // siempre el mismo, siempre falso (ver UBICACION_FRESCA_SEG).
+    const edadSeg = payload.loc_age_sec as number | null;
+    const fresca = edadSeg == null || edadSeg <= UBICACION_FRESCA_SEG;
+
+    if ((stage === 'heading_to_pickup' || !stage) && fresca) {
       const oLat = payload.origin_lat as number | null;
       const oLng = payload.origin_lng as number | null;
       if (oLat != null && oLng != null) {
         const eta = etaAlPunto(lat, lng, oLat, oLng);
         if (eta) label += ` · llega en ~${eta.min} min`;
       }
+    } else if (!fresca) {
+      label += ` · última ubicación hace ${Math.max(1, Math.round((edadSeg as number) / 60))} min`;
     }
 
     // Mensaje de ubicación nativo de WhatsApp -- se ve como un mapa real
     // dentro del chat, no como un link de texto que hay que tocar y esperar
     // a que abra otra app.
-    await sendLocation(phone, lat, lng, `Tu ${delivery ? 'mensajero' : 'conductor'}`, label);
+    //
+    // La etiqueta ("va en camino · llega en ~3 min") va como texto ANTES del mapa.
+    // Metida dentro del mensaje de ubicación rompía el enlace: al tocar, la app
+    // buscaba ese texto y respondía "no se encontró ningún resultado" (ver sendLocation).
+    await sendText(phone, `📍 Tu ${delivery ? 'mensajero' : 'conductor'}: ${label}.`);
+    await sendLocation(phone, lat, lng);
   }
 }
 
@@ -4405,6 +4488,27 @@ async function handleOtpCodeRequest(
   }
 
   const phone = toE164(fromPhone);
+
+  // SEGUNDA CAPA de la regla "por ahora Movi solo opera en Colombia" (2026-09-10). La primera
+  // esta en ag-otp-send, pero es floja a proposito: no puede distinguir un celular de Guadalajara
+  // (332...) o de Rosario (341...) de uno colombiano, porque la app ya les puso '+57' encima y
+  // borro el codigo de pais real. ACA si se ve -- quien escribe llega con su numero de WhatsApp
+  // verdadero (5213329201647, 5491132508643) -- asi que este es el unico punto donde el caso se
+  // puede diagnosticar bien.
+  //
+  // Sin esto respondian "No encuentro un registro en curso para este numero", que es literalmente
+  // cierto pero manda a la persona a repetir para siempre algo que nunca le va a funcionar. Los
+  // dos casos reales del 2026-09-10 (Mexico y Argentina) salieron justo asi.
+  if (!phone.startsWith('+57')) {
+    if (!explicita) return false;
+    await responder(
+      'Por ahora Movi solo opera en Colombia 🇨🇴\n\n' +
+      'Vi que escribes desde un número de otro país, y por eso no puedo enviarte el código: ' +
+      'la app solo acepta celulares colombianos.\n\n' +
+      '¡Gracias por el interés! Cuando lleguemos a tu país te esperamos 🙌',
+    );
+    return true;
+  }
 
   // ag-otp-send inserta la fila en ag_otp_codes ANTES de intentar mandar el SMS, así que la
   // fila existe incluso cuando el envío falló -- que es justo el caso que esto viene a

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe, LowerCasePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } from './anda-gana.service';
-import { AgPhoneAuthService } from './ag-phone-auth.service';
+import { AgPhoneAuthService, FUERA_DE_COBERTURA } from './ag-phone-auth.service';
 import { distMeters } from './geo.utils';
 import { BOARDING_TARGET_STAGE, isStageReached } from './trip-stage.utils';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -20732,7 +20732,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this._armOtpWhatsApp(30000);
     } else {
       const msg = res.message ?? 'Error enviando SMS';
-      if (/inv[áa]lid|10 d[íi]gitos/i.test(msg)) {
+      // Fuera de cobertura: es un error del formulario, no un fallo de envio. Ofrecer WhatsApp
+      // aca seria mentirle -- el respaldo busca la fila de ag_otp_codes por el numero colombiano
+      // inventado, y el WhatsApp real de esa persona tiene otro codigo de pais, asi que no
+      // coincide nunca. Se queda en el paso 1 con el aviso, la unica salida honesta.
+      if (res.error === 'out-of-country') {
+        this.otpStep.set('idle');
+        if (context === 'passenger') this.passengerError.set(msg);
+        else this.driverError.set(msg);
+      } else if (/inv[áa]lid|10 d[íi]gitos/i.test(msg)) {
         // Número mal escrito: eso se corrige en el formulario, WhatsApp no ayuda en nada.
         this.otpStep.set('idle');
         if (context === 'passenger') this.passengerError.set(msg);
@@ -22443,6 +22451,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   async qrSendOtp() {
     const digits = this.qrPhone().replace(/\D/g, '');
     if (digits.length !== 10) { this.qrError.set('Ingresa un número de celular de 10 dígitos.'); return; }
+    // Ver AgPhoneAuthService.esCelularColombiano(): por ahora Movi solo opera en Colombia.
+    if (!AgPhoneAuthService.esCelularColombiano(digits)) { this.qrError.set(FUERA_DE_COBERTURA); return; }
     this.qrOtpSending.set(true);
     this.qrError.set('');
     this.qrOtpWaReady.set(false);
@@ -22456,7 +22466,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this._startQrCountdown();
     } else {
       const msg = result.message ?? 'Error al enviar el SMS. Intenta de nuevo.';
-      if (/inv[áa]lid|10 d[íi]gitos/i.test(msg)) {
+      // Fuera de cobertura y numero mal escrito se arreglan en el formulario; WhatsApp no ayuda.
+      if (result.error === 'out-of-country' || /inv[áa]lid|10 d[íi]gitos/i.test(msg)) {
         this.qrError.set(msg);
       } else {
         // El SMS no salió, pero ag-otp-send ya dejó la fila del código en la base -- así que

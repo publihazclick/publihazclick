@@ -13,7 +13,39 @@
 
 ## Pendiente de subir
 
-_(vacío — todo subido en el push del 2026-09-07)_
+### La app dejaba registrarse a gente de otros países y nunca les llegaba el código
+- **Qué**: ahora la app avisa *"Por ahora Movi solo opera en Colombia 🇨🇴"* en vez de dejar
+  que la persona lo intente para siempre. Tres puntos:
+  1. `ag-otp-send` rechaza el número **antes** de crear la fila en `ag_otp_codes` y antes
+     de gastar el SMS, y devuelve el flag `fuera_de_cobertura`.
+  2. La app lo valida también del lado del cliente (aviso instantáneo) y lo muestra como
+     error del formulario, **sin** ofrecer el respaldo por WhatsApp — que en este caso
+     tampoco funciona y solo alarga la frustración.
+  3. `ag-whatsapp` responde el mismo aviso cuando quien escribe pidiendo el código llega
+     con un número que no es `+57`.
+- **Por qué**: la app arma el teléfono como `'+57' + lo que escriban`, sin selector de país.
+  Alguien en México que escribe su número local `3329201647` queda guardado como
+  `+573329201647` — un colombiano que no existe. El SMS se manda al vacío y el respaldo por
+  WhatsApp tampoco lo encuentra, porque su WhatsApp real es `5213329201647`. **13 intentos
+  así desde el 2026-08-04** (México, Argentina, EE.UU.), **todos con `used=false`**: ninguno
+  completó el registro jamás. El 2026-09-10 llegaron dos seguidos y por eso se detectó.
+- **Toca**: `supabase` + `web` → por la regla 3, espera a que estén los dos.
+- **Estado**: commiteado en local, **sin desplegar**.
+- **Verificado**: `tsc --noEmit` en verde; las dos edge functions pasan esbuild; la regla
+  probada contra los números reales de la base — **24 colombianos, 0 rechazados por error**;
+  9 de 12 extranjeros bloqueados en la app y los 3 restantes (Guadalajara `332`, Rosario
+  `341`) en WhatsApp.
+- **Ojo — límite conocido**: la regla es floja a propósito (`+57` + 10 dígitos que empiecen
+  por 3), **no** valida el prefijo del operador. Se intentó armar esa lista y se descartó:
+  las listas publicadas de prefijos colombianos están desactualizadas — omiten `319` y
+  `324`, que **sí** están en uso por conductores reales de esta base. Bloquear a un
+  colombiano legítimo es mucho peor que dejar pasar a un extranjero, y para eso está la
+  segunda capa en WhatsApp.
+- **Efecto secundario a tener en cuenta**: el truco de diagnóstico de mandar un OTP al
+  propio número de Telnyx (`+19713998284`) para ver si la cuenta está sana **ya no
+  funciona** — ahora se rechaza por fuera de cobertura. De paso eso cierra un hueco real:
+  ese endpoint no exige JWT, así que antes cualquiera podía usarlo para mandar SMS a
+  números internacionales. Para el chequeo de salud, pegarle directo a la API de Telnyx.
 
 ---
 
