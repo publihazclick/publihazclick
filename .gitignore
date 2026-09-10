@@ -62,3 +62,13 @@ supabase/functions/.env
 # Subproductos de herramientas locales (no son del proyecto)
 deno.lock
 supabase/.temp/
+
+# Scripts de un solo uso para aplicar migraciones a mano (Management API).
+# Llevan el token de Supabase EN TEXTO PLANO, asi que no pueden entrar al repo:
+# subirlos dispara el secret scanning de GitHub, que ya paso una vez con una key
+# de Resend y toco reescribir el historial con filter-branch. La migracion .sql SI
+# se commitea -- ese es el registro de lo que quedo en la base; el script que la
+# empujo es andamiaje local y se puede borrar cuando ya se aplico.
+supabase/migrations/aplicar-*.mjs
+supabase/migrations/aplicar-*.ps1
+supabase/migrations/resultado-*.txt
