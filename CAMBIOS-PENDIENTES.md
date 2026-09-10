@@ -13,6 +13,15 @@
 
 ## Pendiente de subir
 
+> **Nota (2026-09-10).** Además del cambio de abajo, el push llevará las migraciones
+> **281, 282 y 283**, que ya estaban aplicadas en producción desde el 08-09/09-09 pero
+> nunca se habían commiteado (el repo llevaba dos días desfasado). **No necesitan
+> desplegarse** — ya están vivas en la base, verificadas por md5 contra el catálogo de
+> Postgres. Van solo para que el repo deje de mentir. Los scripts `aplicar-281.*` se
+> quedaron fuera a propósito: tienen el token de Supabase en texto plano y ya están
+> en `.gitignore`.
+
+
 ### La app dejaba registrarse a gente de otros países y nunca les llegaba el código
 - **Qué**: ahora la app avisa *"Por ahora Movi solo opera en Colombia 🇨🇴"* en vez de dejar
   que la persona lo intente para siempre. Tres puntos:
