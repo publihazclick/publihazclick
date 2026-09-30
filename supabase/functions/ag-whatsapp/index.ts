@@ -4086,6 +4086,19 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
   // ag_wa_lead_followups, migración 285). El cron ya validó la ventana de 24h, el
   // escalón que toca y que la persona no haya pedido que no le escribamos -- acá
   // solo se redacta y se manda por el número de conductores.
+  // Envío programado del embudo (cron movi-envios-programados, migración 287). La
+  // ventana de 24h y a quién le toca ya los decidió ag_wa_leads_para_embudo; acá solo
+  // se redacta según si ya lo habíamos contactado o si le llegó el mensaje erróneo.
+  if (event === 'lead_embudo_programado') {
+    await leadEmbudoProgramado(
+      phone,
+      (payload.wa_name as string | null) ?? null,
+      payload.ya_contactado === true,
+      payload.recibio_error === true,
+    );
+    return;
+  }
+
   if (event === 'lead_followup') {
     await leadFollowup(
       phone,
@@ -5494,6 +5507,45 @@ async function leadYaDescargo(phone: string): Promise<void> {
     `Sin eso no te entran solicitudes, aunque tu cuenta esté lista.\n\n` +
     `Cualquier cosa que se te trabe en el registro me escribes por acá y te saco del apuro.`);
   await upsertLead(phone, { paso: 'descargo', ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+}
+
+/**
+ * Envío programado del embudo a un lead que quedó sin atender (migración 287).
+ *
+ * Tres versiones del mismo mensaje, y la diferencia importa:
+ *  · `recibioError` -> le llegó el mensaje incoherente del 2026-09-30 ("Hola quiero
+ *    más información" reenviado por error desde el panel). Se le reconoce de frente:
+ *    fingir que no pasó es peor, porque la persona SÍ lo vio.
+ *  · `yaContactado` -> ya recibió el saludo manual anoche. Volver a decir "Soy
+ *    Katherine, del equipo de conductores de Movi" sonaría a plantilla mal puesta,
+ *    así que se retoma la conversación en vez de presentarse de cero.
+ *  · ninguno de los dos -> primer contacto normal.
+ */
+async function leadEmbudoProgramado(phone: string, name: string | null, yaContactado: boolean, recibioError: boolean): Promise<void> {
+  const nombre = cleanDisplayName(name);
+  const hola = nombre ? `¡Hola ${nombre}!` : '¡Hola!';
+
+  let cuerpo: string;
+  if (recibioError) {
+    cuerpo =
+      `${hola} 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
+      `Antes que nada: anoche te llegó un mensaje mío que no tenía sentido ` +
+      `("Hola quiero más información"). Fue un error nuestro, nada tuyo — disculpa 🙏\n\n` +
+      `Ahora sí, a lo importante. Para decirte cómo te funcionaría a ti en concreto ` +
+      `y no llenarte de datos que no te sirven, dime: *¿con qué te vas a mover?*`;
+  } else if (yaContactado) {
+    cuerpo =
+      `${hola} 👋 Te escribí anoche por acá, soy ${LEAD_ASESORA} del equipo de conductores de Movi.\n\n` +
+      `Retomo para no dejarte a medias 🙌 Para decirte cómo te funcionaría a ti en concreto, ` +
+      `dime una sola cosa: *¿con qué te vas a mover?*`;
+  } else {
+    cuerpo =
+      `${hola} 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
+      `Vi que preguntaste por trabajar con nosotros y no quiero dejarte esperando 🙌 ` +
+      `Para decirte lo tuyo en concreto, dime: *¿con qué te vas a mover?*`;
+  }
+
+  await sendSupportButtons(phone, cuerpo, LEAD_BTN_VEHICULO);
 }
 
 /**
