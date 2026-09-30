@@ -5407,9 +5407,24 @@ const LEAD_BTN_CIERRE = [
   { id: 'lead_duda',     title: 'Tengo una duda' },
 ];
 
-/** Primer contacto: se presenta y hace UNA sola pregunta. */
+/**
+ * Primer contacto: se presenta y hace UNA sola pregunta.
+ *
+ * SIN NOMBRE, a propósito (corrección del usuario, 2026-09-30). El `name` que llega del webhook
+ * es el *nombre de perfil de WhatsApp*: lo que cada quien escribió como su nombre visible, que
+ * no verifica nadie. Medido sobre los 22 nombres reales guardados en ag_wa_sessions: 12 traen
+ * emojis o símbolos, 2 traen números ("edinsonhiguera1988"), y 4 son nombres de negocio o
+ * frases ("MODA LANDAZURY", "Spa Belleza Eterna", "Todo Lo Puedo En Cristo"). Con el recorte a
+ * la primera palabra eso produce saludos como "¡Hola MODA!", "¡Hola Spa!" o
+ * "¡Hola Distinguished!" en el PRIMER mensaje a alguien que estamos pagando por atraer.
+ *
+ * El número de pasajeros ya tenía esta regla desde el 2026-08-10 y acá se repitió el error.
+ * Se sigue GUARDANDO el nombre de perfil en la ficha del lead: como pista para el asesor en la
+ * bandeja es útil, y ahí un apodo no hace daño porque nadie se lo dice a la persona.
+ */
 async function leadSaludar(phone: string, name: string, primerMensaje: string, esDePauta: boolean): Promise<void> {
-  const nombre = cleanDisplayName(name && name !== 'Usuario' ? name : null);
+  // Solo el nombre REAL de la cuenta, si por casualidad ya existe (raro en un lead nuevo).
+  const nombre = await lookupRealFirstName(phone);
   const saludo = nombre ? `¡Hola ${nombre}! 👋` : '¡Hola! 👋';
   await sendSupportButtons(phone,
     `${saludo} Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
@@ -5418,7 +5433,10 @@ async function leadSaludar(phone: string, name: string, primerMensaje: string, e
     `*¿Con qué te vas a mover?*`,
     LEAD_BTN_VEHICULO);
   await upsertLead(phone, {
-    wa_name: nombre,
+    // Se guarda el nombre de perfil CRUDO, no el "limpio": en la bandeja el asesor prefiere ver
+    // "MODA LANDAZURY" tal cual (le dice algo) antes que un "MODA" recortado que parece un
+    // nombre de pila y no lo es. Acá no se le dice a nadie, así que no hace daño.
+    wa_name: (name && name !== 'Usuario') ? name.slice(0, 80) : null,
     origen: esDePauta ? 'pauta' : 'organico',
     primer_mensaje: primerMensaje.slice(0, 500),
     paso: 'saludado',
@@ -5530,7 +5548,9 @@ async function leadYaDescargo(phone: string): Promise<void> {
  *  · ninguno de los dos -> primer contacto normal.
  */
 async function leadEmbudoProgramado(phone: string, name: string | null, yaContactado: boolean, recibioError: boolean): Promise<void> {
-  const nombre = cleanDisplayName(name);
+  // Nunca el nombre de perfil de WhatsApp -- ver la nota larga en leadSaludar(). Solo el nombre
+  // real de la cuenta si la persona ya se registró.
+  const nombre = await lookupRealFirstName(phone);
   const hola = nombre ? `¡Hola ${nombre}!` : '¡Hola!';
 
   let cuerpo: string;
@@ -5604,7 +5624,8 @@ async function leadRetomar(phone: string, name: string, paso: string, vehiculo: 
  * es el último, que es lo que haría cualquier vendedor decente.
  */
 async function leadFollowup(phone: string, name: string | null, paso: string, vehiculo: string | null, numero: number): Promise<void> {
-  const nombre = cleanDisplayName(name);
+  // Nunca el nombre de perfil de WhatsApp -- ver la nota larga en leadSaludar().
+  const nombre = await lookupRealFirstName(phone);
   const v = (vehiculo === 'moto' || vehiculo === 'carro') ? vehiculo : null;
 
   if (numero === 1) {
@@ -5797,8 +5818,17 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
   const isGreeting = bareWords.length <= 20 &&
     /^(hola|ola|buenas|buenos dias|buenas tardes|buenas noches|ayuda|info|informacion|inicio|menu|hey|hi)$/.test(bareWords);
   if (isGreeting) {
+    // Mismo criterio que el número de pasajeros desde el 2026-08-10, que acá nunca se aplicó:
+    // NO se saluda con el nombre de perfil de WhatsApp. Ese nombre es lo que cada quien escribió
+    // como su nombre visible y no lo verifica nadie -- medido sobre los 22 nombres reales
+    // guardados en ag_wa_sessions: 12 traen emojis o símbolos, 2 traen números
+    // ("edinsonhiguera1988"), y 4 son nombres de negocio o frases ("MODA LANDAZURY",
+    // "Spa Belleza Eterna", "Todo Lo Puedo En Cristo"). Saludar a un conductor como "Hola MODA"
+    // o "Hola Spa" hace más daño que no decir ningún nombre.
+    // Solo se usa el nombre REAL de la cuenta (el que la persona escribió al registrarse,
+    // igual al de su cédula); si no tiene cuenta, se saluda sin nombre.
     const menuText =
-      `${greetingOpener(name && name !== 'Usuario' ? name : null)} Soy el asistente de conductores de Movi.\n\n` +
+      `${greetingOpener(await lookupRealFirstName(phone))} Soy el asistente de conductores de Movi.\n\n` +
       `Pregúntame lo que necesites, por ejemplo:\n` +
       `- Cómo registrarme y qué documentos necesito\n` +
       `- Cuánto es la comisión y cómo me pagan\n` +
