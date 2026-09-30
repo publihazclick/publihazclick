@@ -869,27 +869,68 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
         </button>
       </div>
 
+      <!-- Filtros de la bandeja. "Sin responder" es el que de verdad se usa a diario:
+           son las conversaciones donde lo último que pasó fue que la persona escribió
+           y nadie (ni el bot ni una persona) contestó después. -->
+      <div class="flex gap-2 flex-wrap mt-3 mb-3">
+        @for (f of waFiltros; track f.v) {
+          <button (click)="waFilter.set(f.v)"
+            class="px-3 py-1.5 rounded-lg text-[11px] font-black uppercase"
+            [class]="waFilter() === f.v ? 'text-lime-950' : 'text-slate-500'"
+            [style]="waFilter() === f.v ? 'background:#a3e635' : 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)'">
+            {{ f.l }}
+            @if (f.v === 'sin_responder' && waSinResponderCount() > 0) {
+              <span class="ml-1">({{ waSinResponderCount() }})</span>
+            }
+          </button>
+        }
+      </div>
+
       @if (waLoadingConvos()) {
         <div class="text-center py-16 text-slate-500 text-sm">Cargando conversaciones…</div>
-      } @else if (waConversations().length === 0) {
+      } @else if (waConvsVisibles().length === 0) {
         <div class="flex flex-col items-center gap-3 py-20">
           <span class="material-symbols-outlined text-slate-600" style="font-size:48px">chat</span>
-          <p class="text-slate-500 text-sm">Sin conversaciones {{ waRole() === 'conductor' ? 'de conductores' : 'de pasajeros' }} todavía.</p>
+          <p class="text-slate-500 text-sm">
+            @if (waFilter() === 'todas') {
+              Sin conversaciones {{ waRole() === 'conductor' ? 'de conductores' : 'de pasajeros' }} todavía.
+            } @else {
+              Ninguna conversación en este filtro.
+            }
+          </p>
         </div>
       }
-      @for (c of waConversations(); track c.wa_phone) {
+      @for (c of waConvsVisibles(); track c.wa_phone) {
         <button (click)="openWaConversation(c.wa_phone)" class="w-full text-left bg-white/[0.03] border border-white/8 rounded-2xl p-4 mb-3 flex items-center gap-3">
           <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(163,230,53,0.1);border:1px solid rgba(163,230,53,0.2)">
             <span class="material-symbols-outlined text-lime-400" style="font-size:20px">{{ waRole() === 'conductor' ? 'directions_car' : 'person_pin_circle' }}</span>
           </div>
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <p class="text-white font-bold text-sm truncate">{{ c.contact_name || c.wa_phone }}</p>
+              @if (c.sin_responder) {
+                <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase flex-shrink-0 bg-amber-500/20 text-amber-400">Sin responder</span>
+              }
               @if (c.escalated) {
                 <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase flex-shrink-0 bg-rose-500/20 text-rose-400">Escalado</span>
               }
             </div>
             <p class="text-slate-500 text-xs truncate">{{ c.last_dir === 'out' ? '↩ ' : '' }}{{ c.last_body }}</p>
+            <!-- Quién atendió de último, y cuánto puso cada uno. Es lo que antes no se
+                 podía saber: todo lo saliente se veía igual viniera del bot o de una
+                 persona escribiendo en el panel. -->
+            <p class="text-[10px] mt-0.5" [class]="c.last_sent_by === 'admin' ? 'text-sky-400' : 'text-slate-600'">
+              @if (c.last_sent_by === 'admin') {
+                Último en responder: tú
+              } @else if (c.last_sent_by) {
+                Último en responder: automatización
+              } @else {
+                Todavía nadie ha respondido
+              }
+              @if ((c.admin_count ?? 0) > 0) {
+                <span class="text-slate-600"> · {{ c.admin_count }} a mano / {{ c.bot_count ?? 0 }} automáticas</span>
+              }
+            </p>
           </div>
           <div class="flex flex-col items-end gap-1 flex-shrink-0">
             <span class="text-[10px] text-slate-600">{{ c.last_at | date:'dd/MM HH:mm' }}</span>
@@ -919,11 +960,28 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
         <div class="text-center py-16 text-slate-500 text-sm">Cargando mensajes…</div>
       } @else {
         <div class="flex flex-col gap-2 rounded-2xl p-3" style="background:rgba(0,0,0,0.2)">
-          @for (m of waMessages(); track $index) {
-            <div class="flex" [class]="m.direction === 'out' ? 'justify-end' : 'justify-start'">
-              <div class="max-w-[80%] rounded-2xl px-3 py-2" [style]="m.direction === 'out' ? 'background:#256b3a' : 'background:rgba(255,255,255,0.08)'">
-                <p class="text-slate-100 text-sm whitespace-pre-line">{{ m.body }}</p>
-                <p class="text-[10px] text-slate-400 mt-1 text-right">{{ m.created_at | date:'dd/MM HH:mm' }}</p>
+          @for (it of waHilo(); track $index) {
+            <!-- Separador de día: sin esto un hilo largo es una pared de horas sueltas
+                 y no se sabe si "14:38" fue hoy o el 28 de agosto. -->
+            @if (it.dia) {
+              <div class="flex items-center gap-2 my-1">
+                <div class="h-px flex-1" style="background:rgba(255,255,255,0.08)"></div>
+                <span class="text-[10px] font-black uppercase text-slate-500">{{ it.dia }}</span>
+                <div class="h-px flex-1" style="background:rgba(255,255,255,0.08)"></div>
+              </div>
+            }
+            <div class="flex" [class]="it.m.direction === 'out' ? 'justify-end' : 'justify-start'">
+              <div class="max-w-[80%] rounded-2xl px-3 py-2" [style]="waBurbuja(it.m)">
+                <!-- Autor del mensaje. Azul = lo escribió una persona desde acá;
+                     verde = lo respondió la automatización de la API de Meta. -->
+                @if (it.m.direction === 'out') {
+                  <p class="text-[10px] font-black uppercase mb-1"
+                    [class]="it.m.sent_by === 'admin' ? 'text-sky-200' : 'text-emerald-200/70'">
+                    {{ waAutor(it.m) }}
+                  </p>
+                }
+                <p class="text-slate-100 text-sm whitespace-pre-line">{{ it.m.body }}</p>
+                <p class="text-[10px] text-slate-400 mt-1 text-right">{{ it.m.created_at | date:'HH:mm' }}</p>
               </div>
             </div>
           }
@@ -1028,6 +1086,70 @@ export class AndaGanaAdminComponent implements OnInit, OnDestroy {
   waReplyText       = signal('');
   waSending         = signal(false);
   waSendError       = signal<string | null>(null);
+  waFilter          = signal<'todas' | 'sin_responder' | 'mias' | 'solo_bot'>('todas');
+
+  readonly waFiltros = [
+    { v: 'todas'         as const, l: 'Todas' },
+    { v: 'sin_responder' as const, l: 'Sin responder' },
+    { v: 'mias'          as const, l: 'Respondí yo' },
+    { v: 'solo_bot'      as const, l: 'Solo el bot' },
+  ];
+
+  /**
+   * `sin_responder`, `admin_count` y `bot_count` los calcula la base
+   * (ag_wa_conversations_summary, migración 284). Acá solo se filtra: el orden por
+   * recencia ya viene resuelto en SQL y no se vuelve a tocar -- reordenar en el
+   * cliente fue justo lo que se arregló en la 280.
+   */
+  waConvsVisibles = computed(() => {
+    const f = this.waFilter();
+    const todas = this.waConversations();
+    if (f === 'todas')         return todas;
+    if (f === 'sin_responder') return todas.filter(c => !!c.sin_responder);
+    if (f === 'mias')          return todas.filter(c => (c.admin_count ?? 0) > 0);
+    return todas.filter(c => (c.admin_count ?? 0) === 0);
+  });
+
+  waSinResponderCount = computed(() => this.waConversations().filter(c => !!c.sin_responder).length);
+
+  /** El hilo con una etiqueta de día en el primer mensaje de cada fecha. */
+  waHilo = computed<Array<{ m: any; dia: string | null }>>(() => {
+    const out: Array<{ m: any; dia: string | null }> = [];
+    let diaAnterior = '';
+    for (const m of this.waMessages()) {
+      const d = m?.created_at ? new Date(m.created_at) : null;
+      const clave = d ? d.toDateString() : '';
+      out.push({ m, dia: clave && clave !== diaAnterior ? this.etiquetaDia(d!) : null });
+      if (clave) diaAnterior = clave;
+    }
+    return out;
+  });
+
+  private etiquetaDia(d: Date): string {
+    const hoy = new Date();
+    const ayer = new Date(); ayer.setDate(hoy.getDate() - 1);
+    if (d.toDateString() === hoy.toDateString())  return 'Hoy';
+    if (d.toDateString() === ayer.toDateString()) return 'Ayer';
+    return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: d.getFullYear() === hoy.getFullYear() ? undefined : 'numeric' });
+  }
+
+  /**
+   * Quién mandó el mensaje. `sent_by` es NULL en los mensajes guardados antes de la
+   * migración 284 que no se pudieron clasificar -- ahí se dice "automático", que es lo
+   * que eran (la respuesta a mano desde el panel se marca siempre).
+   */
+  waAutor(m: any): string {
+    if (m?.direction === 'in') return '';
+    if (m?.sent_by === 'admin') return m.sent_by_name ? `Tú · ${m.sent_by_name}` : 'Tú';
+    if (m?.sent_by === 'sistema') return 'Aviso automático';
+    return 'Automático · bot';
+  }
+
+  /** Azul de marca para lo que escribió una persona, verde WhatsApp para el bot. */
+  waBurbuja(m: any): string {
+    if (m?.direction !== 'out') return 'background:rgba(255,255,255,0.08)';
+    return m?.sent_by === 'admin' ? 'background:#245BDB' : 'background:#256b3a';
+  }
 
   // Ventana de servicio de 24h de WhatsApp: solo se puede escribir texto libre
   // dentro de las 24h siguientes al último mensaje que ESA persona nos mandó.
@@ -1349,9 +1471,13 @@ export class AndaGanaAdminComponent implements OnInit, OnDestroy {
         return;
       }
       this.waReplyText.set('');
-      // Se recarga el hilo desde la base en vez de agregar el mensaje a mano:
-      // así lo que se ve en pantalla es lo que de verdad quedó registrado.
-      await this.openWaConversation(phone);
+      // El mensaje se pinta de inmediato con lo que devolvió el servidor, sin esperar a
+      // releer el hilo. No es cosmético: `logWaMessage()` en ag-whatsapp inserta sin
+      // esperar (fire-and-forget), así que releer al instante puede traer el hilo TODAVÍA
+      // sin la respuesta y dejar la pantalla igual que antes de enviar. Eso es lo que
+      // llevó a reenviar el mismo saludo cuatro veces en 80 segundos el 2026-09-29.
+      // El refresco automático de 15 s reconcilia después contra lo que quedó en la base.
+      if (res.sent) this.waMessages.update(ms => [...ms, res.sent]);
       this.loadWaConversations();
     } finally {
       this.waSending.set(false);

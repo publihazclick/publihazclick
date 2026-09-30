@@ -161,19 +161,44 @@ async function _applyRaisedOffer(phone: string, tripId: string, currentPrice: nu
 // Guarda cada mensaje entrante/saliente de ambos números (viajes=pasajero,
 // soporte=conductor) para poder verlos como conversación en el admin. No
 // bloquea el flujo real -- si falla, solo queda sin loguear ese mensaje.
+//
+// QUIÉN LO MANDÓ (migración 284). Antes solo se guardaba `direction`, así que en la
+// bandeja TODO lo saliente se veía igual y era imposible saber si había contestado la
+// automatización o una persona. Ahora cada envío se marca:
+//   'bot'     -> lo respondió esta función contestando al webhook de Meta
+//   'admin'   -> lo escribió una persona a mano desde la bandeja del panel
+//   'sistema' -> aviso automático de un evento del viaje (lo dispara la app o un trigger)
+//   'alerta'  -> aviso interno al número del admin, no es conversación con un cliente
+// El valor por defecto es 'bot' a propósito: todo lo que sale desde el flujo
+// conversacional es del bot, y solo los pocos llamadores que NO lo son lo declaran.
+type WaSentBy = 'bot' | 'admin' | 'sistema' | 'alerta';
+
+// El teléfono se guarda SIEMPRE sin el '+' inicial, como lo manda Meta en el webhook.
+// Sin esto la respuesta del admin (que pasa por toE164() y queda '+573...') caía en una
+// conversación distinta a la del resto del hilo ('573...') y el panel la mostraba como un
+// chat fantasma de un solo mensaje -- ver el encabezado de la migración 284. Un BSUID
+// ("CO.1025109683878541") no empieza por '+' y sale intacto.
+function normWaPhone(phone: string): string {
+  return (phone ?? '').replace(/^\+/, '');
+}
+
 function logWaMessage(
   phone: string,
   role: 'conductor' | 'pasajero',
   direction: 'in' | 'out',
   body: string,
   msgType = 'text',
+  sentBy: WaSentBy = 'bot',
+  sentByName: string | null = null,
 ): void {
   db().from('ag_wa_message_log').insert({
-    wa_phone: phone,
+    wa_phone: normWaPhone(phone),
     role,
     direction,
     body: (body ?? '').slice(0, 4000),
     msg_type: msgType,
+    sent_by: direction === 'out' ? sentBy : null,
+    sent_by_name: direction === 'out' && sentBy === 'admin' ? sentByName : null,
   }).then(({ error }) => {
     if (error) console.error('[WA] logWaMessage error:', error);
   });
@@ -198,7 +223,7 @@ function recipientField(id: string): { to: string } | { recipient: string } {
 }
 
 // ─── WhatsApp API helpers ─────────────────────────────────────────────────────
-async function sendText(to: string, text: string): Promise<{ ok: boolean; status?: number; body?: string }> {
+async function sendText(to: string, text: string, sentBy: WaSentBy = 'bot', sentByName: string | null = null): Promise<{ ok: boolean; status?: number; body?: string }> {
   try {
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
@@ -217,7 +242,7 @@ async function sendText(to: string, text: string): Promise<{ ok: boolean; status
     // (sin lanzar excepcion) hacia parecer que el mensaje se habia enviado cuando en
     // realidad Meta lo rechazo. Se loguea siempre para poder diagnosticar sin adivinar.
     if (!res.ok) console.error('[WA] sendText Meta API error:', res.status, bodyText);
-    logWaMessage(to, 'pasajero', 'out', text, 'text');
+    logWaMessage(to, 'pasajero', 'out', text, 'text', sentBy, sentByName);
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendText fetch error:', e);
@@ -261,7 +286,7 @@ function tplParam(text: string): string {
   return plano.length > 900 ? plano.slice(0, 897) + '...' : plano;
 }
 
-async function sendTemplate(to: string, templateName: string, langCode: string, bodyParams: string[], paramNames?: string[]): Promise<{ ok: boolean; status?: number; body?: string }> {
+async function sendTemplate(to: string, templateName: string, langCode: string, bodyParams: string[], paramNames?: string[], sentBy: WaSentBy = 'bot'): Promise<{ ok: boolean; status?: number; body?: string }> {
   bodyParams = bodyParams.map(tplParam);
   try {
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
@@ -288,7 +313,7 @@ async function sendTemplate(to: string, templateName: string, langCode: string, 
     // El log tiene que reflejar la realidad: antes registraba el mensaje aunque Meta lo
     // rechazara, asi que decia 'enviado' cuando no habia llegado nada. Bug real 2026-09-02.
     const marcaTpl = res.ok ? '' : `[NO ENTREGADO ${res.status}] `;
-    logWaMessage(to, 'pasajero', 'out', `${marcaTpl}[plantilla ${templateName}] ${bodyParams.join(' | ')}`, 'template');
+    logWaMessage(to, 'pasajero', 'out', `${marcaTpl}[plantilla ${templateName}] ${bodyParams.join(' | ')}`, 'template', sentBy);
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendTemplate fetch error:', e);
@@ -318,7 +343,7 @@ type WaResult = { ok: boolean; status?: number; body?: string };
  * 24h, por eso va de último). No hace falta tocar nada cuando la nueva se apruebe: el
  * primer intento deja de fallar solo.
  */
-async function sendAdminTemplate(to: string, titulo: string, detalle: string): Promise<WaResult> {
+async function sendAdminTemplate(to: string, titulo: string, detalle: string, sentBy: WaSentBy = 'alerta'): Promise<WaResult> {
   try {
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
@@ -340,7 +365,7 @@ async function sendAdminTemplate(to: string, titulo: string, detalle: string): P
     const bodyText = await res.text();
     if (!res.ok) console.error('[WA] sendAdminTemplate Meta error:', res.status, bodyText);
     const marca = res.ok ? '' : `[NO ENTREGADO ${res.status}] `;
-    logWaMessage(to, 'pasajero', 'out', `${marca}[plantilla movi_aviso_admin] ${titulo} | ${detalle}`, 'template');
+    logWaMessage(to, 'pasajero', 'out', `${marca}[plantilla movi_aviso_admin] ${titulo} | ${detalle}`, 'template', sentBy);
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendAdminTemplate fetch error:', e);
@@ -353,13 +378,17 @@ async function sendAdminAlert(to: string, titulo: string, detalle: string, texto
   const t = tplParam(titulo).slice(0, 55) || 'Aviso';
   const d = tplParam(detalle) || '(sin detalle)';
 
-  const nueva = await sendAdminTemplate(toE164(to), t, d);
+  // Los tres van marcados como 'alerta': es un aviso interno al número del admin, no
+  // una conversación con un cliente. Antes se guardaban igual que cualquier mensaje y
+  // eran 367 filas -- el "hilo" más largo de toda la bandeja, tapando lo que sí
+  // importaba. La migración 284 los deja fuera de la bandeja sin dejar de guardarlos.
+  const nueva = await sendAdminTemplate(toE164(to), t, d, 'alerta');
   if (nueva.ok) return nueva;
 
-  const vieja = await sendTemplate(toE164(to), 'trip_error_alert', 'es_CO', [t, d], ['contexto', 'detalle']);
+  const vieja = await sendTemplate(toE164(to), 'trip_error_alert', 'es_CO', [t, d], ['contexto', 'detalle'], 'alerta');
   if (vieja.ok) return vieja;
 
-  return await sendText(toE164(to), textoRespaldo ?? `*${titulo}*\n\n${detalle}`);
+  return await sendText(toE164(to), textoRespaldo ?? `*${titulo}*\n\n${detalle}`, 'alerta');
 }
 
 // ─── Marcar leído + mostrar "escribiendo..." mientras el bot procesa ─────────
@@ -4389,7 +4418,7 @@ Cuando quieras intentar de nuevo, solo escribe *hola* y lo pedimos en un minuto.
 // cuando la IA no tiene una respuesta segura. Ver memoria movi_whatsapp_support_number.
 // ════════════════════════════════════════════════════════════════════════════
 
-async function sendSupportGraph(payload: Record<string, unknown>): Promise<WaResult> {
+async function sendSupportGraph(payload: Record<string, unknown>, sentBy: WaSentBy = 'bot', sentByName: string | null = null): Promise<WaResult> {
   try {
     const { to, ...rest } = payload;
     const fullBody = { messaging_product: 'whatsapp', ...(to ? recipientField(to as string) : {}), ...rest };
@@ -4402,7 +4431,7 @@ async function sendSupportGraph(payload: Record<string, unknown>): Promise<WaRes
     if (!res.ok) console.error('[WA-Support] sendGraph Meta API error:', res.status, bodyText, 'sent:', JSON.stringify(fullBody));
     if (to) {
       const summary = summarizeOutboundPayload(payload);
-      logWaMessage(to as string, 'conductor', 'out', summary.text, summary.type);
+      logWaMessage(to as string, 'conductor', 'out', summary.text, summary.type, sentBy, sentByName);
     }
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
@@ -4411,8 +4440,8 @@ async function sendSupportGraph(payload: Record<string, unknown>): Promise<WaRes
   }
 }
 
-async function sendSupportText(to: string, text: string): Promise<WaResult> {
-  return sendSupportGraph({ to, type: 'text', text: { preview_url: false, body: text } });
+async function sendSupportText(to: string, text: string, sentBy: WaSentBy = 'bot', sentByName: string | null = null): Promise<WaResult> {
+  return sendSupportGraph({ to, type: 'text', text: { preview_url: false, body: text } }, sentBy, sentByName);
 }
 
 // ─── Código de verificación por WhatsApp ──────────────────────────────────────
@@ -5417,9 +5446,25 @@ serve(async (req) => {
       // (ag-admin-action → send_wa_reply). Sin `as`, sale por el de pasajeros, que
       // es el comportamiento que ya tenían todos los llamadores anteriores.
       const comoConductor = (body as Record<string, unknown>).as === 'conductor';
+
+      // Quién está mandando esto (migración 284). Esta misma rama la usan tres cosas
+      // distintas y en la bandeja se veían todas iguales:
+      //   · la bandeja del panel admin -> una persona escribiendo ('admin', con nombre)
+      //   · los avisos de evento que dispara la app (viaje aceptado, conductor llegó…)
+      //   · los avisos internos al número del admin (to:'admin')
+      // Solo el panel declara `sent_by: 'admin'`; el resto queda como aviso automático,
+      // que es lo que son. Nunca al revés: si el panel no lo declarara, una respuesta
+      // escrita a mano se vería como si la hubiera dado la automatización.
+      const declarado = (body as Record<string, unknown>).sent_by;
+      const sentBy: WaSentBy =
+        declarado === 'admin' ? 'admin' : (to === 'admin' ? 'alerta' : 'sistema');
+      const sentByName = sentBy === 'admin'
+        ? (((body as Record<string, unknown>).sent_by_name as string | undefined) ?? null)
+        : null;
+
       const waResult = comoConductor
-        ? await sendSupportText(toE164(targetPhone), text)
-        : await sendText(toE164(targetPhone), text);
+        ? await sendSupportText(toE164(targetPhone), text, sentBy, sentByName)
+        : await sendText(toE164(targetPhone), text, sentBy, sentByName);
       return new Response(JSON.stringify({ sent: waResult.ok, status: waResult.status, error: waResult.ok ? null : (waResult.body ?? '').slice(0, 300) }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

@@ -2097,10 +2097,14 @@ export class AndaGanaService {
     role: 'conductor' | 'pasajero',
     message: string,
     publihazclickToken: string,
-  ): Promise<{ ok: boolean; error?: string }> {
+  ): Promise<{ ok: boolean; error?: string; sent?: any }> {
     try {
-      await this.callAdminAction(publihazclickToken, { action: 'send_wa_reply', phone, role, message });
-      return { ok: true };
+      // `sent` es el mensaje ya enviado, para pintarlo en el hilo al instante. Sin esto el
+      // panel se quedaba igual después de enviar y el admin reenviaba lo mismo varias
+      // veces creyendo que no había salido (pasó de verdad: 4 envíos en 80 segundos al
+      // mismo conductor el 2026-09-29).
+      const out = await this.callAdminAction(publihazclickToken, { action: 'send_wa_reply', phone, role, message });
+      return { ok: true, sent: out?.data ?? null };
     } catch (e) {
       const msg = (e as Error)?.message ?? '';
       if (msg.includes('window_closed')) {

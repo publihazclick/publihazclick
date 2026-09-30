@@ -35,7 +35,7 @@ function json(d: unknown, s = 200) {
 }
 
 /** Confirma que el Bearer token es una sesión real de publihazclick con rol admin/dev. */
-async function requireAdmin(authHeader: string | null): Promise<{ ok: true; userId: string } | { ok: false; status: number; error: string }> {
+async function requireAdmin(authHeader: string | null): Promise<{ ok: true; userId: string; nombre: string | null } | { ok: false; status: number; error: string }> {
   if (!authHeader) return { ok: false, status: 401, error: 'missing_authorization' };
 
   const userRes = await fetch(`${PUBLIHAZCLICK_URL}/auth/v1/user`, {
@@ -45,8 +45,11 @@ async function requireAdmin(authHeader: string | null): Promise<{ ok: true; user
   const user = await userRes.json();
   if (!user?.id) return { ok: false, status: 401, error: 'invalid_publihazclick_session' };
 
+  // full_name se trae para poder firmar las respuestas de la bandeja de soporte con el
+  // nombre de quien contestó (migración 284) -- si mañana atiende otra persona, en el
+  // hilo se ve cuál de las dos escribió, no un "admin" genérico.
   const profileRes = await fetch(
-    `${PUBLIHAZCLICK_URL}/rest/v1/profiles?id=eq.${user.id}&select=role`,
+    `${PUBLIHAZCLICK_URL}/rest/v1/profiles?id=eq.${user.id}&select=role,full_name`,
     { headers: { apikey: PUBLIHAZCLICK_ANON_KEY, Authorization: authHeader } }
   );
   if (!profileRes.ok) return { ok: false, status: 403, error: 'profile_lookup_failed' };
@@ -54,7 +57,7 @@ async function requireAdmin(authHeader: string | null): Promise<{ ok: true; user
   const role = rows?.[0]?.role;
   if (role !== 'admin' && role !== 'dev') return { ok: false, status: 403, error: 'not_admin' };
 
-  return { ok: true, userId: user.id };
+  return { ok: true, userId: user.id, nombre: (rows?.[0]?.full_name as string | null) ?? null };
 }
 
 Deno.serve(async (req) => {
@@ -213,20 +216,23 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Escalado (solo aplica al canal de soporte a conductores)
+        // Escalado (solo aplica al canal de soporte a conductores). Se compara sin el '+'
+        // porque ag_wa_conversations_summary ya devuelve el teléfono normalizado desde la
+        // migración 284, y ag_wa_support_sessions lo guarda como lo manda Meta.
+        const sinMas = (p: string) => p.replace(/^\+/, '');
         let escalatedSet = new Set<string>();
         if (role === 'conductor' && phones.length) {
           const { data: sessions } = await movi
             .from('ag_wa_support_sessions').select('wa_phone, escalated').eq('escalated', true);
           for (const s of (sessions ?? []) as Array<Record<string, unknown>>) {
-            escalatedSet.add(s.wa_phone as string);
+            escalatedSet.add(sinMas(s.wa_phone as string));
           }
         }
 
         const out = rows.map(r => ({
           ...r,
           contact_name: nameByLast10[last10(String(r.wa_phone))] || null,
-          escalated: escalatedSet.has(String(r.wa_phone)),
+          escalated: escalatedSet.has(sinMas(String(r.wa_phone))),
         }));
         return json({ ok: true, data: out });
       }
@@ -247,10 +253,15 @@ Deno.serve(async (req) => {
         if (texto.length > 4000) return json({ error: 'message_too_long' }, 400);
         const rol = body.role === 'conductor' ? 'conductor' : 'pasajero';
 
+        // El teléfono se compara normalizado (sin '+'): el panel lo manda tal como salió
+        // de la bandeja, y hasta la migración 284 el histórico tiene las dos formas
+        // guardadas. Comparar en crudo podía no encontrar el último entrante y dar por
+        // cerrada una ventana que sí estaba abierta.
+        const telNorm = String(body.phone).replace(/^\+/, '');
         const { data: ultimoIn, error: inErr } = await movi
           .from('ag_wa_message_log')
           .select('created_at')
-          .eq('wa_phone', body.phone)
+          .in('wa_phone', [telNorm, `+${telNorm}`])
           .eq('direction', 'in')
           .order('created_at', { ascending: false })
           .limit(1)
@@ -271,7 +282,17 @@ Deno.serve(async (req) => {
         const waRes = await fetch(`${MOVI_URL}/functions/v1/ag-whatsapp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${MOVI_SERVICE_KEY}` },
-          body: JSON.stringify({ phone: body.phone, message: texto, as: rol }),
+          // sent_by: 'admin' es lo que hace que en el hilo se vea "Tú" y no "Automático"
+          // (migración 284). Va acá, en el servidor, junto al nombre que salió del JWT
+          // real de publihazclick -- si lo mandara la pantalla, cualquiera podría firmar
+          // un mensaje con el nombre de otra persona.
+          body: JSON.stringify({
+            phone: body.phone,
+            message: texto,
+            as: rol,
+            sent_by: 'admin',
+            sent_by_name: admin.nombre,
+          }),
         });
         const waJson = await waRes.json().catch(() => ({}));
         if (!waRes.ok || !waJson?.sent) {
@@ -280,7 +301,22 @@ Deno.serve(async (req) => {
         // ag-whatsapp ya registra el mensaje en ag_wa_message_log al enviarlo, así que
         // acá NO se vuelve a insertar -- duplicarlo fue justo el bug del código de
         // verificación que aparecía dos veces en el log.
-        return json({ ok: true });
+        //
+        // Se devuelve el mensaje enviado para que la pantalla lo pinte de inmediato sin
+        // esperar a recargar el hilo. No es cosmético: el 2026-09-29 el mismo saludo
+        // salió CUATRO veces al mismo conductor en 80 segundos porque el panel no
+        // mostraba nada después de enviar (ver encabezado de la migración 284).
+        return json({
+          ok: true,
+          data: {
+            direction: 'out',
+            msg_type: 'text',
+            body: texto,
+            created_at: new Date().toISOString(),
+            sent_by: 'admin',
+            sent_by_name: admin.nombre,
+          },
+        });
       }
 
       case 'get_stats': {
@@ -384,16 +420,18 @@ Deno.serve(async (req) => {
       // notaba, pero el 2026-09-07 ya había hilos en 428 y 358 mensajes creciendo --
       // al cruzar el tope, el panel se habría quedado congelado en agosto y el admin
       // no habría visto ni un mensaje nuevo, por más que recargara.
+      //
+      // Desde la migración 284 el hilo lo arma `ag_wa_thread`, no un SELECT directo. El
+      // SELECT comparaba `wa_phone` en crudo y por eso NUNCA traía las respuestas que el
+      // admin escribía desde el panel: esas quedaban guardadas como '+573...' mientras el
+      // resto del hilo está como '573...' (así lo manda Meta). La función compara
+      // normalizado, trae `sent_by` para saber quién contestó cada mensaje, y deja fuera
+      // los avisos internos al número del admin. El orden y el tope se mantienen igual.
       case 'list_wa_messages': {
         if (!body.phone) return json({ error: 'missing_phone' }, 400);
-        const { data, error } = await movi
-          .from('ag_wa_message_log')
-          .select('direction, msg_type, body, created_at')
-          .eq('wa_phone', body.phone)
-          .order('created_at', { ascending: false })
-          .limit(500);
+        const { data, error } = await movi.rpc('ag_wa_thread', { p_phone: body.phone, p_limit: 500 });
         if (error) throw error;
-        return json({ ok: true, data: (data ?? []).slice().reverse() });
+        return json({ ok: true, data: data ?? [] });
       }
       case 'set_distance_filter': {
         if (body.meters == null) return json({ error: 'missing_meters' }, 400);

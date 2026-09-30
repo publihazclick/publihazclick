@@ -13,14 +13,63 @@
 
 ## Pendiente de subir
 
-> **Nota (2026-09-10).** Además del cambio de abajo, el push llevará las migraciones
-> **281, 282 y 283**, que ya estaban aplicadas en producción desde el 08-09/09-09 pero
-> nunca se habían commiteado (el repo llevaba dos días desfasado). **No necesitan
-> desplegarse** — ya están vivas en la base, verificadas por md5 contra el catálogo de
-> Postgres. Van solo para que el repo deje de mentir. Los scripts `aplicar-281.*` se
+### La bandeja de soporte no mostraba lo que yo respondía, ni quién había contestado
+- **Qué**: tres cosas, una sola causa de fondo.
+  1. **Las respuestas del panel caían en otra conversación.** Al responder, `ag-whatsapp`
+     mandaba el mensaje con `toE164()` y lo guardaba como `+573132326337`, mientras que
+     todo lo entrante se guarda como Meta lo manda: `573132326337`, sin el `+`. Como la
+     bandeja agrupa por `wa_phone`, la respuesta abría un **hilo fantasma de un solo
+     mensaje** y dentro del hilo real no aparecía nunca. Ahora se normaliza al leer
+     (`ag_wa_norm_phone`, `ag_wa_thread`) y al escribir (`normWaPhone` en `logWaMessage`).
+  2. **No se sabía quién había contestado.** `ag_wa_message_log` solo guardaba
+     `direction`, así que un mensaje del bot y uno escrito a mano se veían idénticos.
+     Nueva columna `sent_by` (`bot` / `admin` / `sistema` / `alerta`) + `sent_by_name`.
+     En el hilo, lo escrito a mano sale en **azul de marca con "Tú · nombre"** y lo del
+     bot en verde con "Automático · bot".
+  3. **Orden de la bandeja**: filtros *Todas / Sin responder / Respondí yo / Solo el bot*,
+     con el contador de sin responder al lado; en cada fila, quién respondió de último y
+     cuántas fueron a mano vs automáticas; y separadores de día (*Hoy / Ayer / fecha*)
+     dentro del hilo, que antes era una pared de horas sueltas.
+- **Por qué**: medido en producción antes del arreglo — **384 salientes** guardados con
+  `+` sobre **9 números**, y **cero entrantes** con `+`: los 9 eran hilos de un solo lado.
+  La prueba de que hacía daño de verdad: el **2026-09-30 a las 04:01–04:02 UTC el mismo
+  saludo de asesora salió CUATRO veces al mismo conductor** (ids 2415-2418, en 80
+  segundos) — se reenvió porque el panel no mostraba nada después de enviar. Por eso
+  además el mensaje enviado ahora se pinta al instante con lo que devuelve el servidor:
+  `logWaMessage()` inserta sin esperar, así que releer el hilo de inmediato puede traerlo
+  todavía sin la respuesta.
+- **De paso**: los avisos internos al número del admin (`573134453649`) eran **367
+  mensajes**, el "hilo" más largo de toda la bandeja, tapando las conversaciones reales.
+  Se siguen guardando (`sent_by = 'alerta'`) pero quedan fuera de la bandeja: pasajeros
+  bajó de 39 conversaciones / 2.185 mensajes a **36 / 1.818**.
+- **Y**: `/movi-admin` solo dejaba *leer*. Se le pusieron la caja de respuesta con el
+  candado de las 24h y el refresco automático de 15 s que ya tenía `/admin/anda-gana`.
+- **Toca**: `supabase` + `web`.
+- **Estado**: ✅ migración **284 aplicada** por Management API y verificada en producción;
+  ⏳ **`ag-whatsapp` y `ag-admin-action` sin desplegar** (el despliegue quedó bloqueado por
+  permisos en la sesión); la parte web va en el próximo push.
+- **Verificado en producción**: el relleno del histórico dejó `bot 1111 / alerta 367 /
+  sistema 10 / admin 7` — los 7 de `admin` son los reales (id 1463 del 09-07 y los
+  2415-2420 del 09-29), revisados uno por uno. `ag_wa_thread('573132326337')` ya devuelve
+  el hilo completo y en orden: pregunta entrante → escalamiento del bot → las 4 respuestas
+  a mano. `ag_wa_conversations_summary('conductor')` marca ese hilo con `admin_count 4`.
+- **Verificado en local**: `tsc --noEmit` en verde y **`ngc -p tsconfig.app.json` en verde**
+  (esto sí revisa las plantillas de Angular, que `tsc` no mira — ver nota abajo); las dos
+  edge functions pasan esbuild.
+- **Nota útil**: `ngc` **sí** corre en este PC (≈3 GB con `--max-old-space-size=3000`). Lo
+  que no cabe en RAM es el `ng build` completo, no la compilación de plantillas. Corregir
+  la memoria `movi_build_local_imposible_ram` en ese punto.
+
+---
+
+> **Nota (2026-09-10).** Las migraciones **281, 282 y 283** ya estaban aplicadas en
+> producción desde el 08-09/09-09 pero nunca se habían commiteado (el repo llevaba dos
+> días desfasado). **No necesitaban desplegarse** — ya estaban vivas en la base,
+> verificadas por md5 contra el catálogo de Postgres. Los scripts `aplicar-281.*` se
 > quedaron fuera a propósito: tienen el token de Supabase en texto plano y ya están
 > en `.gitignore`.
 
+## Subido el 2026-09-10 (1 solo build)
 
 ### La app dejaba registrarse a gente de otros países y nunca les llegaba el código
 - **Qué**: ahora la app avisa *"Por ahora Movi solo opera en Colombia 🇨🇴"* en vez de dejar
@@ -38,8 +87,8 @@
   WhatsApp tampoco lo encuentra, porque su WhatsApp real es `5213329201647`. **13 intentos
   así desde el 2026-08-04** (México, Argentina, EE.UU.), **todos con `used=false`**: ninguno
   completó el registro jamás. El 2026-09-10 llegaron dos seguidos y por eso se detectó.
-- **Toca**: `supabase` + `web` → por la regla 3, espera a que estén los dos.
-- **Estado**: commiteado en local, **sin desplegar**.
+- **Toca**: `supabase` + `web` → por la regla 3, esperó a que estuvieran los dos.
+- **Estado**: ✅ subido y desplegado (commits `75c900e`, `1a8a24a`, `d40c1e3`).
 - **Verificado**: `tsc --noEmit` en verde; las dos edge functions pasan esbuild; la regla
   probada contra los números reales de la base — **24 colombianos, 0 rechazados por error**;
   9 de 12 extranjeros bloqueados en la app y los 3 restantes (Guadalajara `332`, Rosario
