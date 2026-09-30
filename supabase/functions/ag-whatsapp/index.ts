@@ -190,7 +190,29 @@ function logWaMessage(
   msgType = 'text',
   sentBy: WaSentBy = 'bot',
   sentByName: string | null = null,
+  // Respuesta cruda de Meta al envío (migración 286). De acá salen el wamid --
+  // que es lo único que permite casar después el acuse de entrega -- y si Meta
+  // aceptó el mensaje o lo rechazó. Sin esto, "está en el log" solo significaba
+  // "se lo pedimos a Meta", nunca "le llegó".
+  respuestaMeta?: { ok: boolean; body?: string } | null,
 ): void {
+  let wamid: string | null = null;
+  let estado: string | null = null;
+  let errorMeta: string | null = null;
+
+  if (direction === 'out' && respuestaMeta) {
+    if (respuestaMeta.ok) {
+      estado = 'aceptado';
+      try {
+        const j = JSON.parse(respuestaMeta.body ?? '{}');
+        wamid = (j?.messages?.[0]?.id as string) ?? null;
+      } catch { /* sin wamid: el acuse no se podrá casar, pero el mensaje sí salió */ }
+    } else {
+      estado = 'fallido';
+      errorMeta = (respuestaMeta.body ?? '').slice(0, 500);
+    }
+  }
+
   db().from('ag_wa_message_log').insert({
     wa_phone: normWaPhone(phone),
     role,
@@ -199,6 +221,9 @@ function logWaMessage(
     msg_type: msgType,
     sent_by: direction === 'out' ? sentBy : null,
     sent_by_name: direction === 'out' && sentBy === 'admin' ? sentByName : null,
+    wamid,
+    estado_entrega: estado,
+    error_meta: errorMeta,
   }).then(({ error }) => {
     if (error) console.error('[WA] logWaMessage error:', error);
   });
@@ -242,7 +267,7 @@ async function sendText(to: string, text: string, sentBy: WaSentBy = 'bot', sent
     // (sin lanzar excepcion) hacia parecer que el mensaje se habia enviado cuando en
     // realidad Meta lo rechazo. Se loguea siempre para poder diagnosticar sin adivinar.
     if (!res.ok) console.error('[WA] sendText Meta API error:', res.status, bodyText);
-    logWaMessage(to, 'pasajero', 'out', text, 'text', sentBy, sentByName);
+    logWaMessage(to, 'pasajero', 'out', text, 'text', sentBy, sentByName, { ok: res.ok, body: bodyText });
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendText fetch error:', e);
@@ -313,7 +338,7 @@ async function sendTemplate(to: string, templateName: string, langCode: string, 
     // El log tiene que reflejar la realidad: antes registraba el mensaje aunque Meta lo
     // rechazara, asi que decia 'enviado' cuando no habia llegado nada. Bug real 2026-09-02.
     const marcaTpl = res.ok ? '' : `[NO ENTREGADO ${res.status}] `;
-    logWaMessage(to, 'pasajero', 'out', `${marcaTpl}[plantilla ${templateName}] ${bodyParams.join(' | ')}`, 'template', sentBy);
+    logWaMessage(to, 'pasajero', 'out', `${marcaTpl}[plantilla ${templateName}] ${bodyParams.join(' | ')}`, 'template', sentBy, null, { ok: res.ok, body: bodyText });
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendTemplate fetch error:', e);
@@ -365,7 +390,7 @@ async function sendAdminTemplate(to: string, titulo: string, detalle: string, se
     const bodyText = await res.text();
     if (!res.ok) console.error('[WA] sendAdminTemplate Meta error:', res.status, bodyText);
     const marca = res.ok ? '' : `[NO ENTREGADO ${res.status}] `;
-    logWaMessage(to, 'pasajero', 'out', `${marca}[plantilla movi_aviso_admin] ${titulo} | ${detalle}`, 'template', sentBy);
+    logWaMessage(to, 'pasajero', 'out', `${marca}[plantilla movi_aviso_admin] ${titulo} | ${detalle}`, 'template', sentBy, null, { ok: res.ok, body: bodyText });
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendAdminTemplate fetch error:', e);
@@ -444,7 +469,7 @@ async function sendGraph(payload: Record<string, unknown>): Promise<WaResult> {
     if (!res.ok) console.error('[WA] sendGraph Meta API error:', res.status, bodyText, 'sent:', JSON.stringify(fullBody));
     if (to) {
       const summary = summarizeOutboundPayload(payload);
-      logWaMessage(to as string, 'pasajero', 'out', summary.text, summary.type);
+      logWaMessage(to as string, 'pasajero', 'out', summary.text, summary.type, 'bot', null, { ok: res.ok, body: bodyText });
     }
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
@@ -4446,7 +4471,7 @@ async function sendSupportGraph(payload: Record<string, unknown>, sentBy: WaSent
     if (!res.ok) console.error('[WA-Support] sendGraph Meta API error:', res.status, bodyText, 'sent:', JSON.stringify(fullBody));
     if (to) {
       const summary = summarizeOutboundPayload(payload);
-      logWaMessage(to as string, 'conductor', 'out', summary.text, summary.type, sentBy, sentByName);
+      logWaMessage(to as string, 'conductor', 'out', summary.text, summary.type, sentBy, sentByName, { ok: res.ok, body: bodyText });
     }
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
@@ -5472,6 +5497,48 @@ async function leadYaDescargo(phone: string): Promise<void> {
 }
 
 /**
+ * Un lead que YA conocemos vuelve a escribir pidiendo información.
+ *
+ * HUECO REAL, detectado el 2026-09-30 probando en producción: el embudo atendía
+ * bien el primer contacto y cada paso, pero si la persona volvía a escribir
+ * "quiero más información" cuando su ficha ya estaba en un paso terminal, el
+ * mensaje caía al flujo viejo -- que es exactamente el que escalaba a un humano y
+ * dejaba al lead esperando horas. O sea: el mismo hueco que este bloque vino a
+ * tapar, una vuelta más adelante. Se retoma desde donde quedó, nunca se escala.
+ */
+async function leadRetomar(phone: string, name: string, paso: string, vehiculo: string | null): Promise<void> {
+  const v = (vehiculo === 'moto' || vehiculo === 'carro') ? vehiculo : null;
+
+  if (paso === 'vehiculo' && v) {
+    await sendSupportButtons(phone,
+      `¡Claro! Solo me faltaba ese dato para decirte si podemos arrancar de una: ` +
+      `*¿tu ${v} es modelo ${leadAnioMinimo(v)} o más ${v === 'moto' ? 'nueva' : 'nuevo'}?*`,
+      LEAD_BTN_MODELO);
+    return;
+  }
+
+  if (paso === 'pitch' || paso === 'descargo') {
+    await sendSupportButtons(phone,
+      `¡Con gusto! Te dejo otra vez lo importante 👇\n\n` +
+      `La app se descarga acá:\n${APP_DOWNLOAD_LINK}\n\n` +
+      `Entras a *"Quiero ser conductor"*, llenas los 4 pasos (unos 5 minutos) y ` +
+      `*tu primer viaje lo puedes hacer sin haber subido papeles*.\n\n` +
+      `¿En qué te ayudo? Si algo se te trabó, dime en qué paso vas.`,
+      LEAD_BTN_CIERRE);
+    return;
+  }
+
+  // 'saludado' o 'sin_vehiculo'. En 'sin_vehiculo' la pregunta es pertinente y no
+  // redundante: si vuelve a escribir es muy posible que ya consiguió vehículo, o que
+  // el que tenía no era el que pensaba.
+  await sendSupportButtons(phone,
+    `¡Claro que sí! 🙌 Para decirte lo tuyo en concreto y no llenarte de datos que no ` +
+    `te sirven, dime: *¿con qué te vas a mover?*`,
+    LEAD_BTN_VEHICULO);
+  await upsertLead(phone, { paso: 'saludado' });
+}
+
+/**
  * Los tres recordatorios. Cada uno dice algo DISTINTO: repetir el mismo mensaje
  * tres veces es lo que hace que la gente bloquee el número. El tercero avisa que
  * es el último, que es lo que haría cualquier vendedor decente.
@@ -5604,6 +5671,17 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
   // Un pasajero equivocado nunca debe recibir el discurso de conductor: se le
   // devuelve el mensaje al FAQ, que sabe mandarlo al número de viajes.
   if (pidiendoServicio(msgText)) return false;
+
+  // Vuelve a pedir información. Se retoma el embudo donde quedó -- JAMÁS se deja
+  // caer al flujo viejo, que escalaba a un humano y dejaba al lead esperando horas
+  // (comprobado en producción el 2026-09-30: un lead en paso 'sin_vehiculo' que
+  // reescribió "quiero más información" recibió "Ya te conecto con un asesor").
+  // Si ya se registró, es un conductor de verdad y sus preguntas las contesta el
+  // FAQ con sus datos reales, no el embudo de captación.
+  if (esLeadInteresado(msgText) && lead.paso !== 'registrado' && lead.paso !== 'humano') {
+    await leadRetomar(phone, name, lead.paso, lead.vehiculo);
+    return true;
+  }
 
   // Todavía no dijo qué maneja: si lo dice escribiendo, se toma igual que el botón.
   if (lead.paso === 'saludado') {
@@ -5979,6 +6057,38 @@ serve(async (req) => {
       const entry   = (body.entry as unknown[])?.[0] as Record<string, unknown>;
       const changes = (entry?.changes as unknown[])?.[0] as Record<string, unknown>;
       const value   = changes?.value as Record<string, unknown>;
+
+      // ── Acuses de entrega (migración 286) ────────────────────────────────
+      // Meta manda esto al MISMO webhook por cada mensaje que sacamos: sent ->
+      // delivered -> read, o failed con el motivo. Hasta hoy se caía por el piso
+      // porque solo se miraba `value.messages`, así que era imposible responder
+      // "¿le llegó o no?" -- que es justo lo que preguntó el usuario el 2026-09-30
+      // sobre las respuestas que mandó desde la bandeja del panel.
+      //
+      // Los acuses NO vienen en orden garantizado y se repiten; la jerarquía y la
+      // protección contra retrocesos están en ag_wa_aplicar_acuse, no acá.
+      const statuses = value?.statuses as Array<Record<string, unknown>> | undefined;
+      if (statuses?.length) {
+        const mapa: Record<string, string> = { sent: 'enviado', delivered: 'entregado', read: 'leido', failed: 'fallido' };
+        for (const st of statuses) {
+          const estado = mapa[(st.status as string) ?? ''];
+          const wamid  = st.id as string | undefined;
+          if (!estado || !wamid) continue;
+          const ts = st.timestamp ? new Date(Number(st.timestamp) * 1000).toISOString() : new Date().toISOString();
+          let motivo: string | null = null;
+          if (estado === 'fallido') {
+            const errs = st.errors as Array<Record<string, unknown>> | undefined;
+            const e = errs?.[0];
+            motivo = e ? `${e.code ?? ''} ${e.title ?? ''} ${(e as Record<string, Record<string, unknown>>).error_data?.details ?? ''}`.trim() : 'sin detalle';
+            console.error('[WA] mensaje NO entregado:', wamid, motivo);
+          }
+          await db().rpc('ag_wa_aplicar_acuse', {
+            p_wamid: wamid, p_estado: estado, p_ts: ts, p_error: motivo,
+          });
+        }
+        return new Response('ok', { status: 200 });
+      }
+
       const messages = value?.messages as unknown[];
 
       if (messages?.length) {
