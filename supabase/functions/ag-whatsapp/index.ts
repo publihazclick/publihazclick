@@ -449,6 +449,9 @@ function summarizeOutboundPayload(payload: Record<string, unknown>): { text: str
     return { text: btnTitles ? `${bodyText}\n[botones: ${btnTitles}]` : bodyText, type: (interactive?.type as string) ?? type };
   }
   if (type === 'image') return { text: ((payload.image as Record<string, unknown>)?.caption as string) ?? '[imagen]', type };
+  // Videos del número de conductores (migración 293): en la bandeja se ve el caption con una
+  // marca, para que el asesor sepa que ahí salió un video y no solo un texto.
+  if (type === 'video') return { text: `[video] ${((payload.video as Record<string, unknown>)?.caption as string) ?? ''}`.trim(), type };
   if (type === 'location') {
     const loc = payload.location as Record<string, unknown>;
     return { text: `[ubicación] ${(loc?.name as string) ?? ''} ${(loc?.address as string) ?? ''}`.trim(), type };
@@ -4497,6 +4500,90 @@ async function sendSupportText(to: string, text: string, sentBy: WaSentBy = 'bot
   return sendSupportGraph({ to, type: 'text', text: { preview_url: false, body: text } }, sentBy, sentByName);
 }
 
+// ─── Videos del número de conductores (pedido del usuario, 2026-09-30) ────────
+// El usuario grabó 4 videos y pidió que el bot los mande en el momento en que sirven,
+// sin costo adicional. Por qué no cuesta nada:
+//  · Todos se mandan como RESPUESTA a un mensaje del conductor, o sea dentro de la
+//    ventana de 24h, donde WhatsApp no cobra (solo cobra plantillas).
+//  · Se mandan por media id, no por link: el archivo se sube una vez a Meta y listo.
+//    Por link, Meta lo descargaría de nuestro lado en cada envío.
+// El archivo original vive en ag_wa_videos.contenido (migración 293, ahí está el porqué
+// de no usar Storage ni la carpeta public/). Meta borra lo subido a los 30 días, así que
+// el id se renueva solo cuando pasa de 25: sin cron, lo renueva el primer envío que lo
+// necesite. Un video fallido NUNCA frena la conversación: el texto ya salió antes.
+type VideoClave = 'como_funciona' | 'recargas' | 'por_que_movi' | 'invitados';
+const VIDEO_MEDIA_TTL_MS  = 25 * 24 * 60 * 60 * 1000;
+// Mismo video a la misma persona, como mucho uno por semana: reenviarle un video de
+// 2-3 minutos que ya vio es la forma más rápida de que bloquee el número.
+const VIDEO_NO_REPETIR_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** PostgREST devuelve bytea como texto hex con prefijo "\x". */
+function hexABytes(hex: string): Uint8Array {
+  const h = hex.startsWith('\\x') ? hex.slice(2) : hex;
+  const out = new Uint8Array(h.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(h.substr(i * 2, 2), 16);
+  return out;
+}
+
+/** Id vigente del video en Meta, subiéndolo de nuevo si no hay o está por vencer. null = no mandar. */
+async function getVideoMediaId(clave: VideoClave): Promise<{ mediaId: string; caption: string } | null> {
+  const { data: v } = await db().from('ag_wa_videos')
+    .select('activo, caption, mime, media_id, media_subido_at')
+    .eq('clave', clave).maybeSingle();
+  // `activo` = false apaga un video sin tocar código (así arranca "por_que_movi", ver migración 293).
+  if (!v || !v.activo) return null;
+  if (v.media_id && v.media_subido_at && Date.now() - new Date(v.media_subido_at as string).getTime() < VIDEO_MEDIA_TTL_MS) {
+    return { mediaId: v.media_id as string, caption: v.caption as string };
+  }
+
+  // El archivo (hasta ~7 MB) solo se lee cuando hay que subirlo, no en cada envío.
+  const { data: arch } = await db().from('ag_wa_videos').select('contenido').eq('clave', clave).single();
+  if (!arch?.contenido) { console.error('[WA-Video] sin archivo guardado para', clave); return null; }
+  const mime = (v.mime as string) || 'video/mp4';
+  const form = new FormData();
+  form.append('messaging_product', 'whatsapp');
+  form.append('type', mime);
+  form.append('file', new Blob([hexABytes(arch.contenido as string).buffer as ArrayBuffer], { type: mime }), `${clave}.mp4`);
+  const res = await fetch(`https://graph.facebook.com/v20.0/${SUPPORT_PHONE_NUMBER_ID}/media`, {
+    method: 'POST', headers: { Authorization: `Bearer ${WA_TOKEN}` }, body: form,
+  });
+  const j = await res.json().catch(() => ({})) as Record<string, unknown>;
+  if (!res.ok || !j.id) { console.error('[WA-Video] subida a Meta falló:', clave, res.status, JSON.stringify(j)); return null; }
+
+  const ahora = new Date().toISOString();
+  await db().from('ag_wa_videos').update({ media_id: j.id, media_subido_at: ahora, updated_at: ahora }).eq('clave', clave);
+  return { mediaId: j.id as string, caption: v.caption as string };
+}
+
+/**
+ * Manda un video al conductor, salvo que ya se lo hayamos mandado esta semana.
+ * Siempre va DESPUÉS del texto que lo acompaña: si la subida a Meta tarda unos
+ * segundos (una vez cada 25 días), la persona ya tiene su respuesta mientras tanto.
+ */
+async function sendSupportVideo(phone: string, clave: VideoClave, motivo: string): Promise<boolean> {
+  try {
+    const desde = new Date(Date.now() - VIDEO_NO_REPETIR_MS).toISOString();
+    const { data: previo } = await db().from('ag_wa_video_envios')
+      .select('id').eq('wa_phone', phone).eq('clave', clave).eq('ok', true).gte('enviado_at', desde).limit(1);
+    if (previo && previo.length > 0) return false;
+
+    const v = await getVideoMediaId(clave);
+    if (!v) return false;
+
+    const r = await sendSupportGraph({ to: phone, type: 'video', video: { id: v.mediaId, caption: v.caption } });
+    // Si Meta rechaza el id (lo borró antes de tiempo, o cambió algo del lado de ellos), se
+    // olvida para que el próximo envío lo vuelva a subir en vez de fallar para siempre.
+    if (!r.ok) await db().from('ag_wa_videos').update({ media_id: null }).eq('clave', clave);
+    await db().from('ag_wa_video_envios').insert({
+      wa_phone: phone, clave, motivo, ok: r.ok, detalle: r.ok ? null : (r.body ?? '').slice(0, 500),
+    });
+    return r.ok;
+  } catch (e) {
+    console.error('[WA-Video] error mandando', clave, e);
+    return false;
+  }
+}
+
 // ─── Código de verificación por WhatsApp ──────────────────────────────────────
 // Pedido explícito del usuario 2026-09-01, después de que un conductor real quedara trancado
 // en el registro porque su operador rechaza el remitente alfanumérico "MOVI" de Telnyx (ver
@@ -5568,6 +5655,11 @@ async function leadCierreDescarga(phone: string, avisoModeloSinConfirmar = false
     `un código que te llega por SMS o por WhatsApp._`,
     LEAD_BTN_CIERRE);
   await upsertLead(phone, { paso: 'pitch', ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+  // Videos (2026-09-30): justo cuando va a descargar, el de "por qué Movi paga mejor" (hoy
+  // apagado en ag_wa_videos, ver migración 293 -- si está apagado no sale nada) y el
+  // tutorial, para que vea la app por dentro antes de instalarla.
+  await sendSupportVideo(phone, 'por_que_movi', 'lead_cierre');
+  await sendSupportVideo(phone, 'como_funciona', 'lead_cierre');
 }
 
 /** El vehículo no cumple el año mínimo. Se dice de frente y se ofrece la salida real. */
@@ -5581,6 +5673,8 @@ async function leadModeloNoSirve(phone: string, vehiculo: 'moto' | 'carro'): Pro
     `1️⃣ Si consigues otro ${vehiculo} (o un carro, que va hasta modelo ${leadAnioMinimo('carro')}), escríbeme por acá y te ayudo con el registro.\n\n` +
     `2️⃣ Mientras tanto puedes ganar *sin poner vehículo*: te registras en Movi, compartes tu link de invitado y ganas *2% de cada servicio* que haga quien entre con él — de por vida, sea pasajero o conductor. Se retira desde $10.000 a Nequi, Daviplata o cuenta bancaria.`);
   await upsertLead(phone, { paso: 'sin_vehiculo', vehiculo, modelo_ok: false, ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+  // Video (2026-09-30): la salida real que le queda es ganar invitando; el video la hace concreta.
+  await sendSupportVideo(phone, 'invitados', 'lead_modelo_no_sirve');
 }
 
 /** Todavía no tiene vehículo. Se es honesto y se le deja abierta la otra puerta. */
@@ -5594,6 +5688,8 @@ async function leadSinVehiculo(phone: string): Promise<void> {
     `2️⃣ Mientras tanto puedes ganar *sin vehículo*: te registras en Movi, compartes tu link de invitado y te queda el *2% de cada servicio* que haga quien entre con él, de por vida — sea pasajero o conductor. Se retira desde $10.000 a Nequi, Daviplata o cuenta bancaria.\n\n` +
     `Si te interesa eso, dime "invitados" y te explico cómo sacar tu link.`);
   await upsertLead(phone, { paso: 'sin_vehiculo', vehiculo: 'ninguno', ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+  // Video (2026-09-30): mismo motivo que en leadModeloNoSirve().
+  await sendSupportVideo(phone, 'invitados', 'lead_sin_vehiculo');
 }
 
 /** Dijo que ya descargó. Se le da el tropiezo #1 del primer día antes de que lo viva. */
@@ -5605,6 +5701,9 @@ async function leadYaDescargo(phone: string): Promise<void> {
     `Sin eso no te entran solicitudes, aunque tu cuenta esté lista.\n\n` +
     `Cualquier cosa que se te trabe en el registro me escribes por acá y te saco del apuro.`);
   await upsertLead(phone, { paso: 'descargo', ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+  // Video (2026-09-30): el tutorial. Casi siempre ya le salió en el cierre y el tope de uno
+  // por semana lo salta; esto cubre a quien llegó acá sin pasar por ahí.
+  await sendSupportVideo(phone, 'como_funciona', 'lead_ya_descargo');
 }
 
 /**
@@ -6061,6 +6160,18 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
   if (answerText != null) {
     await sendSupportText(phone, answerText);
     await logSupportInteraction(phone, msgText, action, answerText);
+
+    // Videos (2026-09-30), siempre DESPUÉS de la respuesta en texto. Solo cuando la pregunta
+    // es justo lo que el video muestra -- "¿cuánto saldo tengo?" no pide un tutorial de
+    // recargas, "¿cómo recargo?" sí. Raíces sin \b por la misma razón que los regex de arriba.
+    const t = normalizarTexto(msgText);
+    if (/recarg|como (pago|se paga|cancelo) la comision|como meto (plata|saldo)|como pongo saldo/.test(t)) {
+      await sendSupportVideo(phone, 'recargas', 'faq_recargas');
+    } else if (asksReferral) {
+      await sendSupportVideo(phone, 'invitados', 'faq_invitados');
+    } else if (/como funciona|como se usa|como (uso|manejo) la (app|aplicacion)|como (recibo|acepto|tomo) (los |un |una )?(viaje|servicio|solicitud|carrera)|como me pongo en linea|como me conecto/.test(t)) {
+      await sendSupportVideo(phone, 'como_funciona', 'faq_como_funciona');
+    }
     return;
   }
 
