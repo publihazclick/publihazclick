@@ -13,6 +13,12 @@
 
 ## Pendiente de subir
 
+_(vacío — lo de abajo ya salió)_
+
+---
+
+## Subido el 2026-09-30 (1 solo build)
+
 ### La bandeja de soporte no mostraba lo que yo respondía, ni quién había contestado
 - **Qué**: tres cosas, una sola causa de fondo.
   1. **Las respuestas del panel caían en otra conversación.** Al responder, `ag-whatsapp`
@@ -45,9 +51,23 @@
 - **Y**: `/movi-admin` solo dejaba *leer*. Se le pusieron la caja de respuesta con el
   candado de las 24h y el refresco automático de 15 s que ya tenía `/admin/anda-gana`.
 - **Toca**: `supabase` + `web`.
-- **Estado**: ✅ migración **284 aplicada** por Management API y verificada en producción;
-  ⏳ **`ag-whatsapp` y `ag-admin-action` sin desplegar** (el despliegue quedó bloqueado por
-  permisos en la sesión); la parte web va en el próximo push.
+- **Estado**: ✅ todo desplegado y comprobado en producción el 2026-09-30.
+  - Migración **284** aplicada por Management API (nunca `db push` en este proyecto).
+  - **`ag-whatsapp` v193 → v194** y **`ag-admin-action` v15 → v16**, las dos con
+    `--no-verify-jwt` (estaban en `verify_jwt: false`; sin el flag se rompía el webhook
+    de Meta). No se confió en el "Deployed Functions" del CLI: se bajó el código que
+    quedó **dentro** de producción por `GET /functions/{slug}/body` y se comprobó que
+    trae `normWaPhone` + `sent_by` (ag-whatsapp) y `ag_wa_thread` (ag-admin-action).
+  - Web: push `d40c1e3..10002b9`, commit `10002b9`. Publicado en el **segundo intento
+    de verificación (~2 min)**, comprobado expandiendo los **144 chunks alcanzables**:
+    `sin_responder`, `admin_count`, `Sin responder`, `Escribe tu respuesta`,
+    `sent_by_name` aparecen en `chunk-DRXKKL72.js` y `chunk-VQLGJXRP.js` — dos chunks,
+    o sea los **dos** paneles (`/admin/anda-gana` y `/movi-admin`).
+  - **Ojo, pasó de verdad**: una fila entró **2 segundos antes** de que terminara el
+    despliegue de `ag-whatsapp` (id 2421, 04:57:23 vs 04:57:25) y quedó con `sent_by
+    NULL` y con `+`. Se corrigió a mano con la misma regla del relleno. Cuando se
+    despliega sobre tráfico vivo, hay que volver a pasar el `UPDATE ... WHERE sent_by
+    IS NULL` después del deploy.
 - **Verificado en producción**: el relleno del histórico dejó `bot 1111 / alerta 367 /
   sistema 10 / admin 7` — los 7 de `admin` son los reales (id 1463 del 09-07 y los
   2415-2420 del 09-29), revisados uno por uno. `ag_wa_thread('573132326337')` ya devuelve
