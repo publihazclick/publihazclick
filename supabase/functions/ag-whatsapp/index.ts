@@ -5425,13 +5425,24 @@ const LEAD_BTN_CIERRE = [
 async function leadSaludar(phone: string, name: string, primerMensaje: string, esDePauta: boolean): Promise<void> {
   // Solo el nombre REAL de la cuenta, si por casualidad ya existe (raro en un lead nuevo).
   const nombre = await lookupRealFirstName(phone);
-  const saludo = nombre ? `¡Hola ${nombre}! 👋` : '¡Hola! 👋';
-  await sendSupportButtons(phone,
-    `${saludo} Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
-    `Qué bueno que quieras trabajar con nosotros 🙌 Te explico todo en dos minutos, ` +
-    `pero primero dime una cosa para no llenarte de datos que no te sirven:\n\n` +
-    `*¿Con qué te vas a mover?*`,
-    LEAD_BTN_VEHICULO);
+
+  // Si ya sabemos quién es, no hay nada que preguntar: directo al vehículo.
+  if (nombre) {
+    await sendSupportButtons(phone,
+      `¡Hola ${nombre}! 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
+      `Cuéntame, *¿con qué te vas a mover?*`,
+      LEAD_BTN_VEHICULO);
+    await upsertLead(phone, { nombre_dado: nombre, paso: 'saludado', ultimo_out_at: new Date().toISOString() });
+  } else {
+    // Saludo CORTO a propósito (pedido del usuario 2026-09-30): una sola pregunta, de una
+    // palabra, para que la conversación arranque fluida en vez de con un muro de texto. El
+    // nombre se pregunta en vez de adivinarlo -- ver la nota de arriba sobre por qué el nombre
+    // de perfil de WhatsApp no sirve.
+    await sendSupportText(phone,
+      `¡Hola! 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
+      `¿Con quién tengo el gusto? 😊`);
+  }
+
   await upsertLead(phone, {
     // Se guarda el nombre de perfil CRUDO, no el "limpio": en la bandeja el asesor prefiere ver
     // "MODA LANDAZURY" tal cual (le dice algo) antes que un "MODA" recortado que parece un
@@ -5439,8 +5450,64 @@ async function leadSaludar(phone: string, name: string, primerMensaje: string, e
     wa_name: (name && name !== 'Usuario') ? name.slice(0, 80) : null,
     origen: esDePauta ? 'pauta' : 'organico',
     primer_mensaje: primerMensaje.slice(0, 500),
-    paso: 'saludado',
+    // 'nombre' = se le preguntó cómo se llama y falta su respuesta.
+    paso: nombre ? 'saludado' : 'nombre',
     ultimo_in_at: new Date().toISOString(),
+    ultimo_out_at: new Date().toISOString(),
+    nudges_enviados: 0,
+  });
+}
+
+/**
+ * Lee el nombre de una respuesta libre a "¿con quién tengo el gusto?".
+ *
+ * Falla cerrado: ante la duda devuelve null y la conversación sigue SIN nombre, que es
+ * exactamente el estado de hoy. Nunca hay que insistir ni trabar el embudo por esto -- alguien
+ * que viene de un anuncio quiere información, no un interrogatorio.
+ */
+function leeNombreDado(texto: string): string | null {
+  let t = (texto ?? '').trim();
+  if (!t || t.length > 40) return null;
+  // Un número, un link o una pregunta no son un nombre.
+  if (/\d|https?:|[?¿@]/.test(t)) return null;
+
+  // "soy Carlos", "me llamo Carlos", "mi nombre es Carlos", "con Carlos"
+  //
+  // OJO con el ORDEN de la alternancia: en JavaScript gana la primera que calce, así que
+  // "buenas" antes que "buenas tardes" dejaba el resto en "tardes" y el bot terminaba saludando
+  // "¡Mucho gusto, Tardes!". Las variantes largas van primero. (Encontrado probando, no en
+  // revisión a ojo.)
+  t = t.replace(/^\s*(buenas tardes|buenas noches|buenos d[ií]as|buen d[ií]a|buenas|buenos|hola|hey)[\s,]*/i, '');
+  t = t.replace(/^\s*(yo\s+)?(soy|me\s+llamo|mi\s+nombre\s+es|me\s+dicen|habla|con)\s+/i, '');
+
+  const limpio = t.replace(/[^\p{L}\p{M}\s'-]/gu, ' ').replace(/\s+/g, ' ').trim();
+  if (!limpio) return null;
+
+  const palabras = limpio.split(' ').filter(w => w.length >= 2);
+  if (palabras.length === 0 || palabras.length > 4) return null;
+
+  const primera = palabras[0];
+  if (primera.length < 3 || primera.length > 15) return null;
+
+  // Palabras que la gente contesta y que NO son su nombre. Si cae acá, se sigue sin nombre.
+  if (/^(gracias|claro|listo|bueno|buenas|buenos|vale|ok|si|no|nada|dias|dia|tardes|noches|quiero|necesito|informacion|info|trabajar|manejar|conductor|conductora|moto|carro|taxi|nombre|usuario|amigo|amiga|señor|senor|señora|senora|don|dona|joven|mucho|gusto|igualmente|dime|cuenta|cual|como|que|para|por|del|los|las|una|uno)$/i
+        .test(primera.normalize('NFD').replace(/[̀-ͯ]/g, ''))) return null;
+
+  // Capitalizado natural: "CARLOS" y "carlos" se ven mal en un saludo.
+  return primera.charAt(0).toUpperCase() + primera.slice(1).toLowerCase();
+}
+
+/** Ya tenemos (o no) su nombre: se pasa a la pregunta del vehículo. */
+async function leadPreguntarVehiculo(phone: string, nombre: string | null): Promise<void> {
+  await sendSupportButtons(phone,
+    nombre
+      ? `¡Mucho gusto, ${nombre}! 🙌 Cuéntame, *¿con qué te vas a mover?*`
+      : `¡Listo! Cuéntame, *¿con qué te vas a mover?*`,
+    LEAD_BTN_VEHICULO);
+  await upsertLead(phone, {
+    ...(nombre ? { nombre_dado: nombre } : {}),
+    paso: 'saludado',
+    ultimo_out_at: new Date().toISOString(),
     nudges_enviados: 0,
   });
 }
@@ -5551,29 +5618,38 @@ async function leadEmbudoProgramado(phone: string, name: string | null, yaContac
   // Nunca el nombre de perfil de WhatsApp -- ver la nota larga en leadSaludar(). Solo el nombre
   // real de la cuenta si la persona ya se registró.
   const nombre = await lookupRealFirstName(phone);
-  const hola = nombre ? `¡Hola ${nombre}!` : '¡Hola!';
 
+  // Si ya sabemos su nombre real, no hay nada que preguntar: al vehículo de una.
+  if (nombre) {
+    await sendSupportButtons(phone,
+      `¡Hola ${nombre}! 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
+      (recibioError ? `Disculpa el desorden de anoche, se nos cruzaron unos mensajes 🙏\n\n` : '') +
+      `Cuéntame, *¿con qué te vas a mover?*`,
+      LEAD_BTN_VEHICULO);
+    await upsertLead(phone, { nombre_dado: nombre, paso: 'saludado', ultimo_out_at: new Date().toISOString() });
+    return;
+  }
+
+  // Saludo CORTO y una sola pregunta, para que la conversación arranque fluida (pedido del
+  // usuario 2026-09-30). El nombre se pregunta, no se adivina: el de perfil de WhatsApp casi
+  // nunca es el real -- ver la nota en leadSaludar().
   let cuerpo: string;
   if (recibioError) {
     cuerpo =
-      `${hola} 👋 Te escribí anoche por acá, soy ${LEAD_ASESORA} del equipo de conductores de Movi.\n\n` +
-      `Primero, disculpa el desorden de anoche: se nos cruzaron unos mensajes por un ` +
-      `error del sistema 🙏\n\n` +
-      `Ahora sí, a lo importante. Para decirte cómo te funcionaría a ti en concreto ` +
-      `y no llenarte de datos que no te sirven, dime: *¿con qué te vas a mover?*`;
+      `¡Hola! 👋 Te escribí anoche, soy ${LEAD_ASESORA} del equipo de conductores de Movi.\n\n` +
+      `Disculpa el desorden de anoche: se nos cruzaron unos mensajes por un error nuestro 🙏\n\n` +
+      `Retomemos bien. ¿Con quién tengo el gusto? 😊`;
   } else if (yaContactado) {
     cuerpo =
-      `${hola} 👋 Te escribí anoche por acá, soy ${LEAD_ASESORA} del equipo de conductores de Movi.\n\n` +
-      `Retomo para no dejarte a medias 🙌 Para decirte cómo te funcionaría a ti en concreto, ` +
-      `dime una sola cosa: *¿con qué te vas a mover?*`;
+      `¡Hola! 👋 Te escribí anoche, soy ${LEAD_ASESORA} del equipo de conductores de Movi.\n\n` +
+      `Retomo para no dejarte a medias 🙌 ¿Con quién tengo el gusto? 😊`;
   } else {
     cuerpo =
-      `${hola} 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
-      `Vi que preguntaste por trabajar con nosotros y no quiero dejarte esperando 🙌 ` +
-      `Para decirte lo tuyo en concreto, dime: *¿con qué te vas a mover?*`;
+      `¡Hola! 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
+      `Vi que preguntaste por trabajar con nosotros 🙌 ¿Con quién tengo el gusto? 😊`;
   }
 
-  await sendSupportButtons(phone, cuerpo, LEAD_BTN_VEHICULO);
+  await sendSupportText(phone, cuerpo);
 }
 
 /**
@@ -5608,7 +5684,7 @@ async function leadRetomar(phone: string, name: string, paso: string, vehiculo: 
     return;
   }
 
-  // 'saludado' o 'sin_vehiculo'. En 'sin_vehiculo' la pregunta es pertinente y no
+  // 'nombre', 'saludado' o 'sin_vehiculo'. En 'sin_vehiculo' la pregunta es pertinente y no
   // redundante: si vuelve a escribir es muy posible que ya consiguió vehículo, o que
   // el que tenía no era el que pensaba.
   await sendSupportButtons(phone,
@@ -5629,7 +5705,9 @@ async function leadFollowup(phone: string, name: string | null, paso: string, ve
   const v = (vehiculo === 'moto' || vehiculo === 'carro') ? vehiculo : null;
 
   if (numero === 1) {
-    if (paso === 'saludado') {
+    if (paso === 'nombre') {
+      await sendSupportText(phone, `¿Sigues por ahí? 😊 Dime tu nombre y seguimos.`);
+    } else if (paso === 'saludado') {
       await sendSupportButtons(phone,
         `${nombre ? `${nombre}, ` : ''}¿sigues por ahí? 😊 Solo dime con qué te vas a mover y te explico lo tuyo en concreto.`,
         LEAD_BTN_VEHICULO);
@@ -5761,6 +5839,19 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
   // FAQ con sus datos reales, no el embudo de captación.
   if (esLeadInteresado(msgText) && lead.paso !== 'registrado' && lead.paso !== 'humano') {
     await leadRetomar(phone, name, lead.paso, lead.vehiculo);
+    return true;
+  }
+
+  // Le preguntamos el nombre y está contestando.
+  if (lead.paso === 'nombre') {
+    // Si en vez del nombre contesta directo con el vehículo ("moto"), no se le insiste:
+    // se salta el nombre y se sigue. Adelantarse es señal de que quiere ir al grano.
+    const vAdelantado = leeVehiculo(msgText);
+    if (vAdelantado === 'ninguno') { await leadSinVehiculo(phone); return true; }
+    if (vAdelantado)               { await leadPitchVehiculo(phone, vAdelantado); return true; }
+
+    // Un nombre usable o nada. En los dos casos se avanza -- nunca se vuelve a preguntar.
+    await leadPreguntarVehiculo(phone, leeNombreDado(msgText));
     return true;
   }
 
