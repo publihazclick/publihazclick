@@ -5113,10 +5113,11 @@ async function maybeHandleAdminTeaching(text: string, quotedId?: string): Promis
 
   const { data: pend } = await db()
     .from('ag_wa_faq_aprendido')
-    .select('id')
+    .select('id, pregunta')
     .eq('estado', 'pendiente')
     .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-    .limit(1);
+    .order('created_at', { ascending: false })
+    .limit(6);
   if (!pend?.length) return false;
 
   // Sin cita, se exige que no esté en medio de un flujo de viaje.
@@ -5124,6 +5125,37 @@ async function maybeHandleAdminTeaching(text: string, quotedId?: string): Promis
     const ses = await getSession(SUPPORT_PHONE);
     const estado = (ses?.state as string) ?? 'idle';
     if (estado !== 'idle') return false;
+
+    // ── DAÑO REAL 2026-09-30, y por eso este guard existe ──────────────────
+    // Con la pauta de Facebook corriendo llegaron 10 leads en una noche y cada uno
+    // dejó su pregunta pendiente. `ag_wa_faq_responder` sin cita elige "la más
+    // reciente" y le manda el texto a ESA persona. El admin escribió al número de
+    // conductores para probar otra cosa ("Hola quiero más información") y el bot lo
+    // tomó como la respuesta a un lead: se lo reenvió tal cual a DOS conductores
+    // reales (573132326337 y 573104472245) y lo guardó como respuesta aprendida a
+    // "¡Hola! Quiero más información" -- o sea, dejó al bot listo para contestarle
+    // a los siguientes leads con su propia pregunta.
+    //
+    // Con UNA sola pregunta pendiente adivinar es razonable. Con varias no lo es:
+    // el bot no puede saber a cuál le está contestando, y el costo de equivocarse
+    // es escribirle una incoherencia a un cliente real que estamos pagando por
+    // atraer. Se pide la cita y no se adivina.
+    if (pend.length > 1) {
+      await sendText(SUPPORT_PHONE,
+        `Tengo *${pend.length} preguntas* esperando respuesta ahora mismo, así que no sé a cuál le estás contestando 🤔\n\n` +
+        `*Responde citando* el aviso de la que quieras contestar (deslízalo a la derecha y escribe encima). ` +
+        `Así se la mando a la persona correcta.\n\n` +
+        `_No mandé nada por si acaso._`);
+      return true;
+    }
+
+    // Si lo que escribió es prácticamente la misma pregunta, no es una respuesta --
+    // es él escribiéndole al bot. Fue exactamente el caso del 2026-09-30.
+    const preguntaPend = normalizarTexto((pend[0].pregunta as string) ?? '').replace(/[¡!¿?.,]/g, '').trim();
+    const escrito      = normalizarTexto(t).replace(/[¡!¿?.,]/g, '').trim();
+    if (preguntaPend && (preguntaPend === escrito || preguntaPend.includes(escrito) || escrito.includes(preguntaPend))) {
+      return false;
+    }
   }
 
   const { data: fila } = await db().rpc('ag_wa_faq_responder', { p_respuesta: t, p_wamid: quotedId ?? null });
