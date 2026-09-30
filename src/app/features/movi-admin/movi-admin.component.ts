@@ -766,7 +766,7 @@ const TABS: TabDef[] = [
               [class]="waFilter() === f.v ? 'text-lime-950' : 'text-slate-500'"
               [style]="waFilter() === f.v ? 'background:#a3e635' : 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)'">
               {{ f.l }}
-              @if (f.v === 'sin_responder' && waSinResponderCount() > 0) {
+              @if (f.v === 'atencion' && waSinResponderCount() > 0) {
                 <span class="ml-1">({{ waSinResponderCount() }})</span>
               }
             </button>
@@ -1209,13 +1209,15 @@ export class MoviAdminComponent implements OnInit, OnDestroy {
   waReplyText       = signal('');
   waSending         = signal(false);
   waSendError       = signal<string | null>(null);
-  waFilter          = signal<'todas' | 'sin_responder' | 'mias' | 'solo_bot'>('todas');
+  waFilter          = signal<'todas' | 'atencion' | 'mias' | 'solo_bot'>('todas');
 
+  // Ver la nota en anda-gana-admin: "Sin responder" salía siempre vacío desde que el bot
+  // contesta al instante, y hacía parecer que la bandeja estaba vacía.
   readonly waFiltros = [
-    { v: 'todas'         as const, l: 'Todas' },
-    { v: 'sin_responder' as const, l: 'Sin responder' },
-    { v: 'mias'          as const, l: 'Respondí yo' },
-    { v: 'solo_bot'      as const, l: 'Solo el bot' },
+    { v: 'todas'    as const, l: 'Todas' },
+    { v: 'atencion' as const, l: 'Necesita a alguien' },
+    { v: 'mias'     as const, l: 'Respondí yo' },
+    { v: 'solo_bot' as const, l: 'Solo el bot' },
   ];
 
   /**
@@ -1227,13 +1229,15 @@ export class MoviAdminComponent implements OnInit, OnDestroy {
   waConvsVisibles = computed(() => {
     const f = this.waFilter();
     const todas = this.waConversations();
-    if (f === 'todas')         return todas;
-    if (f === 'sin_responder') return todas.filter(c => !!c.sin_responder);
-    if (f === 'mias')          return todas.filter(c => (c.admin_count ?? 0) > 0);
+    if (f === 'todas')    return todas;
+    // Necesita a alguien: el bot la escaló, la persona pidió un humano, o quedó un mensaje
+    // suyo sin respuesta (raro ahora, pero es justo el caso que no se puede perder).
+    if (f === 'atencion') return todas.filter(c => !!c.escalated || !!c.sin_responder);
+    if (f === 'mias')     return todas.filter(c => (c.admin_count ?? 0) > 0);
     return todas.filter(c => (c.admin_count ?? 0) === 0);
   });
 
-  waSinResponderCount = computed(() => this.waConversations().filter(c => !!c.sin_responder).length);
+  waSinResponderCount = computed(() => this.waConversations().filter(c => !!c.escalated || !!c.sin_responder).length);
 
   /** El hilo con una etiqueta de día en el primer mensaje de cada fecha. */
   waHilo = computed<Array<{ m: any; dia: string | null }>>(() => {

@@ -879,7 +879,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
             [class]="waFilter() === f.v ? 'text-lime-950' : 'text-slate-500'"
             [style]="waFilter() === f.v ? 'background:#a3e635' : 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)'">
             {{ f.l }}
-            @if (f.v === 'sin_responder' && waSinResponderCount() > 0) {
+            @if (f.v === 'atencion' && waSinResponderCount() > 0) {
               <span class="ml-1">({{ waSinResponderCount() }})</span>
             }
           </button>
@@ -1086,13 +1086,19 @@ export class AndaGanaAdminComponent implements OnInit, OnDestroy {
   waReplyText       = signal('');
   waSending         = signal(false);
   waSendError       = signal<string | null>(null);
-  waFilter          = signal<'todas' | 'sin_responder' | 'mias' | 'solo_bot'>('todas');
+  waFilter          = signal<'todas' | 'atencion' | 'mias' | 'solo_bot'>('todas');
 
+  // "Sin responder" (el último mensaje es de la persona) dejó de tener sentido cuando el bot
+  // empezó a contestar en menos de un segundo: ninguna conversación queda nunca en ese estado.
+  // El filtro salía SIEMPRE vacío y hacía parecer que la bandeja no tenía nada -- el usuario
+  // reportó el 2026-09-30 que "no veía reflejados" los mensajes del envío de las 9 a.m. cuando
+  // en realidad estaban todos ahí. Lo que hay que poder aislar ahora es dónde hace falta una
+  // persona, no dónde no contestó nadie.
   readonly waFiltros = [
-    { v: 'todas'         as const, l: 'Todas' },
-    { v: 'sin_responder' as const, l: 'Sin responder' },
-    { v: 'mias'          as const, l: 'Respondí yo' },
-    { v: 'solo_bot'      as const, l: 'Solo el bot' },
+    { v: 'todas'    as const, l: 'Todas' },
+    { v: 'atencion' as const, l: 'Necesita a alguien' },
+    { v: 'mias'     as const, l: 'Respondí yo' },
+    { v: 'solo_bot' as const, l: 'Solo el bot' },
   ];
 
   /**
@@ -1104,13 +1110,15 @@ export class AndaGanaAdminComponent implements OnInit, OnDestroy {
   waConvsVisibles = computed(() => {
     const f = this.waFilter();
     const todas = this.waConversations();
-    if (f === 'todas')         return todas;
-    if (f === 'sin_responder') return todas.filter(c => !!c.sin_responder);
-    if (f === 'mias')          return todas.filter(c => (c.admin_count ?? 0) > 0);
+    if (f === 'todas')    return todas;
+    // Necesita a alguien: el bot la escaló, la persona pidió un humano, o quedó un mensaje
+    // suyo sin respuesta (raro ahora, pero es justo el caso que no se puede perder).
+    if (f === 'atencion') return todas.filter(c => !!c.escalated || !!c.sin_responder);
+    if (f === 'mias')     return todas.filter(c => (c.admin_count ?? 0) > 0);
     return todas.filter(c => (c.admin_count ?? 0) === 0);
   });
 
-  waSinResponderCount = computed(() => this.waConversations().filter(c => !!c.sin_responder).length);
+  waSinResponderCount = computed(() => this.waConversations().filter(c => !!c.escalated || !!c.sin_responder).length);
 
   /** El hilo con una etiqueta de día en el primer mensaje de cada fecha. */
   waHilo = computed<Array<{ m: any; dia: string | null }>>(() => {
