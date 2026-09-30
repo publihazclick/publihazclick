@@ -6057,6 +6057,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     style="font-size:clamp(13px,3.5vw,15px);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
                     {{ navInstruction() }}
                   </p>
+                  <!-- GPS impreciso: antes esto congelaba TODO en silencio (marcador, cámara,
+                       voz, ETA) y el conductor no tenía forma de saber por qué. Ahora se sigue
+                       guiando con la posición aproximada y se le dice que la señal está débil. -->
+                  @if (gpsDebil()) {
+                    <p class="flex items-center gap-1 mt-1 font-bold" style="font-size:11px;color:#fbbf24">
+                      <span class="material-symbols-outlined" style="font-size:13px">gps_not_fixed</span>
+                      Señal GPS débil — tu posición puede verse corrida
+                    </p>
+                  }
                 </div>
 
                 <!-- Indicador recalculando -->
@@ -10665,6 +10674,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   navPhase           = signal<'to_pickup' | 'to_dest'>('to_pickup');
   navManeuverIcon    = signal('straight');
   navVoiceEnabled    = signal(false); // empieza en OFF — primer toque del botón activa
+  // GPS impreciso (>50 m): se avisa en pantalla en vez de congelar todo en silencio, que es
+  // lo que hacía antes. Ver el watch del conductor.
+  gpsDebil           = signal(false);
   private _navSteps:      any[]    = [];
   private _navStepIdx:    number   = 0;
   // Índice del punto más cercano en _navRouteCoords a la última posición GPS -- usado para la
@@ -11702,6 +11714,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _userMarker:      any    = null;
   private _userMarkerEl:    HTMLElement | null = null;
   private _userMarkerDot:   HTMLElement | null = null;
+  private _userMarkerArrow: HTMLElement | null = null;  // flecha de rumbo (solo conductor)
 
   // Reacciona en tiempo real a tripSent/tripAccepted para activar el pulso de búsqueda
   private readonly _searchPulseEffect = effect(() => {
@@ -11731,6 +11744,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Navegación profesional ────────────────────────────────────────
   private _currentHeading   = 0;          // rumbo del conductor en grados (0-360)
+  // Última posición usada para calcular el rumbo cuando el GPS no lo entrega (ver el watch
+  // del conductor). Se mueve solo cada 12 m para que el ángulo no sea ruido.
+  private _lastHeadingLat: number | null = null;
+  private _lastHeadingLng: number | null = null;
   private _navRouteCoords:  [number,number][] = [];  // coords completas de la ruta activa
   private _navDestLat       = 0;          // destino actual (para recalcular)
   private _navDestLng       = 0;
@@ -11752,6 +11769,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return distMeters(lat1, lng1, lat2, lng2);
   }
   private _destMarker:      any = null;
+  private _navDestMarker:   any = null;   // pin de recogida/destino durante la navegación
   private _currentLat = 4.6097;
   private _currentLng = -74.0817;
   /** true solo cuando tenemos una lectura GPS con precisión real (<300m). Evita usar coords por defecto (Bogotá) como origen de viaje. */
@@ -12012,6 +12030,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (shouldLoad) {
       // Poner online y cargar solicitudes ANTES de cualquier await para que no falle si algo lanza error
       this.driverOnline.set(true);
+      // El mapa suele crearse ANTES de llegar acá, así que decidir `draggable` en su creación no
+      // alcanza: hay que apagarlo al pasar a conductor. Un roce con el pulgar sobre su propio
+      // punto le movía el origen desde donde se calcula la ruta (ver la nota en _createMap).
+      try { this._userMarker?.setDraggable(false); } catch { /* marcador aún sin crear */ }
       this.agService.setDriverOnline(mine.id, true).then(res => {
         // El servidor puede rechazar esto (documentos/vehículo vencidos) aunque la UI ya haya
         // asumido que sí -- si pasa, corregir el estado apenas se sepa. El motivo concreto ya
@@ -13202,6 +13224,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._map.on('dragstart', () => {
       if (this.driverOnline()) {
         this.driverMapPanned.set(true);
+        // BUG REAL 2026-09-30: esto marcaba driverMapPanned pero NO apagaba _navFollowActive, y
+        // la cámara de navegación solo consulta _navFollowActive. Resultado: durante la
+        // navegación el conductor no podía mirar más adelante en la ruta -- cada lectura de GPS
+        // (cada 1-2 s) le arrastraba el mapa de vuelta. El botón CENTRAR vuelve a activarlo.
+        this._navFollowActive = false;
+        clearTimeout(this._navFollowTimer);
       } else {
         clearTimeout(this._passengerRecenterTimer);
         this.passengerMapPanned.set(true);
@@ -13363,17 +13391,27 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       // Aplicar estado actual al instante (el effect no re-dispara si los signals no cambiaron)
       this._setUserMarkerSearching(this.tripSent() && !this.tripAccepted());
 
-      this._userMarker = new mapboxgl.Marker({ element: el, anchor: 'center', draggable: true })
+      // `draggable` SOLO para el pasajero. Ese marcador le sirve para corregir a mano dónde
+      // quiere ser recogido; para el conductor no tiene ningún sentido y sí un riesgo real:
+      // el 'dragend' de abajo sobrescribe _currentLat/_currentLng y pone _gpsRealFix = true,
+      // que es el punto desde donde se calcula la ruta y con el que se buscan solicitudes
+      // cercanas. Un roce con el pulgar sobre su propio punto mientras maneja le dejaba la
+      // navegación arrancando desde un lugar donde no está. Detectado en la revisión del
+      // 2026-09-30 junto con el resto de los problemas de guía al conductor.
+      const arrastrable = !this.driverOnline();
+      this._userMarker = new mapboxgl.Marker({ element: el, anchor: 'center', draggable: arrastrable })
         .setLngLat([lng, lat])
         .addTo(m);
 
-      this._userMarker.on('dragend', () => {
-        const lngLat = this._userMarker!.getLngLat();
-        this._currentLat = lngLat.lat;
-        this._currentLng = lngLat.lng;
-        this._gpsRealFix = true; // el usuario confirmó su posición manualmente
-        this._reverseGeocode(lngLat.lat, lngLat.lng);
-      });
+      if (arrastrable) {
+        this._userMarker.on('dragend', () => {
+          const lngLat = this._userMarker!.getLngLat();
+          this._currentLat = lngLat.lat;
+          this._currentLng = lngLat.lng;
+          this._gpsRealFix = true; // el usuario confirmó su posición manualmente
+          this._reverseGeocode(lngLat.lat, lngLat.lng);
+        });
+      }
 
       m.resize();
       setTimeout(() => {
@@ -13822,6 +13860,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._userMarker    = null;
     this._userMarkerEl  = null;
     this._userMarkerDot = null;
+    this._userMarkerArrow = null;
     if (this._map) {
       try { this._map.remove(); } catch { /* ignore */ }
       this._map = null;
@@ -16507,6 +16546,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
       // Dibujar ruta SIN cambiar estilo del mapa (evita el reload jarring)
       this._drawNavRoute(route.geometry);
+      // Y el pin de a dónde va. BUG REAL 2026-09-30: la navegación dibujaba SOLO la línea --
+      // no había ningún marcador en el punto de recogida ni en el destino. El único pin que
+      // existía (_destMarker) lo crea _drawRoute(), que es la vista previa del PASAJERO. El
+      // conductor veía una línea azul que terminaba en la nada y tenía que adivinar cuál de
+      // las puertas de la cuadra era. Verde = recoger, azul de marca = destino final.
+      this._setNavDestMarker(destLat, destLng, toPickup);
 
       // 1) Muestra la ruta completa (overview) por 2.5 s
       if (this._map) {
@@ -16545,6 +16590,69 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.navActive.set(false);
       console.warn('nav error', e);
     }
+  }
+
+  /**
+   * Pin de a dónde está navegando el conductor: el punto de recogida o el destino final.
+   * Se reutiliza el mismo marcador entre fases (recoger -> destino) para no acumular pines.
+   */
+  private _setNavDestMarker(lat: number, lng: number, toPickup: boolean): void {
+    if (!this._map) return;
+    const mapboxgl = (window as any).mapboxgl;
+    if (!mapboxgl) return;
+    this._clearNavDestMarker();
+    // Verde para recoger (universal: "acá arranca"), azul de marca para el destino.
+    const el = this._createDropPin(toPickup ? '#10b981' : '#245BDB');
+    this._navDestMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([lng, lat])
+      .addTo(this._map);
+  }
+
+  private _clearNavDestMarker(): void {
+    if (this._navDestMarker) {
+      try { this._navDestMarker.remove(); } catch { /* ignore */ }
+      this._navDestMarker = null;
+    }
+  }
+
+  /** Rumbo en grados de un punto a otro (0 = norte). Para cuando el GPS no da heading. */
+  private _bearingBetween(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const r = Math.PI / 180;
+    const y = Math.sin((lng2 - lng1) * r) * Math.cos(lat2 * r);
+    const x = Math.cos(lat1 * r) * Math.sin(lat2 * r)
+            - Math.sin(lat1 * r) * Math.cos(lat2 * r) * Math.cos((lng2 - lng1) * r);
+    return (Math.atan2(y, x) / r + 360) % 360;
+  }
+
+  /**
+   * Gira la flecha de dirección del marcador del conductor.
+   *
+   * Un círculo que pulsa no dice hacia dónde va apuntando el carro, y esa es justo la
+   * información que necesita alguien a quien le dicen "gire a la derecha en 100 metros". La
+   * flecha se crea la primera vez que se necesita (el marcador base lo comparten conductor y
+   * pasajero, y al pasajero no le sirve de nada).
+   *
+   * El giro es CSS sobre el elemento del marcador, no un marcador nuevo: así no se recrea nada
+   * en cada lectura de GPS.
+   */
+  private _setUserMarkerHeading(deg: number): void {
+    const el = this._userMarkerEl;
+    if (!el) return;
+    let arrow = this._userMarkerArrow;
+    if (!arrow) {
+      arrow = document.createElement('div');
+      arrow.style.cssText = [
+        'position:absolute;left:50%;top:50%;width:0;height:0',
+        'transform-origin:0 0;pointer-events:none',
+        'border-left:7px solid transparent;border-right:7px solid transparent',
+        'border-bottom:16px solid #4361EE',
+        'filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5))',
+      ].join(';');
+      el.appendChild(arrow);
+      this._userMarkerArrow = arrow;
+    }
+    // -50% en X centra la flecha; -26px la saca por delante del punto; luego se rota al rumbo.
+    arrow.style.transform = `rotate(${deg}deg) translate(-7px, -26px)`;
   }
 
   private _setUserMarkerSearching(searching: boolean): void {
@@ -16602,12 +16710,18 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   recenterDriverMap(): void {
     this.driverMapPanned.set(false);
+    // Si estaba navegando, CENTRAR vuelve a enganchar el seguimiento (el paneo lo suelta, ver
+    // el handler de 'dragstart'). Sin esto, tocar CENTRAR recentraba una sola vez y el mapa se
+    // quedaba quieto mientras el conductor seguía avanzando.
+    if (this.navActive()) this._navFollowActive = true;
     if (!this._map) return;
     this._map.easeTo({
       center:   [this._currentLng, this._currentLat],
       bearing:  this.navActive() ? this._currentHeading : 0,
+      // Con navegación activa hay que acercar: a zoom 15 no se distinguen las calles ni los
+      // giros, y el conductor necesita ver el carril y la bocacalle, no la ciudad.
+      zoom:     this.navActive() ? 17 : 15,
       pitch:    this.navActive() ? 50 : this.IDLE_PITCH,
-      zoom:     15,
       duration: 600,
     });
   }
@@ -16624,6 +16738,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     try { const el = document.getElementById('movi-nav-audio') as HTMLAudioElement; if (el) { el.pause(); el.src = ''; } } catch {}
     window.speechSynthesis?.cancel();
     this._clearNavRoute();
+    this._clearNavDestMarker();
     // Restablecer cámara a vista normal sin cambiar estilo
     if (this._map) {
       this._map.easeTo({ pitch: this.IDLE_PITCH, bearing: 0, zoom: 14, duration: 600 });
@@ -16802,7 +16917,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
   }
 
-  _updateNavFromGps(lat: number, lng: number, heading?: number): void {
+  _updateNavFromGps(lat: number, lng: number, heading?: number, precisoParaDecidir = true): void {
     if (!this.navActive() || this._navSteps.length === 0) return;
 
     // Actualizar rumbo
@@ -16844,7 +16959,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // medio/largo. Se reemplaza por un índice propio (_navCoordIdx) que sigue el progreso real
     // del conductor sobre _navRouteCoords, buscando solo en una ventana alrededor de la última
     // posición encontrada (conserva la optimización de no escanear toda la ruta cada vez).
-    if (!this._navRecalcCooldown && this._navRouteCoords.length > 0) {
+    //
+    // `precisoParaDecidir` (agregado 2026-09-30): con una lectura de 150 m de error, el
+    // conductor puede ir perfectamente por su carril y aparecer a 80 m de la ruta -- se
+    // recalcularía la ruta sin motivo, cortando la voz y reiniciando las instrucciones justo
+    // cuando más las necesita. El umbral de desvío es de 65 m, así que solo tiene sentido
+    // evaluarlo con lecturas cuyo error sea menor que eso.
+    if (precisoParaDecidir && !this._navRecalcCooldown && this._navRouteCoords.length > 0) {
       const searchStart = Math.max(0, this._navCoordIdx - 10);
       const searchEnd    = Math.min(this._navRouteCoords.length, this._navCoordIdx + 80);
       let minDist = Infinity, nearestIdx = this._navCoordIdx;
@@ -17311,14 +17432,67 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
     );
 
-    // Tracking continuo — solo actualizar con lecturas de precisión real
+    // Tracking continuo
+    //
+    // BUG REAL 2026-09-30 -- varios conductores reportaron que "la app no los guía bien para
+    // recoger al pasajero" y que NO SE VEN a sí mismos en el mapa. Había tres causas acumuladas
+    // y todas se arreglan en este bloque y en _updateNavFromGps:
+    //
+    // 1) UN SOLO UMBRAL DE PRECISIÓN, Y DEMASIADO ESTRICTO. Este callback empezaba con
+    //    `if (pos.coords.accuracy > 50) return;` -- o sea que con precisión de 51 m NO pasaba
+    //    absolutamente nada: no se movía el marcador, no seguía la cámara, no avanzaba la voz,
+    //    no se recalculaba la ruta, no se actualizaba el ETA. Todo congelado, en silencio, sin
+    //    un log ni un aviso en pantalla. En ciudad (edificios, túneles, GPS recién despertado)
+    //    pasar de 50 m es normal. Y era al revés de lo que tiene sentido: el watch del PASAJERO
+    //    -- que casi no necesita continuidad -- acepta hasta 300 m ("≤300m = GPS real aunque sea
+    //    interior"), y el del CONDUCTOR, que es el que va manejando, era el estricto.
+    //    Ahora hay DOS umbrales: hasta 200 m sirve para pintar dónde está y seguirlo; solo
+    //    ≤50 m habilita las decisiones que exigen precisión (recalcular ruta por desvío,
+    //    finalizar el viaje solo). Mostrar una posición aproximada es infinitamente mejor que
+    //    no mostrar ninguna.
+    //
+    // 2) EL MARCADOR DEL CONDUCTOR NUNCA SE MOVÍA. `_userMarker.setLngLat()` se llamaba en
+    //    exactamente cuatro sitios y los cuatro son del lado pasajero (_startPassengerWatch,
+    //    selectAddress, selectRecentOrigin). Este watch actualizaba _currentLat/_currentLng, la
+    //    base y la CÁMARA, pero jamás el marcador: el punto quedaba clavado donde se creó el
+    //    mapa mientras la cámara se centraba en la posición real, así que el conductor veía el
+    //    mapa moverse con su punto derivando fuera de la pantalla. Es literalmente lo que
+    //    reportaron: "no veo dónde estoy".
+    //
+    // 3) SIN RUMBO NO HAY GUÍA. `pos.coords.heading` llega null muy seguido en Android (sobre
+    //    todo a baja velocidad o parado), y sin él la cámara se queda mirando al norte aunque
+    //    el conductor vaya al sur. Ahora, si el GPS no da rumbo, se calcula con el desplazamiento
+    //    real entre lecturas.
     this._gpsWatchId = navigator.geolocation.watchPosition(
       (pos) => {
-        if (pos.coords.accuracy > 50) return; // rechazar lecturas de red imprecisas (>50m)
-        // Actualizar heading antes de llamar a updateNavFromGps
+        const acc = pos.coords.accuracy ?? 999;
+        if (acc > 200) return;                 // eso ya es ubicación por red/IP, no GPS
+        const precisoParaDecidir = acc <= 50;  // solo con esto se recalcula ruta o se autofinaliza
+        this.gpsDebil.set(!precisoParaDecidir);
+
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        // Rumbo: el del GPS si viene, y si no, el del movimiento real (solo si se movió lo
+        // suficiente para que el cálculo signifique algo -- con 3 m de desplazamiento el
+        // ángulo es ruido puro y la cámara giraría sola estando quieto).
         if (pos.coords.heading != null && isFinite(pos.coords.heading) && pos.coords.heading >= 0) {
           this._currentHeading = pos.coords.heading;
+        } else if (this._lastHeadingLat != null && this._lastHeadingLng != null) {
+          const movido = this._distMeters(this._lastHeadingLat, this._lastHeadingLng, lat, lng);
+          if (movido >= 12) this._currentHeading = this._bearingBetween(this._lastHeadingLat, this._lastHeadingLng, lat, lng);
         }
+        if (this._lastHeadingLat == null
+            || this._distMeters(this._lastHeadingLat, this._lastHeadingLng!, lat, lng) >= 12) {
+          this._lastHeadingLat = lat;
+          this._lastHeadingLng = lng;
+        }
+
+        // El conductor tiene que VERSE. Va antes que cualquier otra cosa de este callback:
+        // aunque algo más abajo falle, su punto en el mapa queda donde de verdad está.
+        this._userMarker?.setLngLat([lng, lat]);
+        this._setUserMarkerHeading(this._currentHeading);
+
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
 
         // Bug real 2026-07-31: este callback nunca actualizaba _currentLat/_currentLng (solo
@@ -17337,7 +17511,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this._gpsRealFix = true;
         this._driverLocationKnown = true;
 
-        this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude, pos.coords.heading ?? undefined);
+        this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude, pos.coords.heading ?? undefined, precisoParaDecidir);
 
         if (wasFallback) {
           this._usedFallbackLocation = false;
@@ -17357,7 +17531,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
         // Pedido explicito del usuario 2026-07-31: finalizar el viaje solo con GPS, sin que el
         // conductor tenga que tocar "Finalizar".
-        this._checkAutoFinishTrip(pos.coords.latitude, pos.coords.longitude);
+        //
+        // Solo con precisión buena: con un radio de 150 m, "llegó al destino" se cumpliría
+        // estando a dos cuadras y le cerraría el viaje antes de tiempo.
+        if (precisoParaDecidir) this._checkAutoFinishTrip(pos.coords.latitude, pos.coords.longitude);
 
         // Registrar el recorrido mientras haya un viaje activo -- para poder validar más
         // adelante que conductor y pasajero de verdad viajaron juntos (migración 189).
