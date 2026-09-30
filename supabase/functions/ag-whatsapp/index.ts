@@ -5513,9 +5513,17 @@ async function leadYaDescargo(phone: string): Promise<void> {
  * Envío programado del embudo a un lead que quedó sin atender (migración 287).
  *
  * Tres versiones del mismo mensaje, y la diferencia importa:
- *  · `recibioError` -> le llegó el mensaje incoherente del 2026-09-30 ("Hola quiero
- *    más información" reenviado por error desde el panel). Se le reconoce de frente:
- *    fingir que no pasó es peor, porque la persona SÍ lo vio.
+ *  · `recibioError` -> anoche le llegaron mensajes cruzados: el saludo repetido (a uno
+ *    de ellos cuatro veces) y además su propia frase devuelta como si fuera una
+ *    respuesta de Movi. Se reconoce en una línea, SIN citar la frase.
+ *
+ *    OJO -- corrección del usuario, 2026-09-30, y tenía razón: la primera versión de
+ *    este mensaje citaba "Hola quiero más información" para explicar el error. Esa
+ *    frase la escribió LA PERSONA al tocar el botón del anuncio (es el texto que Meta
+ *    deja preescrito); que Movi la devolviera fue el error. Citársela la haría leer
+ *    "pero eso lo escribí yo" y confundiría más de lo que aclara. Se reconoce el
+ *    desorden y punto: la persona vivió mensajes cruzados, no necesita el detalle
+ *    técnico de cuál fue cuál.
  *  · `yaContactado` -> ya recibió el saludo manual anoche. Volver a decir "Soy
  *    Katherine, del equipo de conductores de Movi" sonaría a plantilla mal puesta,
  *    así que se retoma la conversación en vez de presentarse de cero.
@@ -5528,9 +5536,9 @@ async function leadEmbudoProgramado(phone: string, name: string | null, yaContac
   let cuerpo: string;
   if (recibioError) {
     cuerpo =
-      `${hola} 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
-      `Antes que nada: anoche te llegó un mensaje mío que no tenía sentido ` +
-      `("Hola quiero más información"). Fue un error nuestro, nada tuyo — disculpa 🙏\n\n` +
+      `${hola} 👋 Te escribí anoche por acá, soy ${LEAD_ASESORA} del equipo de conductores de Movi.\n\n` +
+      `Primero, disculpa el desorden de anoche: se nos cruzaron unos mensajes por un ` +
+      `error del sistema 🙏\n\n` +
       `Ahora sí, a lo importante. Para decirte cómo te funcionaría a ti en concreto ` +
       `y no llenarte de datos que no te sirven, dime: *¿con qué te vas a mover?*`;
   } else if (yaContactado) {
