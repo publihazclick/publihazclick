@@ -4057,6 +4057,21 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
 
   if (!phone || !event) return;
 
+  // Recordatorio a un lead de conductor que se quedó callado (cron
+  // ag_wa_lead_followups, migración 285). El cron ya validó la ventana de 24h, el
+  // escalón que toca y que la persona no haya pedido que no le escribamos -- acá
+  // solo se redacta y se manda por el número de conductores.
+  if (event === 'lead_followup') {
+    await leadFollowup(
+      phone,
+      (payload.wa_name as string | null) ?? null,
+      (payload.paso as string) ?? 'saludado',
+      (payload.vehiculo as string | null) ?? null,
+      Number(payload.numero_nudge ?? 1),
+    );
+    return;
+  }
+
   if (event === 'offer_received') {
     const session = await getSession(phone);
     // El trip_request_id del payload tiene que ser el mismo que la
@@ -5141,8 +5156,456 @@ async function logSupportInteraction(phone: string, question: string, action: st
   } catch (e) { console.error('[WA-Support] logSupportInteraction error:', e); }
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// ─── CAPTACIÓN DE CONDUCTORES (pauta de Facebook Ads) ────────────────────────
+//
+// POR QUÉ EXISTE ESTE BLOQUE. El 2026-09-30 arrancó una pauta en Facebook para
+// atraer conductores de moto y carro. Llegaron 9 leads en una noche y a los 9 el
+// bot les contestó "Ya te conecto con un asesor" -- o sea, escaló y se calló.
+// Esperaron entre 2 h 26 min y 3 h 50 min a que una persona les escribiera, y lo
+// que recibieron fue un saludo genérico con el link de la app.
+//
+// La causa era sutil: el menú instantáneo de handleSupportConversation solo actúa
+// con saludos de <=20 caracteres que calcen exacto contra una lista cerrada. El
+// texto que Meta deja preescrito en el botón del anuncio -- "¡Hola! Quiero más
+// información" (30 caracteres) -- no calzaba, así que iba a la IA, que sin una
+// pregunta concreta devolvía "escalate". El mensaje más frecuente y más valioso
+// del negocio caía justo en el único hueco del flujo.
+//
+// QUÉ HACE. Atiende al lead en segundos, lo califica (moto/carro y año del
+// vehículo), le da el discurso que le corresponde, lo lleva a descargar y
+// registrarse, y lo empuja si se queda callado (cron ag_wa_lead_followups,
+// migración 285). Solo pasa a un humano si de verdad hace falta.
+//
+// REGLAS QUE NO SE NEGOCIAN:
+//  · NUNCA inventar un ingreso (mensual, diario, por hora, ni "estimados"). No se
+//    sabe y prometerlo es lo que quema la reputación de una app de transporte.
+//    Lo que sí se puede afirmar es cómo se reparte cada viaje.
+//  · Si preguntan si es un bot, se dice que sí. Katherine es el nombre del canal
+//    de atención, no una persona que se vaya a sostener a costa de mentirle a un
+//    conductor que va a notar que le contestan en 2 segundos a las 3 de la mañana.
+//  · Un vehículo más viejo que el límite NO se puede registrar. Se dice de frente
+//    en vez de dejar que lo descubra después de llenar 4 pasos.
+// ════════════════════════════════════════════════════════════════════════════
+
+const LEAD_ASESORA = 'Katherine';
+
+// Años mínimos reales, calculados del mismo límite que usa la app (23 años para
+// carro, 17 para moto -- platform_settings). Se dice el AÑO, no "máximo 23 años":
+// nadie va a hacer la resta por su cuenta.
+function leadAnioMinimo(vehiculo: 'moto' | 'carro'): number {
+  return new Date().getFullYear() - (vehiculo === 'moto' ? 17 : 23);
+}
+
+async function sendSupportButtons(to: string, bodyText: string, buttons: { id: string; title: string }[], sentBy: WaSentBy = 'bot'): Promise<WaResult> {
+  const interactive: Record<string, unknown> = {
+    type: 'button',
+    body: { text: bodyText },
+    action: { buttons: buttons.slice(0, 3).map(b => ({ type: 'reply', reply: { id: b.id, title: b.title.slice(0, 20) } })) },
+  };
+  return sendSupportGraph({ to, type: 'interactive', interactive }, sentBy);
+}
+
+type LeadRow = {
+  wa_phone: string;
+  paso: string;
+  vehiculo: string | null;
+  modelo_ok: boolean | null;
+  no_insistir: boolean;
+  nudges_enviados: number;
+};
+
+async function getLead(phone: string): Promise<LeadRow | null> {
+  const { data } = await db()
+    .from('ag_driver_leads')
+    .select('wa_phone, paso, vehiculo, modelo_ok, no_insistir, nudges_enviados')
+    .eq('wa_phone', phone)
+    .maybeSingle();
+  return (data as LeadRow | null) ?? null;
+}
+
+/**
+ * Guarda el avance del lead. `ultimo_in_at` se mueve en CADA mensaje entrante,
+ * porque es lo que reinicia el reloj de los recordatorios y lo que mide la ventana
+ * de 24h -- si no se moviera, alguien que está conversando activamente recibiría
+ * un "¿sigues ahí?" en medio de la charla.
+ *
+ * `nudges_enviados` vuelve a 0 cuando la persona contesta: los tres toques son por
+ * cada silencio, no tres en toda su vida.
+ */
+async function upsertLead(phone: string, patch: Record<string, unknown>): Promise<void> {
+  const { error } = await db().from('ag_driver_leads').upsert(
+    { wa_phone: phone, ...patch, updated_at: new Date().toISOString() },
+    { onConflict: 'wa_phone' },
+  );
+  if (error) console.error('[WA-Lead] upsertLead error:', error);
+}
+
+/**
+ * ¿Este mensaje es un lead de la pauta pidiendo información?
+ *
+ * Los dos primeros son los textos EXACTOS que Meta deja preescritos en el botón
+ * del anuncio -- son el 100% de los leads reales medidos (7 y 2 de 9). El resto
+ * cubre a quien escribe con sus propias palabras. Se exige que el mensaje sea
+ * corto (<=90) para no confundir una pregunta concreta y larga con un saludo de
+ * interés: esa pregunta la responde mejor la IA del FAQ, que tiene todo el detalle.
+ */
+function esLeadInteresado(texto: string): boolean {
+  const t = normalizarTexto(texto).replace(/[¡!¿?.,]/g, '').trim();
+  if (!t || t.length > 90) return false;
+  if (/(quiero|necesito|me gustaria|megustaria|deseo).{0,20}(mas )?informacion/.test(t)) return true;
+  // Sin tilde a propósito: normalizarTexto() ya las quitó antes de llegar acá.
+  if (/mas informacion sobre esto/.test(t)) return true;
+  return /(quiero|deseo|me interesa|como puedo|quisiera).{0,30}(ser|trabajar|manejar|conducir|afiliar|vincular|unirme|inscribir|registrar)/.test(t)
+      || /(informacion|info).{0,25}(para|de|como).{0,15}(conductor|trabajar|manejar)/.test(t)
+      || /(quiero|me interesa) (trabajar|manejar|conducir)/.test(t);
+}
+
+/** Pide explícitamente que no le escribamos más. Se respeta y no se discute. */
+function pideNoInsistir(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return /(no me escrib|no escrib|dejen de escrib|no me interesa|ya no me interesa|no gracias|borren mi numero|eliminen mi numero|no quiero nada|stop)/.test(t);
+}
+
+/** Pregunta directa de si está hablando con una máquina. Se contesta la verdad. */
+function preguntaSiEsBot(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return /(eres|es|sos|habla|hablo con).{0,20}(un |una )?(bot|robot|maquina|inteligencia artificial|ia|chatbot|contestador)/.test(t)
+      || /(eres|sos).{0,12}(una )?(persona|humano|humana|real)/.test(t)
+      || /(con quien hablo|quien me habla|eres real)/.test(t);
+}
+
+/** Pide hablar con una persona. */
+function pideHumano(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  // Hacen falta las DOS mitades: "el asesor me dijo que sí" menciona un asesor pero
+  // no está pidiendo uno. Las raíces van sin terminación a propósito (atend- cubre
+  // atender/atienda/atiendan; pued- cubre puedo/puede/pueden).
+  return /(asesor|humano|una persona|con alguien|agente|operador|representante)/.test(t)
+      && /(hablar|habla con|comunicar|pasame|pasar|quiero|necesito|pued|atend|atienda|contacto)/.test(t);
+}
+
+/**
+ * Es un pasajero que se equivocó de número, no un aspirante a conductor.
+ *
+ * Pasa de verdad y el FAQ ya tiene una regla para redirigirlo al 316 630 2106. El
+ * problema es que "quiero un carro" (pidiendo un viaje) también calza con leeVehiculo()
+ * como si estuviera diciendo QUÉ MANEJA -- y terminaría recibiendo un discurso para
+ * conductores. Este chequeo va primero y le devuelve el mensaje al FAQ, que sabe
+ * redirigirlo bien.
+ */
+function pidiendoServicio(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return /\b(un viaje|una carrera|un domicilio|un flete|una mudanza|un servicio|me recojan|me recoja|que me lleve|llevarme|mandar un paquete|enviar un paquete|pedir un)\b/.test(t)
+      || /\b(necesito|quiero|puedo pedir|como pido)\b.{0,15}\b(viaje|carrera|domicilio|flete|taxi|transporte)\b/.test(t);
+}
+
+/** Interpreta "moto", "tengo carro", "una motico" cuando contesta escribiendo. */
+function leeVehiculo(texto: string): 'moto' | 'carro' | 'ninguno' | null {
+  const t = normalizarTexto(texto);
+  if (/\b(no tengo|todavia no|aun no|ninguno|no cuento con|estoy buscando)\b/.test(t)) return 'ninguno';
+  if (/\b(moto|motico|motocicleta|scooter|motorizado)\b/.test(t)) return 'moto';
+  if (/\b(carro|auto|automovil|taxi|camioneta|vehiculo|cuatro ruedas)\b/.test(t)) return 'carro';
+  return null;
+}
+
+/** Interpreta la respuesta al año del vehículo, venga por botón o escrita. */
+function leeModelo(texto: string, vehiculo: 'moto' | 'carro'): boolean | null | 'no_se' {
+  const t = normalizarTexto(texto);
+  const anio = texto.match(/\b(19[89]\d|20[0-4]\d)\b/);
+  if (anio) return Number(anio[1]) >= leadAnioMinimo(vehiculo);
+  if (/\b(no se|no estoy segur|no sabria|ni idea|no recuerdo)\b/.test(t)) return 'no_se';
+  if (/\b(es mas vieja|es mas viejo|mas vieja|mas viejo|antigua|antiguo|vieja|viejo|no)\b/.test(t)) return false;
+  if (/\b(si|sip|claro|correcto|nueva|nuevo|reciente|obvio|afirmativo)\b/.test(t)) return true;
+  return null;
+}
+
+const LEAD_BTN_VEHICULO = [
+  { id: 'lead_moto',    title: '🏍️ Moto' },
+  { id: 'lead_carro',   title: '🚗 Carro' },
+  { id: 'lead_ninguno', title: 'Aún no tengo' },
+];
+
+const LEAD_BTN_MODELO = [
+  { id: 'lead_modelo_si',   title: 'Sí' },
+  { id: 'lead_modelo_no',   title: 'Es más viejo' },
+  { id: 'lead_modelo_nose', title: 'No estoy seguro' },
+];
+
+const LEAD_BTN_CIERRE = [
+  { id: 'lead_descargo', title: 'Ya la descargué' },
+  { id: 'lead_duda',     title: 'Tengo una duda' },
+];
+
+/** Primer contacto: se presenta y hace UNA sola pregunta. */
+async function leadSaludar(phone: string, name: string, primerMensaje: string, esDePauta: boolean): Promise<void> {
+  const nombre = cleanDisplayName(name && name !== 'Usuario' ? name : null);
+  const saludo = nombre ? `¡Hola ${nombre}! 👋` : '¡Hola! 👋';
+  await sendSupportButtons(phone,
+    `${saludo} Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
+    `Qué bueno que quieras trabajar con nosotros 🙌 Te explico todo en dos minutos, ` +
+    `pero primero dime una cosa para no llenarte de datos que no te sirven:\n\n` +
+    `*¿Con qué te vas a mover?*`,
+    LEAD_BTN_VEHICULO);
+  await upsertLead(phone, {
+    wa_name: nombre,
+    origen: esDePauta ? 'pauta' : 'organico',
+    primer_mensaje: primerMensaje.slice(0, 500),
+    paso: 'saludado',
+    ultimo_in_at: new Date().toISOString(),
+    nudges_enviados: 0,
+  });
+}
+
+/**
+ * El discurso, distinto según moto o carro, y termina preguntando el año.
+ *
+ * Todo lo de acá es verificable y sale del mismo bloque de datos oficiales que usa
+ * el FAQ (DRIVER_FAQ_SYSTEM_PROMPT): comisión 12% que se descuenta de la billetera
+ * y no del viaje, el pasajero paga directo, el conductor puede contraofertar, bonos
+ * por hitos de por vida, y el primer viaje sin papeles. Ni una cifra de ingresos.
+ */
+async function leadPitchVehiculo(phone: string, vehiculo: 'moto' | 'carro'): Promise<void> {
+  const servicios = vehiculo === 'moto'
+    ? 'llevar pasajeros en moto y hacer domicilios 🏍️'
+    : 'llevar pasajeros, hacer fletes y viajes de ciudad a ciudad 🚗';
+
+  await sendSupportButtons(phone,
+    `Listo, con ${vehiculo === 'moto' ? 'moto' : 'carro'} puedes ${servicios}\n\n` +
+    `Lo que más le gusta a los conductores que ya están:\n\n` +
+    `• *El pasajero te paga a ti, directo.* La plata del viaje no pasa por Movi.\n` +
+    `• Movi cobra *12% fijo*, y lo descuenta de tu billetera en la app — no del viaje. Nada de porcentajes que cambian solos.\n` +
+    `• *Tú decides el precio.* El pasajero ofrece y tú aceptas o pides más.\n` +
+    `• Bonos en efectivo por viajes completados: *$2.000* a los 10, *$3.500* a los 25, *$6.000* a los 50, y *$24.000* cada 100 de ahí en adelante. No se reinician cada mes.\n` +
+    `• *Tu primer viaje lo puedes hacer sin haber subido papeles.* Arrancas hoy mismo.\n\n` +
+    `Una cosa antes de seguir, para no hacerte perder el tiempo: ` +
+    `*¿tu ${vehiculo} es modelo ${leadAnioMinimo(vehiculo)} o más ${vehiculo === 'moto' ? 'nueva' : 'nuevo'}?*`,
+    LEAD_BTN_MODELO);
+  await upsertLead(phone, { paso: 'vehiculo', vehiculo, ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+}
+
+/** Cierre: link real, nombre exacto en Play Store y qué esperar del registro. */
+async function leadCierreDescarga(phone: string, avisoModeloSinConfirmar = false): Promise<void> {
+  const aviso = avisoModeloSinConfirmar
+    ? `Tranquilo, el año lo puedes mirar en la tarjeta de propiedad — y si no sirve, la app te lo dice antes de que termines.\n\n`
+    : '';
+  await sendSupportButtons(phone,
+    `${aviso}Entonces te puedes registrar de una 🚀\n\n` +
+    `Descarga la app acá 👇\n${APP_DOWNLOAD_LINK}\n\n` +
+    `En Play Store aparece como *Movi - Transporte Urbano*, de TECNOMULTIMEDIA. ` +
+    `Hay varias apps llamadas "Movi", esa es la nuestra.\n\n` +
+    `Adentro entras a *"Quiero ser conductor"* y llenas 4 pasos: datos personales, ` +
+    `documentos, licencia y vehículo. Son unos 5 minutos.\n\n` +
+    `_Ojo con esto que a todos confunde: no hay contraseña. Entras con tu número y ` +
+    `un código que te llega por SMS o por WhatsApp._`,
+    LEAD_BTN_CIERRE);
+  await upsertLead(phone, { paso: 'pitch', ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+}
+
+/** El vehículo no cumple el año mínimo. Se dice de frente y se ofrece la salida real. */
+async function leadModeloNoSirve(phone: string, vehiculo: 'moto' | 'carro'): Promise<void> {
+  await sendSupportText(phone,
+    `Te lo digo de frente para no hacerte perder el tiempo 🙏 ` +
+    `${vehiculo === 'moto' ? 'Las motos' : 'Los carros'} se aceptan desde modelo ` +
+    `*${leadAnioMinimo(vehiculo)}*, y más ${vehiculo === 'moto' ? 'viejas' : 'viejos'} el sistema no los deja registrar. ` +
+    `No es algo que yo pueda saltarme.\n\n` +
+    `Dos cosas por si te sirven:\n\n` +
+    `1️⃣ Si consigues otro ${vehiculo} (o un carro, que va hasta modelo ${leadAnioMinimo('carro')}), escríbeme por acá y te ayudo con el registro.\n\n` +
+    `2️⃣ Mientras tanto puedes ganar *sin poner vehículo*: te registras en Movi, compartes tu link de invitado y ganas *2% de cada servicio* que haga quien entre con él — de por vida, sea pasajero o conductor. Se retira desde $10.000 a Nequi, Daviplata o cuenta bancaria.`);
+  await upsertLead(phone, { paso: 'sin_vehiculo', vehiculo, modelo_ok: false, ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+}
+
+/** Todavía no tiene vehículo. Se es honesto y se le deja abierta la otra puerta. */
+async function leadSinVehiculo(phone: string): Promise<void> {
+  await sendSupportText(phone,
+    `Gracias por decírmelo de frente 🙏\n\n` +
+    `Para manejar en Movi sí necesitas moto o carro (propio o uno que puedas usar), ` +
+    `matriculado en Colombia o en Venezuela — cualquiera de las dos placas sirve.\n\n` +
+    `Dos cosas:\n\n` +
+    `1️⃣ Cuando lo consigas escríbeme por acá y te acompaño en el registro. Guardo tus datos.\n\n` +
+    `2️⃣ Mientras tanto puedes ganar *sin vehículo*: te registras en Movi, compartes tu link de invitado y te queda el *2% de cada servicio* que haga quien entre con él, de por vida — sea pasajero o conductor. Se retira desde $10.000 a Nequi, Daviplata o cuenta bancaria.\n\n` +
+    `Si te interesa eso, dime "invitados" y te explico cómo sacar tu link.`);
+  await upsertLead(phone, { paso: 'sin_vehiculo', vehiculo: 'ninguno', ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+}
+
+/** Dijo que ya descargó. Se le da el tropiezo #1 del primer día antes de que lo viva. */
+async function leadYaDescargo(phone: string): Promise<void> {
+  await sendSupportText(phone,
+    `¡Eso es 🙌!\n\n` +
+    `Un tip que le falta a casi todos el primer día: apenas quedes registrado, ` +
+    `conéctate con el botón verde *"En línea"* y deja el *GPS activo*. ` +
+    `Sin eso no te entran solicitudes, aunque tu cuenta esté lista.\n\n` +
+    `Cualquier cosa que se te trabe en el registro me escribes por acá y te saco del apuro.`);
+  await upsertLead(phone, { paso: 'descargo', ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+}
+
+/**
+ * Los tres recordatorios. Cada uno dice algo DISTINTO: repetir el mismo mensaje
+ * tres veces es lo que hace que la gente bloquee el número. El tercero avisa que
+ * es el último, que es lo que haría cualquier vendedor decente.
+ */
+async function leadFollowup(phone: string, name: string | null, paso: string, vehiculo: string | null, numero: number): Promise<void> {
+  const nombre = cleanDisplayName(name);
+  const v = (vehiculo === 'moto' || vehiculo === 'carro') ? vehiculo : null;
+
+  if (numero === 1) {
+    if (paso === 'saludado') {
+      await sendSupportButtons(phone,
+        `${nombre ? `${nombre}, ` : ''}¿sigues por ahí? 😊 Solo dime con qué te vas a mover y te explico lo tuyo en concreto.`,
+        LEAD_BTN_VEHICULO);
+    } else if (paso === 'vehiculo' && v) {
+      await sendSupportButtons(phone,
+        `Solo me falta ese dato para saber si podemos arrancar de una: ¿tu ${v} es modelo *${leadAnioMinimo(v)}* o más ${v === 'moto' ? 'nueva' : 'nuevo'}?`,
+        LEAD_BTN_MODELO);
+    } else {
+      await sendSupportText(phone,
+        `¿Alcanzaste a descargar la app? Si algo se te trabó, dime en qué paso vas y lo resolvemos por acá 🙌`);
+    }
+    return;
+  }
+
+  if (numero === 2) {
+    // Segundo toque: el argumento más fuerte, no una repetición de la pregunta.
+    await sendSupportText(phone,
+      `${nombre ? `${nombre}, t` : 'T'}e dejo lo que más convence a los que ya están manejando:\n\n` +
+      `El pasajero te paga *a ti, directo*. Movi solo descuenta *12%* de tu billetera, y tú decides si aceptas el precio o pides más. ` +
+      `Y el *primer viaje lo puedes hacer sin haber subido papeles* — no tienes que esperar ninguna revisión para estrenarte.\n\n` +
+      `La app es esta 👇\n${APP_DOWNLOAD_LINK}\n\n` +
+      `Si tienes cualquier duda, pregúntame sin pena.`);
+    return;
+  }
+
+  // Tercero y último. Se dice que es el último: es lo honesto y baja los bloqueos.
+  await sendSupportText(phone,
+    `Último mensaje mío, ${nombre ? `${nombre}, ` : ''}no te insisto más 🙂\n\n` +
+    `Te dejo el link acá por si en algún momento te animas:\n${APP_DOWNLOAD_LINK}\n\n` +
+    `Y si necesitas algo de Movi más adelante, escríbeme a este mismo chat — acá quedo.`);
+}
+
+/**
+ * Atiende al lead si el mensaje le corresponde a este flujo. Devuelve true cuando
+ * consumió el mensaje, y false para que siga su curso normal (FAQ con IA, datos de
+ * su cuenta, etc.) -- una duda concreta la responde mucho mejor el FAQ, que tiene
+ * todo el detalle cargado, y duplicarlo acá sería pedir que se contradigan.
+ */
+async function maybeHandleDriverLead(phone: string, name: string, msgText: string, btnId?: string): Promise<boolean> {
+  const lead = await getLead(phone);
+  const ahora = new Date().toISOString();
+
+  // ── Botones del embudo: siempre son de acá ───────────────────────────────
+  if (btnId?.startsWith('lead_')) {
+    if (btnId === 'lead_moto' || btnId === 'lead_carro') {
+      await leadPitchVehiculo(phone, btnId === 'lead_moto' ? 'moto' : 'carro');
+      return true;
+    }
+    if (btnId === 'lead_ninguno') { await leadSinVehiculo(phone); return true; }
+
+    const v = (lead?.vehiculo === 'moto' || lead?.vehiculo === 'carro') ? lead.vehiculo : 'carro';
+    if (btnId === 'lead_modelo_si')   { await upsertLead(phone, { modelo_ok: true }); await leadCierreDescarga(phone); return true; }
+    if (btnId === 'lead_modelo_no')   { await leadModeloNoSirve(phone, v); return true; }
+    if (btnId === 'lead_modelo_nose') { await leadCierreDescarga(phone, true); return true; }
+    if (btnId === 'lead_descargo')    { await leadYaDescargo(phone); return true; }
+    if (btnId === 'lead_duda') {
+      await sendSupportText(phone, `Claro, dime 🙂 Pregúntame lo que quieras sobre requisitos, documentos, pagos o cómo funciona un viaje.`);
+      await upsertLead(phone, { ultimo_in_at: ahora, nudges_enviados: 0 });
+      return true;
+    }
+    return false;
+  }
+
+  // ── Alguien nuevo que llega interesado ───────────────────────────────────
+  if (!lead) {
+    const interesado = esLeadInteresado(msgText);
+
+    // Un "hola" suelto de alguien DESCONOCIDO, mientras corre la pauta, casi
+    // siempre es un lead: nadie escribe al número de conductores por deporte. Pero
+    // solo se toma como lead si NO tiene cuenta en Movi -- un conductor que ya
+    // trabaja y escribe "hola" buscando soporte no puede caer en un embudo de
+    // captación que le pregunte qué vehículo tiene. Esa consulta es la que separa
+    // un caso del otro, y por eso solo se hace cuando el mensaje es un saludo pelado.
+    let saludoDeDesconocido = false;
+    if (!interesado) {
+      const pelado = normalizarTexto(msgText).replace(/[¡!¿?.,]/g, '').trim();
+      const esSaludoPelado = pelado.length <= 22 &&
+        /^(hola|ola|holaa+|buenas|buenos dias|buenas tardes|buenas noches|info|informacion|hey|hi|buen dia|que mas|quiero saber)$/.test(pelado);
+      if (esSaludoPelado) saludoDeDesconocido = (await lookupAgUserBasic(phone)) === null;
+    }
+
+    if (!interesado && !saludoDeDesconocido) return false;
+
+    // "de pauta" solo si llegó con el texto preescrito del anuncio; si lo escribió
+    // con sus palabras es orgánico, y esa diferencia es la que deja medir la pauta.
+    const t = normalizarTexto(msgText);
+    const esDePauta = /quiero mas informacion|conseguir mas informacion sobre esto/.test(t);
+    await leadSaludar(phone, name, msgText, esDePauta);
+    return true;
+  }
+
+  // ── A partir de acá ya es un lead conocido ───────────────────────────────
+  // El reloj de los recordatorios se reinicia con CUALQUIER mensaje suyo, incluso
+  // si este flujo no lo va a consumir: si está conversando, no se le empuja.
+  await upsertLead(phone, { ultimo_in_at: ahora, nudges_enviados: 0 });
+
+  if (pideNoInsistir(msgText)) {
+    await sendSupportText(phone,
+      `Entendido, no te escribo más 🙏 Gracias por tomarte el tiempo de decírmelo.\n\n` +
+      `Si algún día quieres manejar con Movi, este chat queda abierto.`);
+    await upsertLead(phone, { no_insistir: true });
+    return true;
+  }
+
+  if (preguntaSiEsBot(msgText)) {
+    await sendSupportText(phone,
+      `Buena pregunta, y te respondo de frente: soy el asistente automático de Movi 🤖 ` +
+      `Firmo como ${LEAD_ASESORA} porque así se llama este canal de atención.\n\n` +
+      `Resuelvo casi todo al instante a cualquier hora, y si necesitas a una persona del equipo ` +
+      `me lo dices y te la paso. ¿Seguimos?`);
+    return true;
+  }
+
+  if (pideHumano(msgText)) {
+    await escalateSupportConversation(phone, name, msgText);
+    await upsertLead(phone, { paso: 'humano' });
+    return true;
+  }
+
+  // Un pasajero equivocado nunca debe recibir el discurso de conductor: se le
+  // devuelve el mensaje al FAQ, que sabe mandarlo al número de viajes.
+  if (pidiendoServicio(msgText)) return false;
+
+  // Todavía no dijo qué maneja: si lo dice escribiendo, se toma igual que el botón.
+  if (lead.paso === 'saludado') {
+    const v = leeVehiculo(msgText);
+    if (v === 'ninguno') { await leadSinVehiculo(phone); return true; }
+    if (v)               { await leadPitchVehiculo(phone, v); return true; }
+    return false; // Es una duda concreta -> la responde el FAQ, que sabe más.
+  }
+
+  // Ya dijo el vehículo y falta el año.
+  if (lead.paso === 'vehiculo' && (lead.vehiculo === 'moto' || lead.vehiculo === 'carro')) {
+    const m = leeModelo(msgText, lead.vehiculo);
+    if (m === true)   { await upsertLead(phone, { modelo_ok: true }); await leadCierreDescarga(phone); return true; }
+    if (m === false)  { await leadModeloNoSirve(phone, lead.vehiculo); return true; }
+    if (m === 'no_se'){ await leadCierreDescarga(phone, true); return true; }
+    return false;
+  }
+
+  // Ya recibió el link: si dice que la descargó, se le responde; si no, al FAQ.
+  if (lead.paso === 'pitch' && /\b(ya|listo|hecho|descargad|descargue|instalad|instale|la baje|la tengo)\b/.test(normalizarTexto(msgText))) {
+    await leadYaDescargo(phone);
+    return true;
+  }
+
+  return false;
+}
+
 // ─── Conversación completa del número de soporte ──────────────────────────────
-async function handleSupportConversation(phone: string, name: string, msgText: string): Promise<void> {
+async function handleSupportConversation(phone: string, name: string, msgText: string, btnId?: string): Promise<void> {
+  // Captación primero: es el único camino que atiende bien al lead de la pauta, y
+  // si no le corresponde el mensaje devuelve false y todo sigue exactamente igual
+  // que antes (menú, datos de la cuenta, FAQ con IA, escalada).
+  if (await maybeHandleDriverLead(phone, name, msgText, btnId)) return;
+
   const session = await getSupportSession(phone);
 
   // Ya escalada a un humano -- el bot se queda callado para no pisar al asesor,
@@ -5681,7 +6144,10 @@ serve(async (req) => {
         }
 
         if (isSupportNumber) {
-          await handleSupportConversation(fromPhone, name, msgText);
+          // msgBtnId hacía falta acá: el embudo de captación se navega con botones
+          // nativos, y sin el id solo llegaba el título ("🏍️ Moto"), que depende del
+          // idioma y de los emojis. El id es estable.
+          await handleSupportConversation(fromPhone, name, msgText, msgBtnId);
         } else {
           await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession, precomputedRoute, msgBtnId);
         }
