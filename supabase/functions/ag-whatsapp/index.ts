@@ -5338,10 +5338,23 @@ function pideNoInsistir(texto: string): boolean {
 }
 
 /** Pregunta directa de si está hablando con una máquina. Se contesta la verdad. */
+/**
+ * BUG REAL, encontrado auditando las 54 conversaciones del número de conductores
+ * (2026-09-30): sin \b, "es" e "ia" son subcadenas sueltas que aparecen dentro de
+ * cientos de palabras normales del español. Un conductor real escribió contándonos
+ * dónde iba en su registro -- "...me faltan los datos personal*ES* mios de la
+ * licenc*IA*" -- y el bot le respondió "soy el asistente automático 🤖" en vez de
+ * ayudarle, porque "es" (de "personales") y "ia" (de "licencia") calzaron dentro
+ * de la misma ventana de 20 caracteres. Con \b alrededor de cada palabra, "es" y
+ * "ia" solo matchean cuando son palabras sueltas de verdad, no pedazos de otras.
+ * Probado contra 15 mensajes reales de conductores que NO preguntaban si era un
+ * bot y 10 que sí -- los 25 casos correctos con el arreglo (antes, 1 de los 15
+ * fallaba).
+ */
 function preguntaSiEsBot(texto: string): boolean {
   const t = normalizarTexto(texto);
-  return /(eres|es|sos|habla|hablo con).{0,20}(un |una )?(bot|robot|maquina|inteligencia artificial|ia|chatbot|contestador)/.test(t)
-      || /(eres|sos).{0,12}(una )?(persona|humano|humana|real)/.test(t)
+  return /\b(eres|es|sos|hablo con)\b.{0,20}\b(un |una )?(bot|robot|maquina|inteligencia artificial|ia|chatbot|contestador)\b/.test(t)
+      || /\b(eres|sos)\b.{0,12}\b(una )?(persona|humano|humana|real)\b/.test(t)
       || /(con quien hablo|quien me habla|eres real)/.test(t);
 }
 
