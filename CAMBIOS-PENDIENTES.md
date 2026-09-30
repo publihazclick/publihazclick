@@ -13,7 +13,78 @@
 
 ## Pendiente de subir
 
-_(vacío — lo de abajo ya salió)_
+### La app no guiaba bien al conductor para recoger al pasajero
+- **Qué**: varios conductores reportaron que al dar *"Ir a recoger pasajero"* la app no los
+  guía y que **no se ven a sí mismos en el mapa**. Eran **cinco causas acumuladas**, todas
+  del lado conductor:
+  1. **El marcador del conductor nunca se movía.** `_userMarker.setLngLat()` se llama en
+     exactamente cuatro sitios del componente y **los cuatro son del lado pasajero**
+     (`_startPassengerWatch`, `selectAddress`, `selectRecentOrigin`). El watch del conductor
+     actualizaba `_currentLat/_currentLng`, la base y la **cámara**, pero jamás el marcador:
+     el punto quedaba clavado donde se creó el mapa mientras la cámara se centraba en la
+     posición real, así que su punto derivaba fuera de la pantalla.
+  2. **Un solo umbral de precisión, y estricto.** El watch arrancaba con
+     `if (accuracy > 50) return`: con 51 m no pasaba nada — ni marcador, ni cámara, ni voz,
+     ni ETA, ni recálculo — en silencio, sin log ni aviso. Al revés de lo razonable: el watch
+     del **pasajero** acepta hasta 300 m. Ahora hay dos umbrales (≤200 m para pintar y
+     seguir, ≤50 m para recalcular ruta y autofinalizar) más un aviso *"Señal GPS débil"*.
+  3. **Ningún pin en el punto de recogida.** `startInAppNav` dibujaba solo la línea; el único
+     pin que existía lo crea `_drawRoute()`, que es la vista previa del **pasajero**. Veía una
+     línea azul terminando en la nada.
+  4. **El paneo no soltaba la cámara.** `dragstart` marcaba `driverMapPanned` pero no apagaba
+     `_navFollowActive`, que es lo único que consulta la cámara de navegación: cada lectura de
+     GPS le arrastraba el mapa de vuelta. CENTRAR ahora vuelve a engancharlo y acerca a zoom
+     17 (a 15 no se distinguen los giros).
+  5. **Sin rumbo no hay guía.** `pos.coords.heading` llega `null` muy seguido en Android a
+     baja velocidad y la cámara se quedaba mirando al norte con pitch de 50°. Ahora se calcula
+     del desplazamiento real y el marcador tiene flecha de dirección.
+- **Extra**: el marcador del conductor era `draggable` y su `dragend` sobrescribe
+  `_currentLat/_currentLng` — un roce con el pulgar le movía el origen desde donde se calcula
+  la ruta. Se apaga al pasar a conductor.
+- **Toca**: `web` solamente.
+- **Verificado**: `tsc --noEmit` y **`ngc -p tsconfig.app.json`** en verde (ngc sí revisa las
+  plantillas de Angular, `tsc` no).
+- **Ojo**: `capacitor.config.ts` apunta a `https://www.publihazclick.com/anda-gana`, así que
+  este cambio **llega al APK ya instalado sin recompilar ni publicar en Play Store**.
+- **Falta**: prueba en calle con un conductor real. Debe ver su punto moviéndose con la flecha
+  hacia donde va, el pin verde del pasajero, y el mapa quieto si lo mueve con el dedo.
+- **Commit**: `32d9e32`
+
+---
+
+## Subido el 2026-09-30 (parte Supabase, ya desplegada antes del push)
+
+Estos ya están **vivos en producción** (migraciones aplicadas por Management API y edge
+functions desplegadas); viajan en este push solo para que el repo deje de estar desfasado.
+
+### Captación automática de conductores desde la pauta de Facebook
+- **Migraciones 285 y 287** + `ag-whatsapp`: embudo con botones (moto/carro/sin vehículo → año
+  del vehículo → descarga), seguimiento a 20 min / 3 h / 20 h dentro de la ventana de 24h de
+  Meta, y envío programado a las 9 a.m. para los leads que quedaron sin atender.
+- **Por qué**: la primera noche de pauta llegaron 10 leads y los 10 recibieron "Ya te conecto
+  con un asesor"; esperaron entre 2 h 26 min y 3 h 50 min. Con el embudo la respuesta llega en
+  **0,9 segundos** (medido con un lead real).
+- **Reglas de contenido**: nunca inventar un ingreso; si el modelo del vehículo no sirve se
+  dice de frente con el año exacto; si preguntan si es un bot, se admite.
+- **Commits**: `fbdea17`, `a4e31f1`, `9ad66cd`
+
+### Acuses de entrega de WhatsApp
+- **Migración 286** + `ag-whatsapp`: `wamid`, `estado_entrega`, `entregado_at`, `leido_at`,
+  `error_meta` y vista `ag_wa_entregas_v`. Meta mandaba los acuses al mismo webhook (campo
+  `messages`, verificado en la API) y el código los descartaba, así que "está en el log" solo
+  significaba *"se lo pedimos a Meta"*.
+- **Comprobado**: una respuesta del panel salió 06:10:22, **entregada 06:10:23 y leída
+  06:10:31**.
+- **Commit**: `fb1fc6b`
+
+### Dos bugs con dientes que aparecieron en el camino
+- **`ag_wa_faq_responder` adivinaba** a cuál pregunta contestaba el admin cuando había varias
+  pendientes: reenvió el texto de prueba del admin a **dos conductores reales** y lo guardó
+  como respuesta aprendida. Ahora, con más de una pendiente y sin cita, pide que se responda
+  citando el aviso y no manda nada. Commit `add57fb`.
+- **Un lead conocido que volvía a escribir** "quiero más información" caía al flujo viejo y
+  recibía "te conecto con un asesor" — el mismo hueco que el embudo vino a tapar. Commit
+  `fb1fc6b`.
 
 ---
 
