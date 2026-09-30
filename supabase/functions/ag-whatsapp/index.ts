@@ -5354,6 +5354,24 @@ function leadAnioMinimo(vehiculo: 'moto' | 'carro'): number {
   return new Date().getFullYear() - (vehiculo === 'moto' ? 17 : 23);
 }
 
+/**
+ * Cuántos conductores reales ya están trabajando -- 'quick' (primer viaje sin papeles,
+ * ya activos) + 'approved'. Prueba social REAL, nunca inventada (misma regla que ya
+ * rige todo el discurso: jamás un ingreso inventado, y esto tampoco lo es -- es un
+ * conteo, no una promesa). Se calcula en vivo, no se deja fijo en el texto, porque el
+ * número crece cada día y un texto fijo se vuelve mentira solo.
+ * Si la consulta falla, devuelve null y el llamador simplemente omite la línea --
+ * nunca debe tumbar el mensaje principal por esto.
+ */
+async function contarConductoresActivos(): Promise<number | null> {
+  try {
+    const { count, error } = await db().from('ag_drivers').select('id', { count: 'exact', head: true })
+      .in('status', ['quick', 'approved']);
+    if (error || count == null) return null;
+    return count;
+  } catch { return null; }
+}
+
 async function sendSupportButtons(to: string, bodyText: string, buttons: { id: string; title: string }[], sentBy: WaSentBy = 'bot'): Promise<WaResult> {
   const interactive: Record<string, unknown> = {
     type: 'button',
@@ -5613,7 +5631,24 @@ async function leadPreguntarVehiculo(phone: string, nombre: string | null): Prom
 }
 
 /**
- * El discurso, distinto según moto o carro, y termina preguntando el año.
+ * El discurso, distinto según moto o carro, y da el link DE UNA -- ya no espera a
+ * confirmar el año antes de mostrarlo.
+ *
+ * CAMBIO 2026-09-30, auditando por qué tan pocos de los que escriben terminan
+ * registrados. Con datos reales: de 27 leads que sí califican (se descuentan los
+ * que no tienen vehículo o su modelo no alcanza), 16 -- el 59% -- llegaron a ver el
+ * link y nunca confirmaron que lo abrieron, muy por encima de cualquier otra caída
+ * del embudo. El paso que más gente perdía no era la calificación: era la espera
+ * entre "aquí está el link" y el momento en que de verdad lo tocan.
+ *
+ * Antes, el año se preguntaba ANTES del link, como filtro -- un intercambio más
+ * (nombre → vehículo → año → link) para proteger contra el 9% que no califica por
+ * año. El costo de ese intercambio extra, medido, es mayor que lo que protege. Se
+ * quita el filtro y se reutiliza el mismo camino que ya existía para "No estoy
+ * seguro" (leadCierreDescarga con aviso): el año se sigue preguntando, pero como
+ * dato informativo aparte, sin bloquear nada. Si al final no alcanza, la app misma
+ * lo valida en el registro -- que es justo la frase que ya se le decía a quien
+ * contestaba "no sé".
  *
  * Todo lo de acá es verificable y sale del mismo bloque de datos oficiales que usa
  * el FAQ (DRIVER_FAQ_SYSTEM_PROMPT): comisión 12% que se descuenta de la billetera
@@ -5625,21 +5660,44 @@ async function leadPitchVehiculo(phone: string, vehiculo: 'moto' | 'carro'): Pro
     ? 'llevar pasajeros en moto y hacer domicilios 🏍️'
     : 'llevar pasajeros, hacer fletes y viajes de ciudad a ciudad 🚗';
 
+  // Prueba social REAL, no inventada -- conteo en vivo de conductores 'quick' +
+  // 'approved'. Solo se muestra con un mínimo (10) para que nunca se vea como un
+  // número inflado a propósito ni delate una base todavía muy chica.
+  const activos = await contarConductoresActivos();
+  const pruebaSocial = activos != null && activos >= 10 ? `Ya hay *${activos} conductores* trabajando con Movi. ` : '';
+
+  // La pregunta del año va DENTRO del mismo mensaje del discurso (no en uno aparte):
+  // antes esto mandaba pitch + link + 2 videos + pregunta del año como 4 mensajes
+  // seguidos sin que la persona tocara nada en el medio -- demasiado de una sola vez,
+  // justo lo contrario de "cerrar mejor". Con la pregunta adentro, son 2 mensajes
+  // (este + el del link con los videos), no 4.
   await sendSupportButtons(phone,
     `Listo, con ${vehiculo === 'moto' ? 'moto' : 'carro'} puedes ${servicios}\n\n` +
-    `Lo que más le gusta a los conductores que ya están:\n\n` +
+    `${pruebaSocial}Lo que más le gusta a los que ya están:\n\n` +
     `• *El pasajero te paga a ti, directo.* La plata del viaje no pasa por Movi.\n` +
     `• Movi cobra *12% fijo*, y lo descuenta de tu billetera en la app — no del viaje. Nada de porcentajes que cambian solos.\n` +
     `• *Tú decides el precio.* El pasajero ofrece y tú aceptas o pides más.\n` +
     `• Bonos en efectivo por viajes completados: *$2.000* a los 10, *$3.500* a los 25, *$6.000* a los 50, y *$24.000* cada 100 de ahí en adelante. No se reinician cada mes.\n` +
     `• *Tu primer viaje lo puedes hacer sin haber subido papeles.* Arrancas hoy mismo.\n\n` +
-    `Una cosa antes de seguir, para no hacerte perder el tiempo: ` +
-    `*¿tu ${vehiculo} es modelo ${leadAnioMinimo(vehiculo)} o más ${vehiculo === 'moto' ? 'nueva' : 'nuevo'}?*`,
+    `Una cosa antes de mandarte el link -- no te lo voy a condicionar a esto, es solo para ` +
+    `saludarte bien confirmado: *¿${vehiculo === 'moto' ? 'tu moto es' : 'tu carro es'} modelo ` +
+    `${leadAnioMinimo(vehiculo)} o más ${vehiculo === 'moto' ? 'nueva' : 'nuevo'}?*`,
     LEAD_BTN_MODELO);
-  await upsertLead(phone, { paso: 'vehiculo', vehiculo, ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
+
+  // El link va de una, sin esperar la respuesta -- ver la nota larga arriba sobre por
+  // qué se quitó el filtro. Si contesta el año (por botón o texto), se registra el
+  // dato sin volver a mandar el link (ver los handlers de lead_modelo_* y el bloque
+  // de texto libre para paso 'pitch' más abajo).
+  await upsertLead(phone, { vehiculo, ultimo_in_at: new Date().toISOString() });
+  await leadCierreDescarga(phone, true);
 }
 
-/** Cierre: link real, nombre exacto en Play Store y qué esperar del registro. */
+/**
+ * Cierre: link real, nombre exacto en Play Store, qué esperar del registro, y el
+ * único punto de urgencia de todo el embudo -- honesto, no inventado: la ventana
+ * de 24h de WhatsApp es un límite real de la plataforma, no una presión de venta.
+ * Decirlo de frente es justo lo contrario de manipular: es la verdad completa.
+ */
 async function leadCierreDescarga(phone: string, avisoModeloSinConfirmar = false): Promise<void> {
   const aviso = avisoModeloSinConfirmar
     ? `Tranquilo, el año lo puedes mirar en la tarjeta de propiedad — y si no sirve, la app te lo dice antes de que termines.\n\n`
@@ -5652,7 +5710,10 @@ async function leadCierreDescarga(phone: string, avisoModeloSinConfirmar = false
     `Adentro entras a *"Quiero ser conductor"* y llenas 4 pasos: datos personales, ` +
     `documentos, licencia y vehículo. Son unos 5 minutos.\n\n` +
     `_Ojo con esto que a todos confunde: no hay contraseña. Entras con tu número y ` +
-    `un código que te llega por SMS o por WhatsApp._`,
+    `un código que te llega por SMS o por WhatsApp._\n\n` +
+    `📲 Hazlo ahora si puedes: por cómo funciona WhatsApp, solo te puedo escribir gratis por acá ` +
+    `dentro de las próximas 24 horas desde tu último mensaje. Si se pasa ese tiempo, tengo que ` +
+    `esperar a que tú me vuelvas a escribir para seguir ayudándote.`,
     LEAD_BTN_CIERRE);
   await upsertLead(phone, { paso: 'pitch', ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
   // Videos (2026-09-30): justo cuando va a descargar, el de "por qué Movi paga mejor" (hoy
@@ -5810,11 +5871,26 @@ async function leadRetomar(phone: string, name: string, paso: string, vehiculo: 
  * Los tres recordatorios. Cada uno dice algo DISTINTO: repetir el mismo mensaje
  * tres veces es lo que hace que la gente bloquee el número. El tercero avisa que
  * es el último, que es lo que haría cualquier vendedor decente.
+ *
+ * CAMBIO 2026-09-30: antes, los toques #2 y #3 mandaban el MISMO mensaje genérico
+ * a todo el mundo sin importar en qué paso estuviera -- a alguien que nunca dijo
+ * si maneja moto o carro le llegaba "te dejo el link" (un link que ni siquiera le
+ * correspondía todavía), y a alguien que ya tiene el link en la mano le llegaba lo
+ * mismo que a quien no ha contestado nada. Ahora los tres toques distinguen el
+ * paso real, igual que ya hacía el primero.
+ *
+ * Con el link saliendo apenas se elige el vehículo (ver leadPitchVehiculo), casi
+ * todo el que llega a un recordatorio ya está en 'pitch' -- ahí es donde de verdad
+ * importa qué se dice, porque es donde se pierde el 59% de los que sí califican
+ * (medido el 2026-09-30). El segundo y tercer toque para 'pitch' atacan los
+ * bloqueos reales vistos en las conversaciones (ocupado, no encuentra la app en la
+ * tienda, se le olvidó) en vez de repetir el mismo argumento de venta.
  */
 async function leadFollowup(phone: string, name: string | null, paso: string, vehiculo: string | null, numero: number): Promise<void> {
   // Nunca el nombre de perfil de WhatsApp -- ver la nota larga en leadSaludar().
   const nombre = await lookupRealFirstName(phone);
   const v = (vehiculo === 'moto' || vehiculo === 'carro') ? vehiculo : null;
+  const suyo = v === 'moto' ? 'tu moto' : v === 'carro' ? 'tu carro' : 'tu vehículo';
 
   if (numero === 1) {
     if (paso === 'nombre') {
@@ -5828,6 +5904,7 @@ async function leadFollowup(phone: string, name: string | null, paso: string, ve
         `Solo me falta ese dato para saber si podemos arrancar de una: ¿tu ${v} es modelo *${leadAnioMinimo(v)}* o más ${v === 'moto' ? 'nueva' : 'nuevo'}?`,
         LEAD_BTN_MODELO);
     } else {
+      // 'pitch': ya tiene el link. Primer toque = suave, sin repetir el link todavía.
       await sendSupportText(phone,
         `¿Alcanzaste a descargar la app? Si algo se te trabó, dime en qué paso vas y lo resolvemos por acá 🙌`);
     }
@@ -5835,21 +5912,46 @@ async function leadFollowup(phone: string, name: string | null, paso: string, ve
   }
 
   if (numero === 2) {
-    // Segundo toque: el argumento más fuerte, no una repetición de la pregunta.
-    await sendSupportText(phone,
-      `${nombre ? `${nombre}, t` : 'T'}e dejo lo que más convence a los que ya están manejando:\n\n` +
-      `El pasajero te paga *a ti, directo*. Movi solo descuenta *12%* de tu billetera, y tú decides si aceptas el precio o pides más. ` +
-      `Y el *primer viaje lo puedes hacer sin haber subido papeles* — no tienes que esperar ninguna revisión para estrenarte.\n\n` +
-      `La app es esta 👇\n${APP_DOWNLOAD_LINK}\n\n` +
-      `Si tienes cualquier duda, pregúntame sin pena.`);
+    if (paso === 'nombre') {
+      await sendSupportText(phone,
+        `${nombre ? '' : 'Va en serio: '}con solo tu nombre seguimos -- no hace falta nada más para explicarte lo tuyo. ¿Cómo te llamas? 😊`);
+    } else if (paso === 'saludado') {
+      await sendSupportButtons(phone,
+        `¿Moto o carro? Es la única pregunta que me falta para mandarte el link de una vez.`,
+        LEAD_BTN_VEHICULO);
+    } else if (paso === 'vehiculo' && v) {
+      await sendSupportButtons(phone,
+        `¿${suyo} es modelo *${leadAnioMinimo(v)}* o más ${v === 'moto' ? 'nueva' : 'nuevo'}? Con eso te confirmo y sigues de una.`,
+        LEAD_BTN_MODELO);
+    } else {
+      // 'pitch': el segundo toque ataca los bloqueos reales (ocupado, no la encuentra en la
+      // tienda), no repite el argumento de venta -- eso ya se lo dijeron al entregarle el link.
+      await sendSupportText(phone,
+        `${nombre ? `${nombre}, ` : ''}sé que a veces uno se distrae 🙂 Si es por tiempo, la descarga son 2 minutos. ` +
+        `Si no la encuentras en Play Store, búscala exacto como *"Movi - Transporte Urbano"*, de TECNOMULTIMEDIA:\n` +
+        `${APP_DOWNLOAD_LINK}\n\n` +
+        `Y si te trabaste en cualquier paso del registro, dímelo y lo resolvemos ahora mismo por acá.`);
+    }
     return;
   }
 
-  // Tercero y último. Se dice que es el último: es lo honesto y baja los bloqueos.
-  await sendSupportText(phone,
-    `Último mensaje mío, ${nombre ? `${nombre}, ` : ''}no te insisto más 🙂\n\n` +
-    `Te dejo el link acá por si en algún momento te animas:\n${APP_DOWNLOAD_LINK}\n\n` +
-    `Y si necesitas algo de Movi más adelante, escríbeme a este mismo chat — acá quedo.`);
+  // Tercero y último -- el único momento de verdad urgente de todo el embudo, y es honesto:
+  // dentro de poco se cierra la ventana de 24h y Meta deja de entregar texto libre hasta que
+  // la persona vuelva a escribir. Se dice así, sin adornos, con una sola acción concreta.
+  if (paso === 'nombre' || paso === 'saludado' || (paso === 'vehiculo' && v)) {
+    await sendSupportText(phone,
+      `Último mensaje mío por hoy, ${nombre ? `${nombre}: ` : 'te cuento: '}` +
+      `en un rato se me cierra la ventana para escribirte gratis por acá, y después tengo que ` +
+      `esperar a que tú me vuelvas a escribir.\n\n` +
+      `Si quieres seguir, contéstame con qué te vas a mover (moto o carro) y te mando el link ` +
+      `de una, así sea rapidito. Si no, no hay problema -- este chat queda abierto para cuando quieras.`);
+  } else {
+    await sendSupportText(phone,
+      `Último mensaje mío por hoy, ${nombre ? `${nombre}: ` : 'te cuento: '}` +
+      `en un rato se me cierra la ventana para escribirte gratis por acá.\n\n` +
+      `Te dejo el link una vez más por si te animas ahora:\n${APP_DOWNLOAD_LINK}\n\n` +
+      `Y si necesitas algo de Movi más adelante, escríbeme a este mismo chat -- acá quedo.`);
+  }
 }
 
 /**
@@ -5871,9 +5973,26 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
     if (btnId === 'lead_ninguno') { await leadSinVehiculo(phone); return true; }
 
     const v = (lead?.vehiculo === 'moto' || lead?.vehiculo === 'carro') ? lead.vehiculo : 'carro';
-    if (btnId === 'lead_modelo_si')   { await upsertLead(phone, { modelo_ok: true }); await leadCierreDescarga(phone); return true; }
-    if (btnId === 'lead_modelo_no')   { await leadModeloNoSirve(phone, v); return true; }
-    if (btnId === 'lead_modelo_nose') { await leadCierreDescarga(phone, true); return true; }
+
+    // "Sí" / "No estoy seguro" al año: desde 2026-09-30 el link ya se manda apenas se elige
+    // el vehículo (ver leadPitchVehiculo), así que estos botones llegan CON el link ya
+    // entregado -- no hay que volver a mandarlo, solo registrar el dato y confirmar. El
+    // único caso que sí debe mandar el link de cero es el lead viejo que haya quedado
+    // parado en paso 'vehiculo' (de antes del cambio, o del recordatorio #1 que aún
+    // reusa esa pregunta) -- ahí el link nunca salió.
+    const yaTieneLink = lead?.paso === 'pitch' || lead?.paso === 'descargo' || lead?.paso === 'registrado';
+    if (btnId === 'lead_modelo_si') {
+      await upsertLead(phone, { modelo_ok: true });
+      if (yaTieneLink) await sendSupportText(phone, `¡Perfecto! Ya quedaste 100% confirmado 🙌 Cualquier cosa con el registro, me escribes por acá.`);
+      else             await leadCierreDescarga(phone);
+      return true;
+    }
+    if (btnId === 'lead_modelo_no') { await leadModeloNoSirve(phone, v); return true; }
+    if (btnId === 'lead_modelo_nose') {
+      if (yaTieneLink) await sendSupportText(phone, `Tranquilo, no pasa nada. El año lo puedes mirar en la tarjeta de propiedad cuando quieras -- y si al final no sirve, la app te lo dice antes de que termines.`);
+      else             await leadCierreDescarga(phone, true);
+      return true;
+    }
     if (btnId === 'lead_descargo')    { await leadYaDescargo(phone); return true; }
     if (btnId === 'lead_duda') {
       await sendSupportText(phone, `Claro, dime 🙂 Pregúntame lo que quieras sobre requisitos, documentos, pagos o cómo funciona un viaje.`);
@@ -5975,12 +6094,27 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
     return false; // Es una duda concreta -> la responde el FAQ, que sabe más.
   }
 
-  // Ya dijo el vehículo y falta el año.
+  // Ya dijo el vehículo y falta el año. Solo queda gente vieja acá desde 2026-09-30 (el
+  // link ahora sale apenas elige vehículo, ver leadPitchVehiculo) -- se deja para no
+  // dejar a medias a quien ya estaba en este paso cuando se desplegó el cambio.
   if (lead.paso === 'vehiculo' && (lead.vehiculo === 'moto' || lead.vehiculo === 'carro')) {
     const m = leeModelo(msgText, lead.vehiculo);
     if (m === true)   { await upsertLead(phone, { modelo_ok: true }); await leadCierreDescarga(phone); return true; }
     if (m === false)  { await leadModeloNoSirve(phone, lead.vehiculo); return true; }
     if (m === 'no_se'){ await leadCierreDescarga(phone, true); return true; }
+    return false;
+  }
+
+  // Ya tiene el link y contesta el año por su cuenta (sin tocar el botón). Solo se
+  // registra el dato -- nunca se vuelve a mandar el link, que es justo lo que se
+  // arregló arriba para los botones. `modelo_ok == null` evita reinterpretar un
+  // "2015" suelto que llegue después de que ya quedó confirmado por otro lado.
+  if ((lead.paso === 'pitch' || lead.paso === 'descargo')
+      && (lead.vehiculo === 'moto' || lead.vehiculo === 'carro') && lead.modelo_ok == null) {
+    const m = leeModelo(msgText, lead.vehiculo);
+    if (m === true)    { await upsertLead(phone, { modelo_ok: true }); await sendSupportText(phone, `¡Perfecto! Ya quedaste 100% confirmado 🙌`); return true; }
+    if (m === false)   { await leadModeloNoSirve(phone, lead.vehiculo); return true; }
+    if (m === 'no_se') { await sendSupportText(phone, `Tranquilo, no pasa nada. El año lo puedes mirar en la tarjeta de propiedad cuando quieras.`); return true; }
     return false;
   }
 
