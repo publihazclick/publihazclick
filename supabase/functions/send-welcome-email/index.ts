@@ -2,7 +2,10 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const RESEND_FROM = Deno.env.get('RESEND_FROM') ?? 'Publihazclick <noreply@publihazclick.com>';
-const APP_URL = Deno.env.get('APP_URL') ?? 'https://publihazclick.vercel.app';
+// El respaldo apuntaba a publihazclick.vercel.app, que ya no existe: el sitio vive en
+// Cloudflare desde la migracion de hosting. Si APP_URL faltara, los correos de bienvenida
+// mandaban a la gente a una URL muerta (2026-09-30).
+const APP_URL = Deno.env.get('APP_URL') ?? 'https://www.publihazclick.com';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

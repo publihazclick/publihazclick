@@ -11,7 +11,9 @@ const SUPABASE_URL         = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND_API_KEY       = Deno.env.get('RESEND_API_KEY')!;
 const RESEND_FROM          = Deno.env.get('RESEND_FROM') ?? 'Publihazclick <noreply@publihazclick.com>';
-const APP_URL              = Deno.env.get('APP_URL') ?? 'https://publihazclick.vercel.app';
+// Mismo caso que send-welcome-email: el respaldo apuntaba a una URL de Vercel que ya no
+// existe. El sitio vive en Cloudflare (2026-09-30).
+const APP_URL              = Deno.env.get('APP_URL') ?? 'https://www.publihazclick.com';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

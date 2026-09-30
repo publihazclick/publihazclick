@@ -11,6 +11,19 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const EPAYCO_PUBLIC_KEY    = Deno.env.get('EPAYCO_PUBLIC_KEY') ?? '';
 const EPAYCO_TEST          = Deno.env.get('EPAYCO_TEST') ?? 'false';
 
+// A dónde vuelve el usuario después de pagar en ePayco.
+//
+// Antes estaba escrito a mano como 'https://livecam-pro.vercel.app/tokens?epayco=result'
+// (2026-09-30): el único sitio de todo el código que seguía amarrado a Vercel, y encima a
+// una URL que HOY devuelve HTTP 402 -- Vercel la suspendió por falta de pago. O sea que
+// quien pagara tokens terminaba en una página muerta, con la plata ya cobrada.
+//
+// SIN RESPALDO A PROPÓSITO. Poner una URL por defecto acá es lo que escondió el problema
+// durante meses: parecía que funcionaba. Si la variable no está configurada, esta función
+// se niega a crear el cobro (ver la validación en el handler) en vez de mandar a alguien a
+// pagar para caer en el vacío. Mejor no cobrar que cobrar y dejar al cliente perdido.
+const LIVECAM_APP_URL      = Deno.env.get('LIVECAM_APP_URL') ?? '';
+
 const EPAYCO_RATE = 0.035581;
 const EPAYCO_FIXED = 1071;
 
@@ -44,6 +57,13 @@ Deno.serve(async (req) => {
   try {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !EPAYCO_PUBLIC_KEY) {
       return json({ error: 'Configuración incompleta' }, 500);
+    }
+
+    // Sin sitio a dónde volver no se cobra. Ver la nota de LIVECAM_APP_URL arriba: cobrarle
+    // a alguien y devolverlo a una página caída es peor que no dejarlo comprar.
+    if (!LIVECAM_APP_URL.startsWith('http')) {
+      console.error('livecam-buy-tokens: falta LIVECAM_APP_URL, no se crea el cobro');
+      return json({ error: 'Las compras están temporalmente deshabilitadas.' }, 503);
     }
 
     const authHeader = req.headers.get('Authorization');
@@ -106,7 +126,7 @@ Deno.serve(async (req) => {
       extra2:        String(pack.tokens),
       extra3:        'livecam_token_purchase',
       confirmation:  `${SUPABASE_URL}/functions/v1/epayco-webhook`,
-      response:      `https://livecam-pro.vercel.app/tokens?epayco=result`,
+      response:      `${LIVECAM_APP_URL.replace(/\/+$/, '')}/tokens?epayco=result`,
     });
   } catch (err) {
     console.error('livecam-buy-tokens error:', err);
