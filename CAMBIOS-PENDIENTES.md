@@ -13,6 +13,31 @@
 
 ## Pendiente de subir
 
+_(vacío — lo de abajo ya salió en el push de hoy, commit `8c9ef25`)_
+
+---
+
+## Subido el 2026-09-30, tarde (commit 8c9ef25)
+
+### Plan de cierre: acortar el camino al link, urgencia honesta, prueba social real
+- **Qué**: auditado el embudo completo — de 27 leads que sí califican, solo 6 se registraron
+  (22%). El hueco más grande: 16 de 27 (59%) vieron el link y nunca confirmaron que lo abrieron.
+  Cuatro cambios: (1) el link ahora sale apenas se elige el vehículo, sin esperar a confirmar el
+  año — se reusa el camino de "No estoy seguro" que ya existía; (2) urgencia honesta ligada a la
+  ventana real de 24h de WhatsApp; (3) prueba social real (conteo en vivo de conductores
+  activos, nunca inventado); (4) los recordatorios 2 y 3 ahora distinguen en qué paso se quedó
+  cada quien, en vez de mandar el mismo mensaje genérico a todos.
+- **Toca**: `supabase` solamente.
+- **Estado**: ✅ desplegado y verificado — probado en producción disparando los recordatorios
+  2 y 3 reales contra un número de prueba, contenido distinto en cada uno.
+
+### Videos en el bot de conductores (trabajo de otra sesión, publicado hoy)
+- **Qué**: 4 videos reales (tutorial, recargas, gana invitando; uno apagado a propósito porque
+  sus cifras no cuadran) que el bot manda en el momento de la conversación en que sirven.
+  Migración 293 ya estaba aplicada; el código quedó sin desplegar hasta hoy.
+- **Estado**: ✅ revisado, verificado contra el mismo patrón ya probado (subida de notas de voz
+  a Meta), y desplegado junto con el plan de cierre.
+
 ### La app no guiaba bien al conductor para recoger al pasajero
 - **Qué**: varios conductores reportaron que al dar *"Ir a recoger pasajero"* la app no los
   guía y que **no se ven a sí mismos en el mapa**. Eran **cinco causas acumuladas**, todas
