@@ -5671,16 +5671,20 @@ async function leadPitchVehiculo(phone: string, vehiculo: 'moto' | 'carro'): Pro
   // seguidos sin que la persona tocara nada en el medio -- demasiado de una sola vez,
   // justo lo contrario de "cerrar mejor". Con la pregunta adentro, son 2 mensajes
   // (este + el del link con los videos), no 4.
+  // Mensaje recortado (2026-10-01): un conductor real ("Uber Calderon") recibió este
+  // mensaje + el del link + 2 videos en 13 segundos sin contestar nada en el medio, y
+  // se quedó en silencio -- justo lo que el usuario reportó en vivo: "manda de golpe
+  // una cantidad horrible de letras... la gente se sale antes de intentar". Se bajó de
+  // 5 viñetas a 3 y se quitó el desglose completo de bonos; los detalles que no cambian
+  // la decisión de descargar se dejan para cuando pregunte.
   await sendSupportButtons(phone,
     `Listo, con ${vehiculo === 'moto' ? 'moto' : 'carro'} puedes ${servicios}\n\n` +
     `${pruebaSocial}Lo que más le gusta a los que ya están:\n\n` +
-    `• *El pasajero te paga a ti, directo.* La plata del viaje no pasa por Movi.\n` +
-    `• Movi cobra *12% fijo*, y lo descuenta de tu billetera en la app — no del viaje. Nada de porcentajes que cambian solos.\n` +
-    `• *Tú decides el precio.* El pasajero ofrece y tú aceptas o pides más.\n` +
-    `• Bonos en efectivo por viajes completados: *$2.000* a los 10, *$3.500* a los 25, *$6.000* a los 50, y *$24.000* cada 100 de ahí en adelante. No se reinician cada mes.\n` +
-    `• *Tu primer viaje lo puedes hacer sin haber subido papeles.* Arrancas hoy mismo.\n\n` +
-    `Una cosa antes de mandarte el link -- no te lo voy a condicionar a esto, es solo para ` +
-    `saludarte bien confirmado: *¿${vehiculo === 'moto' ? 'tu moto es' : 'tu carro es'} modelo ` +
+    `• *El pasajero te paga a ti, directo* — Movi cobra *12% fijo* desde tu billetera, no del viaje.\n` +
+    `• *Tú decides el precio* y puedes contraofertar.\n` +
+    `• *Tu primer viaje lo haces sin papeles*, hoy mismo.\n\n` +
+    `Una última cosa antes del link -- no es requisito, solo para saludarte confirmado: ` +
+    `*¿${vehiculo === 'moto' ? 'tu moto es' : 'tu carro es'} modelo ` +
     `${leadAnioMinimo(vehiculo)} o más ${vehiculo === 'moto' ? 'nueva' : 'nuevo'}?*`,
     LEAD_BTN_MODELO);
 
@@ -5702,18 +5706,17 @@ async function leadCierreDescarga(phone: string, avisoModeloSinConfirmar = false
   const aviso = avisoModeloSinConfirmar
     ? `Tranquilo, el año lo puedes mirar en la tarjeta de propiedad — y si no sirve, la app te lo dice antes de que termines.\n\n`
     : '';
+  // Recortado (2026-10-01), misma razón que leadPitchVehiculo: este mensaje llega UN
+  // SEGUNDO después del anterior. Se dejan solo los dos datos que de verdad evitan que
+  // se pierda (cuál app buscar, que no hay contraseña) y se bota el desglose de los 4
+  // pasos del registro -- eso la app misma lo va guiando.
   await sendSupportButtons(phone,
     `${aviso}Entonces te puedes registrar de una 🚀\n\n` +
-    `Descarga la app acá 👇\n${APP_DOWNLOAD_LINK}\n\n` +
-    `En Play Store aparece como *Movi - Transporte Urbano*, de TECNOMULTIMEDIA. ` +
-    `Hay varias apps llamadas "Movi", esa es la nuestra.\n\n` +
-    `Adentro entras a *"Quiero ser conductor"* y llenas 4 pasos: datos personales, ` +
-    `documentos, licencia y vehículo. Son unos 5 minutos.\n\n` +
-    `_Ojo con esto que a todos confunde: no hay contraseña. Entras con tu número y ` +
-    `un código que te llega por SMS o por WhatsApp._\n\n` +
-    `📲 Hazlo ahora si puedes: por cómo funciona WhatsApp, solo te puedo escribir gratis por acá ` +
-    `dentro de las próximas 24 horas desde tu último mensaje. Si se pasa ese tiempo, tengo que ` +
-    `esperar a que tú me vuelvas a escribir para seguir ayudándote.`,
+    `Descarga la app acá 👇\n${APP_DOWNLOAD_LINK}\n` +
+    `Búscala como *Movi - Transporte Urbano* (hay varias apps "Movi", esa es la nuestra).\n\n` +
+    `Adentro entra a *"Quiero ser conductor"* y sigue los pasos -- unos 5 minutos. ` +
+    `_No hay contraseña: entras con tu número y un código por SMS o WhatsApp._\n\n` +
+    `📲 Solo te puedo escribir gratis por acá dentro de las próximas 24 horas desde tu último mensaje.`,
     LEAD_BTN_CIERRE);
   await upsertLead(phone, { paso: 'pitch', ultimo_in_at: new Date().toISOString(), nudges_enviados: 0 });
   // Videos (2026-09-30): justo cuando va a descargar, el de "por qué Movi paga mejor" (hoy
