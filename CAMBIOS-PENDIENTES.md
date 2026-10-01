@@ -13,7 +13,27 @@
 
 ## Pendiente de subir
 
-_(vacío — lo de abajo ya salió en el push de hoy, commit `8c9ef25`)_
+_(vacío — lo de abajo ya salió el 2026-10-01)_
+
+---
+
+## Subido el 2026-10-01, noche
+
+### WA conductores: guía paso a paso, sin bloques largos
+- **Qué**: el embudo ahora pide UNA cosa por mensaje y espera: nombre → "el primer paso para
+  ser conductor es descargar la app" + link + "avísame cuando la descargues" → al avisar, video
+  de cómo funciona/registro + ¿moto o carro? → ¿modelo X o más nuevo? → "entra a Quiero ser
+  conductor, primer viaje sin papeles, En línea + GPS". Antes caían discurso + link + 2 videos
+  en 13 segundos. El tutorial ya no sale con el link sino cuando avisa que descargó.
+- **Bonos**: el FAQ y la consulta de bonos dejan claro que van aumentando ($2.000/10,
+  $3.500/25, $6.000/50, $24.000/100 y luego $24.000 cada 100 — no se dice que sigan subiendo).
+- **Fixes de la primera revisión de conversaciones**: "Me interesa" suelto ya no escala a un
+  humano; un lead en el embudo ya no queda callado 48 h por una escalada; el 12% se explica
+  bien (sale de la billetera, no de la carrera); "¿cómo recargo? tengo Nequi" responde los
+  medios reales (también a quien no tiene cuenta); cambiar de vehículo reinicia el año.
+- **Nueva función** `informe-conductores`: datos de la revisión horaria + envío del informe al
+  WhatsApp del admin. Secret `INFORME_KEY`.
+- **Toca**: `supabase` solamente. Desplegado y probado en producción con 573148487506.
 
 ---
 
