@@ -3205,7 +3205,11 @@ async function handleConversation(
     // moto y no se pide nada hasta que toque uno. Va antes del mapa de abajo porque el título
     // no contiene ningún servicio.
     if (msgBtnId === 'svc_cotizar' || /cotiz|^precio|cu[aá]nto (vale|cuesta|cobra)/i.test(text)) {
-      await askOriginDirect(phone, 'carro', null, true);
+      // Si escribió la pregunta completa ("cuánto vale un carro al centro comercial Ventura"),
+      // el destino se toma de una vez en vez de volver a preguntarlo (encontrado probando 2026-10-02).
+      const parsed = !msgBtnId && text.length >= 12 ? await parseFreeTextRequest(text) : null;
+      await askOriginDirect(phone, parsed?.service_type === 'moto' ? 'moto' : 'carro', parsed?.dest_text ?? null, true);
+      if (parsed?.dest_text) await upsertSession(phone, { pending_dest_text: parsed.dest_text });
       return;
     }
     const map: Record<string, string> = {
