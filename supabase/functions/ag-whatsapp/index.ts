@@ -5137,6 +5137,25 @@ async function handleOtpCodeRequest(
   const t = normalizarTexto(msgText);
   if (!t) return false;
 
+  // Escribió el código EN EL CHAT en vez de en la app (caso real 2026-10-01, …213: recibió
+  // "397158", lo devolvió por acá y el bot le contestó "Ya te conecto con un asesor"). Solo si
+  // son exactamente 6 dígitos y le mandamos un código en los últimos 20 min -- así un pasajero
+  // que escribe un precio ("100000") nunca cae acá.
+  if (/^\d{6}$/.test(t.replace(/\s/g, ''))) {
+    const { data: otpReciente } = await db().from('ag_wa_message_log').select('id')
+      .eq('wa_phone', fromPhone).eq('direction', 'out')
+      .like('body', '🔐 Tu código de verificación%')
+      .gte('created_at', new Date(Date.now() - 20 * 60e3).toISOString())
+      .limit(1).maybeSingle();
+    if (otpReciente) {
+      const texto = `Ese código escríbelo *en la app de Movi*, no aquí 🙂\n\n` +
+        `Vuelve a la app, pégalo en la casilla del código y listo. Si ya se venció (dura 10 minutos), pídelo otra vez desde la app.`;
+      if (isSupportNumber) await sendSupportText(fromPhone, texto);
+      else                 await sendText(fromPhone, texto);
+      return true;
+    }
+  }
+
   // Dos niveles de detección, a propósito:
   //  - EXPLÍCITA: la frase que la app deja preescrita en el chat. Se atiende siempre.
   //  - GENÉRICA: alguien que lo pide con sus propias palabras ("no me llega el codigo del
