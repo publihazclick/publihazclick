@@ -5392,12 +5392,59 @@ async function sha256Hex(text: string): Promise<string> {
  * siempre (viajes o soporte) lo procese como si esta función no existiera.
  */
 /** Aviso a quien pide el código con el número OCULTO en WhatsApp. El "Recibir por SMS" es el
- *  nombre real del botón en la pantalla del código de la app (anda-gana.component.ts). */
+ *  nombre real del botón en la pantalla del código de la app (anda-gana.component.ts).
+ *  Desde 2026-10-02 la primera opción es escribir el número: el código se le manda con la
+ *  plantilla de autenticación al WhatsApp de ESE número (ver enviarCodigoPorPlantilla). Caso
+ *  real …199: pidió 4 veces y el SMS nunca le llegó. */
 const MSG_CODIGO_NUMERO_OCULTO =
   'Tu WhatsApp tiene el número oculto (nombre de usuario), y por seguridad no puedo mandarte el código a este chat 🔒\n\n' +
-  'Tienes dos opciones:\n' +
-  '1️⃣ En la app, en la pantalla del código, toca *"Recibir por SMS"* y te llega al celular.\n' +
-  '2️⃣ O escríbeme desde un WhatsApp que muestre tu número.';
+  '👉 *Escríbeme el número de celular que estás registrando* (10 dígitos) y te mando el código al WhatsApp de ese número.\n\n' +
+  'O si prefieres, en la app, en la pantalla del código, toca *"Recibir por SMS"*.';
+
+// ─── Plantilla de autenticación (código con botón "Copiar código") ───────────
+// Meta exige una plantilla aprobada de categoría AUTHENTICATION para mandarle un código a un
+// número que no nos ha escrito (el número que se está registrando, distinto del chat con el
+// número oculto). Solo le llega al dueño de ese número, igual que un SMS: no abre nada nuevo.
+const PLANTILLA_OTP = 'movi_codigo_verificacion';
+const WABA_ID = '1384359483647396';
+
+/** Crea la plantilla (una vez) o devuelve su estado si ya existe. Solo por la acción admin. */
+async function crearPlantillaOtp(): Promise<unknown> {
+  const existe = await fetch(`https://graph.facebook.com/v20.0/${WABA_ID}/message_templates?name=${PLANTILLA_OTP}&fields=name,status,category,language,rejected_reason`, {
+    headers: { Authorization: `Bearer ${WA_TOKEN}` },
+  }).then(r => r.json()).catch(e => ({ error: String(e) }));
+  if (Array.isArray((existe as Record<string, unknown>)?.data) && ((existe as Record<string, unknown[]>).data).length > 0) {
+    return { ya_existia: true, ...(existe as Record<string, unknown>) };
+  }
+  const r = await fetch(`https://graph.facebook.com/v20.0/${WABA_ID}/message_templates`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: PLANTILLA_OTP, language: 'es', category: 'AUTHENTICATION',
+      components: [
+        { type: 'BODY', add_security_recommendation: true },
+        { type: 'FOOTER', code_expiration_minutes: 10 },
+        { type: 'BUTTONS', buttons: [{ type: 'OTP', otp_type: 'COPY_CODE', text: 'Copiar código' }] },
+      ],
+    }),
+  });
+  return { creada: r.ok, status: r.status, respuesta: await r.json().catch(() => null) };
+}
+
+/** Manda el código con la plantilla al WhatsApp del número (formato 57XXXXXXXXXX). */
+async function enviarCodigoPorPlantilla(numero57: string, code: string, desdeSoporte: boolean): Promise<WaResult> {
+  const payload = {
+    to: numero57, type: 'template',
+    template: {
+      name: PLANTILLA_OTP, language: { code: 'es' },
+      components: [
+        { type: 'body', parameters: [{ type: 'text', text: code }] },
+        { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] },
+      ],
+    },
+  };
+  return desdeSoporte ? sendSupportGraph(payload) : sendGraph(payload);
+}
 
 async function handleOtpCodeRequest(
   fromPhone: string,
@@ -5419,11 +5466,45 @@ async function handleOtpCodeRequest(
       .gte('created_at', new Date(Date.now() - 30 * 60e3).toISOString())
       .limit(1).maybeSingle();
     if (avisoReciente) {
-      const texto = `Gracias 🙏 Por seguridad no puedo mandar el código a este chat aunque me digas el número: ` +
-        `solo así nadie puede entrar a tu cuenta escribiéndonos con un número ajeno.\n\n` +
-        `👉 En la app, en la pantalla del código, toca *"Recibir por SMS"* y te llega a ese celular en segundos.`;
-      if (isSupportNumber) await sendSupportText(fromPhone, texto);
-      else                 await sendText(fromPhone, texto);
+      const responderOculto = async (texto: string) => {
+        if (isSupportNumber) await sendSupportText(fromPhone, texto);
+        else                 await sendText(fromPhone, texto);
+      };
+      const diez = msgText.replace(/[\s.-]/g, '').match(/3\d{9}/)![0];
+      const telE164 = `+57${diez}`;
+
+      // Mismo candado que el camino normal: solo si ESE número tiene un registro en curso
+      // pedido desde la app en los últimos 30 min. Y tope de intentos, para que nadie use esto
+      // para llenarle de mensajes el WhatsApp a otra persona.
+      const desde30 = new Date(Date.now() - 30 * 60e3).toISOString();
+      const desde10 = new Date(Date.now() - 10 * 60e3).toISOString();
+      const [{ data: enCurso }, { count: recientes }] = await Promise.all([
+        db().from('ag_otp_codes').select('id').eq('phone', telE164).gte('created_at', desde30).limit(1).maybeSingle(),
+        db().from('ag_otp_codes').select('id', { count: 'exact', head: true }).eq('phone', telE164).gte('created_at', desde10),
+      ]);
+      if (!enCurso) {
+        await responderOculto(`No me llega una solicitud desde la app para el *${diez}* 🤔\n\n` +
+          `Primero escribe ese número en la app y toca *Continuar*; después escríbeme otra vez el número por acá.`);
+        return true;
+      }
+      if ((recientes ?? 0) >= 5) {
+        await responderOculto(`Ya te mandé varios códigos a ese número 🙏 Espera unos minutos y vuelve a intentar, o en la app toca *"Recibir por SMS"*.`);
+        return true;
+      }
+
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      await db().from('ag_otp_codes').insert({
+        phone: telE164, code_hash: await sha256Hex(code), expires_at: new Date(Date.now() + 10 * 60e3).toISOString(),
+      });
+      const envio = await enviarCodigoPorPlantilla(`57${diez}`, code, isSupportNumber);
+      if (envio.ok) {
+        await responderOculto(`✅ Te mandé el código al WhatsApp del *${diez}*.\n\nÁbrelo, toca *"Copiar código"* y pégalo en la app. Vence en 10 minutos.`);
+      } else {
+        // La plantilla aún no está aprobada por Meta, o falló: la salida de siempre.
+        console.error('[WA][otp] plantilla de código falló:', envio.status, envio.body);
+        await responderOculto(`No pude mandarte el código al WhatsApp de ese número 😔\n\n` +
+          `👉 En la app, en la pantalla del código, toca *"Recibir por SMS"* y te llega a ese celular en segundos.`);
+      }
       return true;
     }
   }
@@ -6012,6 +6093,22 @@ function wamidDe(res: WaResult): string | null {
 }
 
 async function escalateSupportConversation(phone: string, name: string, lastMessage: string): Promise<void> {
+  // UNA escalada por conversación (2026-10-02, caso real …199): un lead con el código trabado
+  // escribió "?", "🤔" y su nombre, y cada mensaje volvió a decir "Ya te conecto con un asesor",
+  // le mandó otro aviso al admin y dejó otra pregunta "pendiente" de basura. Si ya se escaló en
+  // las últimas 2 h: nada de eso se repite; como mucho, un recordatorio corto cada 15 min.
+  const previa = await getSupportSession(phone);
+  const escaladaAt = previa?.escalated && previa.escalated_at ? new Date(previa.escalated_at as string).getTime() : 0;
+  if (escaladaAt && Date.now() - escaladaAt < 2 * 3600e3) {
+    const { data: ultOut } = await db().from('ag_wa_message_log').select('created_at')
+      .eq('wa_phone', phone).eq('role', 'conductor').eq('direction', 'out')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!ultOut || Date.now() - new Date(ultOut.created_at as string).getTime() > 15 * 60e3) {
+      await sendSupportText(phone, `Sigo pendiente 🙏 Ya le avisé al equipo y te escriben por acá apenas puedan.`);
+    }
+    return;
+  }
+
   const detalle = `${name} (${phone}): "${lastMessage}" — RESPONDE ESTE MENSAJE con la respuesta y se la mando yo, además la aprendo para la próxima.`;
   await Promise.all([
     upsertSupportSession(phone, { escalated: true, escalated_at: new Date().toISOString() }),
@@ -7390,6 +7487,15 @@ serve(async (req) => {
       });
     }
     return new Response(JSON.stringify({ sent: false, error: 'no text' }), { status: 400 });
+  }
+
+  // Acción admin: crear (o consultar) la plantilla de autenticación del código (2026-10-02). Va
+  // protegida con INFORME_KEY (secret del proyecto, el mismo de informe-conductores) y devuelve
+  // la respuesta de Meta para poder ver si quedó aprobada.
+  if (body._internal_event === 'admin_plantilla_otp') {
+    const clave = Deno.env.get('INFORME_KEY') ?? '';
+    if (!clave || body.key !== clave) return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
+    return new Response(JSON.stringify(await crearPlantillaOtp()), { headers: { 'Content-Type': 'application/json' } });
   }
 
   // Evento interno de DB trigger
