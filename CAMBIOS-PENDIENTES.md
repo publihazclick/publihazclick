@@ -13,6 +13,17 @@
 
 ## Pendiente de subir
 
+### Contraoferta del conductor: margen mínimo de $3.000 sobre el pasajero (2026-10-02)
+- **Por qué**: un conductor dijo que "solo pudo subir $1.000" (era por un destino mal leído a
+  200 m), y los datos mostraron el mismo apretón en viajes cortos (moto 1 km: solo +$500).
+- **Regla**: techo = el MAYOR entre 150% del sugerido y (oferta del pasajero + $3.000). En viajes
+  largos sigue mandando el 150% (10 km carro: hasta +$8.500/+$12.500).
+- **Base (YA aplicada, migración 299)**: `ag_enforce_max_offer_price()`. Probado en transacción
+  que se deshace: viaje de 0,2 km a $6.000 acepta $9.000 y rechaza $9.500.
+- **App (WEB, falta push)**: `maxOfferFor()` con la misma regla, para que el botón "+" deje subir
+  hasta el nuevo techo. `ng build` OK. No necesita APK.
+
+
 ### Código de verificación: WhatsApp primero, SMS de respaldo (2026-10-02)
 - **Por qué**: medido en 30 días, por WhatsApp entra el 88% de quienes reciben el código y por
   SMS el 70% (16 personas pidieron SMS y nunca entraron). El usuario pensó en quitar el SMS; se

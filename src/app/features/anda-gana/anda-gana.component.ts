@@ -18671,7 +18671,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Se prefiere el surge guardado en la solicitud sobre el del conductor: es el que usó la
     // base al calcular su propio techo, así no se rechaza acá algo que la base sí aceptaría.
     const surge = Number(req?.surge_multiplier ?? this.surgeMultiplier() ?? 1) || 1;
-    return Math.ceil(raw * surge * 1.5 / 500) * 500;
+    const techo = Math.ceil(raw * surge * 1.5 / 500) * 500;
+    // Margen mínimo garantizado de $3.000 sobre lo que ofreció el pasajero (migración 299,
+    // 2026-10-02): en viajes cortos el 150% del sugerido quedaba pegado al precio del pasajero
+    // (moto de 1 km: solo +$500). En viajes largos sigue mandando el 150%, que es mayor.
+    const delPasajero = Number(req?.offered_price ?? 0);
+    return delPasajero > 0 ? Math.max(techo, delPasajero + 3000) : techo;
   }
 
   private _recommendedMinPrice(): number {
