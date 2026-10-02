@@ -2096,7 +2096,14 @@ async function lookupRealFirstName(phone: string): Promise<string | null> {
   try {
     const { data } = await db().from('ag_users').select('full_name').eq('phone', toE164(phone)).maybeSingle();
     const n = (data?.full_name as string | undefined)?.trim();
-    return n ? n.split(' ')[0] : null;
+    const primero = n ? n.split(/\s+/)[0] : '';
+    // "Usuario" es el nombre de relleno con que se crean las cuentas sin nombre: 39 cuentas lo
+    // tenían el 2026-10-01 y el bot saludaba "¡Hola Usuario!". Ese y cualquier cosa que no parezca
+    // un nombre (números, una letra) se tratan como "sin nombre".
+    if (!primero || primero.length < 2 || /\d/.test(primero) ||
+        /^(usuario|pasajero|conductor|cliente|sin|nombre|user|test|prueba)$/i.test(primero)) return null;
+    // Capitalizado natural: venían cuentas con "javier" o "CARLOS".
+    return primero.charAt(0).toUpperCase() + primero.slice(1).toLowerCase();
   } catch (e) { console.error('[WA] lookupRealFirstName error:', e); return null; }
 }
 
@@ -5418,6 +5425,8 @@ function esLeadInteresado(texto: string): boolean {
   // "Me interesa" a secas (2026-10-01): llegó pegado a un "Buenos días" y, sin esto, se escaló a
   // un humano que nadie atendió. En el número de conductores eso es interés en manejar.
   if (/^(me interesa|estoy interesad[oa]|interesad[oa]|me interesa el trabajo|me interesa la oferta)$/.test(t)) return true;
+  // "Más información" a secas (2026-10-01): sin el "quiero" no calzaba y se escalaba a un humano.
+  if (/^(hola )?(mas |mayor )?(informacion|info)( por favor| porfa| porfavor)?$/.test(t)) return true;
   return /(quiero|deseo|me interesa|como puedo|quisiera).{0,30}(ser|trabajar|manejar|conducir|afiliar|vincular|unirme|inscribir|registrar)/.test(t)
       || /(informacion|info).{0,25}(para|de|como).{0,15}(conductor|trabajar|manejar)/.test(t)
       || /(quiero|me interesa) (trabajar|manejar|conducir)/.test(t);
@@ -5426,7 +5435,9 @@ function esLeadInteresado(texto: string): boolean {
 /** Pide explícitamente que no le escribamos más. Se respeta y no se discute. */
 function pideNoInsistir(texto: string): boolean {
   const t = normalizarTexto(texto);
-  return /(no me escrib|no escrib|dejen de escrib|no me interesa|ya no me interesa|no gracias|borren mi numero|eliminen mi numero|no quiero nada|stop)/.test(t);
+  // "no estoy interesado" agregado 2026-10-01: un lead lo escribió dos veces después del último
+  // recordatorio, el bot le contestó "Ya te conecto con un asesor" y siguió mandándole recordatorios.
+  return /(no me escrib|no escrib|dejen de escrib|no me interesa|ya no me interesa|no estoy interesad|no estoy interesao|no gracias|no por ahora|ya no quiero|borren mi numero|eliminen mi numero|no quiero nada|stop)/.test(t);
 }
 
 /** Pregunta directa de si está hablando con una máquina. Se contesta la verdad. */
@@ -5622,10 +5633,15 @@ function leeNombreDado(texto: string): string | null {
 // Lo que se quitó del camino principal (12% de comisión, contraofertar, prueba social) NO se
 // perdió: si preguntan, lo contesta el FAQ (DRIVER_FAQ_SYSTEM_PROMPT), que tiene todo el detalle.
 
-/** Va justo después de cada link de descarga del embudo. Texto pedido por el usuario. */
-const LEAD_AVISAME_DESCARGA =
-  `Me avisas tan pronto la descargues para irte guiando y enviarte el video de ` +
-  `*cómo funciona y cómo hacer el registro* 🎥`;
+/**
+ * Va justo después de cada link de descarga del embudo. Texto pedido por el usuario, y recortado
+ * por él mismo (2026-10-01): "déjalo hasta donde dice me avisas tan pronto la descargues para irte
+ * guiando". El video igual sale cuando avisa (leadYaDescargo); solo no se anuncia aquí.
+ *
+ * El link de arriba SÍ es clickeable aunque el mensaje lleve botones: la doc de Meta de reply
+ * buttons dice del body "URLs are automatically hyperlinked" (verificado 2026-10-01).
+ */
+const LEAD_AVISAME_DESCARGA = `Me avisas tan pronto la descargues para irte guiando.`;
 
 /**
  * Paso 2: el link de descarga. Es lo PRIMERO que se le da después del nombre (pedido del
@@ -5636,7 +5652,12 @@ const LEAD_AVISAME_DESCARGA =
  * nombre real y nos saltamos la pregunta.
  */
 async function leadPrimerPaso(phone: string, nombre: string | null, intro?: string): Promise<void> {
-  const primera = intro ?? (nombre ? `¡Mucho gusto, ${nombre}! 🙌` : '¡Listo! 🙌');
+  // SIN el nombre que nos dio (corrección del usuario, 2026-10-01): la gente escribe más que su
+  // nombre y leerlo falla -- "Hola hbla con Jefferson López" terminó en "¡Mucho gusto, Hbla!".
+  // El nombre se sigue GUARDANDO (nombre_dado) para identificar al lead en la bandeja; solo no se
+  // le repite. El nombre real de la cuenta (lookupRealFirstName) sí se usa, porque ese lo escribió
+  // la persona en un campo de nombre al registrarse.
+  const primera = intro ?? '¡Mucho gusto! 🙌';
   await sendSupportButtons(phone,
     `${primera}\n\n` +
     `Para iniciar tu atención, el *primer paso para ser conductor es descargar la app* 👇\n` +
@@ -5675,6 +5696,8 @@ async function leadYaDescargo(phone: string, lead: LeadRow | null): Promise<void
   // prometió con "avísame cuando la descargues". Si saliera antes, el tope de 1 por semana de
   // sendSupportVideo lo bloquearía justo aquí.
   await sendSupportVideo(phone, 'como_funciona', 'lead_ya_descargo');
+  // Ya sabíamos vehículo y año: este fue su último paso, así que también le toca el de invitar.
+  if (v && lead?.modelo_ok === true) await leadInvitaYGana(phone);
 }
 
 function preguntaModelo(v: 'moto' | 'carro'): string {
@@ -5720,6 +5743,26 @@ async function leadListoRegistro(phone: string, noSabe: boolean): Promise<void> 
       ? `Tranquilo, el año lo ves en la tarjeta de propiedad, y si no sirve la app te avisa.\n\n`
       : `¡Perfecto! ✅ `) +
     LEAD_ENTRA_A_REGISTRARTE);
+  await leadInvitaYGana(phone);
+}
+
+/**
+ * Cierre del embudo: que comparta su link de invitado (pedido del usuario 2026-10-01).
+ *
+ * Por qué aquí y con este ángulo: medido ese día, la demanda de pasajeros cayó a ~2
+ * solicitudes por semana y los 10 conductores nuevos de la pauta tenían 0 solicitudes vistas.
+ * Invitar no es solo ganar el 2% -- cada pasajero que trae es un viaje más que le puede llegar
+ * a ÉL. Es verdad y le da una razón propia para compartir. Ni una cifra de ingresos.
+ */
+async function leadInvitaYGana(phone: string): Promise<void> {
+  await sendSupportText(phone,
+    `💡 Y algo que muy pocos aprovechan: *ganas invitando*.\n\n` +
+    `En la app toca *"Gana Invitando"*, copia tu link y compártelo con familia, amigos y grupos. ` +
+    `Te queda el *2% de cada servicio* que haga quien entre con tu link, *de por vida* — sea pasajero o conductor.\n\n` +
+    `Y cada pasajero que invitas es un viaje más que te puede llegar a ti 🙌`);
+  // Mismo video que en "sin vehículo"; el tope es uno por semana POR video, así que no choca
+  // con el tutorial que acaba de recibir.
+  await sendSupportVideo(phone, 'invitados', 'lead_cierre_invitar');
 }
 
 /** El vehículo no cumple el año mínimo. Se dice de frente y se ofrece la salida real. */
@@ -6086,6 +6129,15 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
     // "ya" / "listo" sueltos solo valen en 'pitch', que es justo cuando se le pidió avisar.
     if (lead.paso === 'pitch' && !negacion && /\b(ya|listo|hecho|la tengo)\b/.test(t)) {
       await leadYaDescargo(phone, lead);
+      return true;
+    }
+    // Se presenta o saluda ("Hola hbla con Jefferson López") sin haber avisado la descarga. Caso
+    // real 2026-10-01: al que ya tenía cuenta no se le preguntó el nombre, lo escribió igual, y
+    // como no es una pregunta el FAQ lo escaló a un humano. Se le responde y se le recuerda el paso.
+    if (lead.paso === 'pitch' && !/[?¿]/.test(msgText) && leeNombreDado(msgText)) {
+      await sendSupportButtons(phone,
+        `¡Mucho gusto! 🙌 Me avisas apenas tengas la app descargada y te envío el video para seguir.`,
+        LEAD_BTN_CIERRE);
       return true;
     }
     return false; // Es una duda concreta -> la responde el FAQ, que sabe más.

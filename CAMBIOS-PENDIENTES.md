@@ -17,6 +17,26 @@ _(vacío — lo de abajo ya salió el 2026-10-01)_
 
 ---
 
+## Subido el 2026-10-01, noche (segunda tanda)
+
+### WA conductores: recordatorio #3, invitar, y fixes del informe horario
+- **Recordatorio #3 (20 h) nunca salía**: los tiempos se sumaban desde el último mensaje del
+  bot y caían después de la ventana de 23 h. Migración **295** (aplicada vía Management API):
+  ahora se cuentan desde el último mensaje de la persona. Verificado: salió a …902 y …863.
+- **Cierre con "Gana Invitando"**: al terminar el flujo, mensaje + video de invitados, con el
+  ángulo "cada pasajero que invitas es un viaje más que te puede llegar a ti".
+- **Sin el nombre escrito**: "¡Mucho gusto! 🙌" en vez de "¡Mucho gusto, Hbla!".
+- **"¡Hola Usuario!"**: 39 cuentas tienen "Usuario" de relleno; ya no se usa como nombre
+  (sirve también al bot de pasajeros). Nombres de cuenta capitalizados.
+- **Nombre escrito en el paso del link** ya no escala a un humano.
+- **"No estoy interesado" / "no gracias"** → se despide y deja de escribir (antes escalaba).
+- **"Más información" a secas** → flujo normal (antes escalaba).
+- **Mensaje del link recortado** hasta "Me avisas tan pronto la descargues para irte guiando."
+  Link clickeable confirmado en la doc de Meta (reply buttons: "URLs are automatically hyperlinked").
+- **Toca**: `supabase` solamente. Desplegado y probado en producción con 573148487506.
+
+---
+
 ## Subido el 2026-10-01, noche
 
 ### WA conductores: guía paso a paso, sin bloques largos
