@@ -4839,6 +4839,24 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     return;
   }
 
+  // Conductor que lleva 30 min registrado sin vehículo (migración 300, 2026-10-02). Se le escribe
+  // por el número de CONDUCTORES para ayudarlo a terminar -- solo si ese número tiene ventana de
+  // 24 h abierta con él (escribió hace poco, como los leads de la pauta). Si no, nada: Meta
+  // descartaría el mensaje en silencio y al admin ya le llegó el aviso de siempre.
+  if (event === 'registro_sin_vehiculo') {
+    const { data: ult } = await db().from('ag_wa_message_log').select('created_at')
+      .eq('wa_phone', phone).eq('role', 'conductor').eq('direction', 'in')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!ult || Date.now() - new Date(ult.created_at as string).getTime() > 23 * 3600e3) return;
+    const nombre = await lookupRealFirstName(phone);
+    await sendSupportText(phone,
+      `${nombre ? `¡Hola ${nombre}! 👋` : '¡Hola! 👋'} Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
+      `Vi que empezaste tu registro pero te falta un paso: los *Datos del vehículo* 🏍️🚗 Es menos de un minuto.\n\n` +
+      `Abre la app, entra a *"Quiero ser conductor"* y completa tu moto o carro. Recuerda que tu primer viaje lo puedes hacer *sin subir papeles*.\n\n` +
+      `¿Te trabaste en algo? Escríbeme y te ayudo.`);
+    return;
+  }
+
   // Conductor que aceptó y no arranca (cron movi-conductor-quieto, migración 298). Se le pregunta
   // al pasajero si quiere otro; él decide. Solo si su conversación sigue en ESE viaje.
   if (event === 'conductor_quieto') {
