@@ -5129,12 +5129,12 @@ async function sha256Hex(text: string): Promise<string> {
  * Devuelve false si no tiene nada que ver con pedir un código, para que el flujo de
  * siempre (viajes o soporte) lo procese como si esta función no existiera.
  */
-/** Aviso a quien pide el código con el número OCULTO en WhatsApp. El "Reenviar SMS" es el
+/** Aviso a quien pide el código con el número OCULTO en WhatsApp. El "Recibir por SMS" es el
  *  nombre real del botón en la pantalla del código de la app (anda-gana.component.ts). */
 const MSG_CODIGO_NUMERO_OCULTO =
   'Tu WhatsApp tiene el número oculto (nombre de usuario), y por seguridad no puedo mandarte el código a este chat 🔒\n\n' +
   'Tienes dos opciones:\n' +
-  '1️⃣ En la app, en la pantalla del código, toca *"Reenviar SMS"* y te llega al celular.\n' +
+  '1️⃣ En la app, en la pantalla del código, toca *"Recibir por SMS"* y te llega al celular.\n' +
   '2️⃣ O escríbeme desde un WhatsApp que muestre tu número.';
 
 async function handleOtpCodeRequest(
@@ -5159,7 +5159,7 @@ async function handleOtpCodeRequest(
     if (avisoReciente) {
       const texto = `Gracias 🙏 Por seguridad no puedo mandar el código a este chat aunque me digas el número: ` +
         `solo así nadie puede entrar a tu cuenta escribiéndonos con un número ajeno.\n\n` +
-        `👉 En la app, en la pantalla del código, toca *"Reenviar SMS"* y te llega a ese celular en segundos.`;
+        `👉 En la app, en la pantalla del código, toca *"Recibir por SMS"* y te llega a ese celular en segundos.`;
       if (isSupportNumber) await sendSupportText(fromPhone, texto);
       else                 await sendText(fromPhone, texto);
       return true;

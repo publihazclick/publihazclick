@@ -27,7 +27,11 @@ export class AgPhoneAuthService {
   setupRecaptcha(_containerId: string): void {}
 
   /** Envía OTP al número dado. Formato: +57XXXXXXXXXX o 10 dígitos */
-  async sendOTP(phone: string): Promise<PhoneAuthResult> {
+  /**
+   * canal 'whatsapp' (2026-10-01): el servidor deja listo el código pero NO manda SMS; la persona
+   * lo pide por WhatsApp y el bot se lo entrega. 'sms' es el envío de siempre.
+   */
+  async sendOTP(phone: string, canal: 'whatsapp' | 'sms' = 'sms'): Promise<PhoneAuthResult> {
     // Cobertura (2026-09-10): la app arma el telefono como '+57' + lo que la persona escriba,
     // sin selector de pais, asi que un numero extranjero se convierte en un colombiano que no
     // existe y la persona queda dando vueltas sin entender por que nunca le llega el codigo
@@ -42,7 +46,7 @@ export class AgPhoneAuthService {
       this.pendingPhone = phone;
       const sb = getMoviClient();
       const { data, error } = await sb.functions.invoke('ag-otp-send', {
-        body: { phone },
+        body: { phone, canal },
       });
 
       if (error || data?.error) {

@@ -13,7 +13,19 @@
 
 ## Pendiente de subir
 
-_(vacío — lo de abajo ya salió el 2026-10-01)_
+### Código de verificación: WhatsApp primero, SMS de respaldo (2026-10-02)
+- **Por qué**: medido en 30 días, por WhatsApp entra el 88% de quienes reciben el código y por
+  SMS el 70% (16 personas pidieron SMS y nunca entraron). El usuario pensó en quitar el SMS; se
+  dejó como respaldo porque sin él no entran quienes tienen el número oculto en WhatsApp ni
+  quienes registran un número sin WhatsApp.
+- **App (WEB, falta push — no necesita APK, la app carga publihazclick.com/anda-gana)**: en las
+  dos pantallas del código (registro completo y registro rápido) el botón verde "Recibir código
+  por WhatsApp" sale arriba de una; el SMS queda abajo ("Recibir por SMS" / "¿No tienes WhatsApp
+  en este número? Recibir por SMS"). `ng build --configuration=production` OK.
+- **Servidor (YA desplegado y probado 2026-10-02)**: `ag-otp-send` acepta `canal: 'whatsapp'` y
+  deja el código listo sin mandar SMS (sin canal = SMS, como antes: las apps instaladas no
+  cambian). `ag-whatsapp`: el aviso de número oculto apunta a "Recibir por SMS".
+- **Toca**: `src/app/features/anda-gana/*` + `supabase`.
 
 ---
 

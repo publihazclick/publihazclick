@@ -184,7 +184,12 @@ Deno.serve(async (req) => {
   // ag-otp-verify correctamente), con { error: '...' } en el body -- asi el cliente SI recibe el
   // mensaje real.
   try {
-    const { phone } = await req.json();
+    // canal: 'whatsapp' (2026-10-01) -> se deja lista la fila del código pero NO se manda SMS: la
+    // app abre WhatsApp y el bot (ag-whatsapp, handleOtpCodeRequest) entrega el código por ahí.
+    // Medido en 30 días: por WhatsApp entra el 88% de quienes reciben el código, por SMS el 70%
+    // (16 personas pidieron SMS y nunca entraron). Sin canal = SMS, como siempre: las versiones
+    // de la app que no mandan este campo siguen igual.
+    const { phone, canal } = await req.json();
     if (!phone) return json({ error: 'phone requerido' });
 
     const normalized = toE164(phone);
@@ -248,6 +253,9 @@ Deno.serve(async (req) => {
     }
 
     if (isTestPhone) return json({ ok: true });
+
+    // WhatsApp primero: la fila ya quedó (es lo que el bot verifica antes de mandar el código).
+    if (canal === 'whatsapp') return json({ ok: true, canal: 'whatsapp' });
 
     // CAMBIO 2026-07-30 (pedido explicito del usuario): WhatsApp via OpenWA reportaba envio
     // exitoso (201, messageId real) sin que el mensaje llegara de verdad en varios casos reales
