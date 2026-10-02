@@ -2297,6 +2297,15 @@ async function responderConductorQuieto(phone: string, contactName: string, sess
 // conductor, solo recibió "Te leo 👍". El conductor salió con destino a 200 m de la recogida.
 // ════════════════════════════════════════════════════════════════════════════
 
+/** El pasajero desiste molesto o porque ya resolvió por su cuenta (ver el pre-chequeo en handleConversation). */
+function seVaMolesto(texto: string): boolean {
+  const t = normalizarTexto(texto).replace(/[¡!¿?.,]/g, ' ').replace(/\s+/g, ' ').trim();
+  return /\b(dejelo|dejalo|dejemos|olvidelo|olvidalo|olvidese) (asi|eso|ya)\b|^(dejelo|dejalo|olvidelo|olvidalo)$/.test(t)
+      || /\bya no (lo |la )?(necesito|quiero|hace falta|me sirve)\b/.test(t)
+      || /\bya (consegui|me fui|me voy en|tome|cogi|agarre|me recogieron|resolvi)\b/.test(t)
+      || /\b(pesimo|malisimo|mal) servicio\b|\bque mal servicio\b|\bno sirven\b/.test(t);
+}
+
 /** "es para el aeropuerto Camilo Daza", "voy para Unicentro", "el destino es ...". Devuelve el lugar. */
 function leerCambioDestino(texto: string): string | null {
   const m = texto.trim().match(/\b(?:es para|voy para|voy a|vamos para|vamos a|el destino es|mi destino es|me lleva(?:s)? a|ll[eé]v[ae]me a|ll[eé]v[ae]me al)\s+(?:el |la |los |las |al )?(.{3,80}?)[.!¡¿?]*$/i);
@@ -3086,6 +3095,41 @@ async function handleConversation(
   if (isGreeting(text) && state !== 'idle') {
     await sendText(phone, `¡Hola de nuevo! 👋 Sigo aquí, esperando tu respuesta anterior.\n\nEscribe *cancelar* si prefieres empezar de nuevo.`);
     return;
+  }
+
+  // Se va molesto ("Déjelo así", "olvídelo", "ya conseguí") -- 2026-10-02, caso real …833: tras
+  // dos viajes fallidos al aeropuerto escribió "Déjelo así" y el bot le respondió con el saludo de
+  // bienvenida "¡Hola! Soy Leidy… ¿A dónde vas?", como si nada hubiera pasado. Ahora: se cancela
+  // lo que esté buscando y se le pide disculpas, sin menú. No aplica con conductor ya asignado
+  // (in_trip): ahí "déjelo así" puede ser una respuesta al conductor y la cancelación es explícita.
+  if (msgType === 'text' && seVaMolesto(text) && ['idle', 'awaiting_service', 'awaiting_origin', 'awaiting_dest',
+       'awaiting_summary', 'awaiting_dest_cerca', 'awaiting_price', 'matching', 'stale_search_confirm',
+       'stale_raise_offer_amount'].includes(state)) {
+    let aplica = !['idle', 'awaiting_service'].includes(state);
+    if (!aplica) {
+      // En reposo solo si viene de un viaje que acaba de fallar; si no, es otra conversación.
+      const { data: reciente } = await db().from('ag_trip_requests').select('id')
+        .in('wa_phone', [phone, toE164(phone)]).eq('status', 'cancelled')
+        .gte('created_at', new Date(Date.now() - 3 * 3600e3).toISOString()).limit(1).maybeSingle();
+      aplica = !!reciente;
+    }
+    if (aplica) {
+      // Disculpa solo si de verdad le fallamos (estaba esperando conductor o un viaje se cayó);
+      // si solo estaba cotizando o armando el pedido, no hubo falla que disculpar.
+      const leFallamos = ['idle', 'awaiting_service', 'matching', 'stale_search_confirm', 'stale_raise_offer_amount'].includes(state);
+      if (session.trip_request_id) {
+        await db().from('ag_trip_requests').update({
+          status: 'cancelled', cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+          cancel_reason: `El pasajero desistió: "${text.slice(0, 80)}" (WhatsApp)`,
+        }).eq('id', session.trip_request_id as string).eq('status', 'searching');
+      }
+      await resetSession(phone);
+      await sendText(phone, leFallamos
+        ? `Entiendo, y te pido disculpas 🙏 Esta vez no estuvimos a la altura.\n\n` +
+          `Ya no te estoy buscando conductor. Si en otro momento necesitas un carro, escríbeme por aquí y te lo pido en un minuto.`
+        : `Listo, sin problema 🙂 Si en otro momento necesitas un carro, escríbeme por aquí y te lo pido en un minuto.`);
+      return;
+    }
   }
 
   // "Es para mañana a las 9" en cualquier punto ANTES de tener conductor (2026-10-01). Caso real
