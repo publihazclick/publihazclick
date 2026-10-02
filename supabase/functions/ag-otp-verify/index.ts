@@ -88,23 +88,30 @@ Deno.serve(async (req) => {
     );
 
     // Verify OTP
-    const { data: otpData, error: otpError } = await sb
+    //
+    // CAMBIO 2026-10-02: se acepta CUALQUIER código vigente de ese número, no solo el último.
+    // Caso real: conductores (…224, …619) pidieron el código por WhatsApp dos veces seguidas y
+    // les llegaron dos distintos; si escribían el primero, la app decía "Código incorrecto" y
+    // volvían a pedir otro. Todos llegan al mismo dueño del número (WhatsApp o SMS a ese
+    // número), y cada uno vence a los 10 minutos, así que aceptar cualquiera no abre nada nuevo.
+    const { data: vigentes, error: otpError } = await sb
       .from('ag_otp_codes')
       .select('id, code_hash')
       .eq('phone', normalized)
       .eq('used', false)
       .gte('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(5);
 
-    if (otpError || !otpData) {
+    if (otpError || !vigentes || vigentes.length === 0) {
       return json({ ok: false, error: 'Código expirado o inválido. Solicita uno nuevo.' });
     }
-    if (otpData.code_hash !== hash) {
+    const otpData = vigentes.find((v) => v.code_hash === hash);
+    if (!otpData) {
       return json({ ok: false, error: 'Código incorrecto. Verifica e intenta de nuevo.' });
     }
-    await sb.from('ag_otp_codes').update({ used: true }).eq('id', otpData.id);
+    // Usado uno, se cierran todos los demás de ese número: ya entró, ninguno debe seguir vivo.
+    await sb.from('ag_otp_codes').update({ used: true }).eq('phone', normalized).eq('used', false);
 
     // Synthetic auth credentials (deterministic per phone)
     const salt = Deno.env.get('AG_SESSION_SALT') ?? 'movi-ag-2026';

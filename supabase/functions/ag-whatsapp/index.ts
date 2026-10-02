@@ -5512,11 +5512,15 @@ async function handleOtpCodeRequest(
     // Sin registro en curso no se manda nada. Si lo pidió con sus propias palabras, se deja
     // pasar al bot normal (que sabe responder dudas); si usó el botón de la app, se le explica.
     if (!explicita) return false;
+    // Texto 2026-10-02: el botón se llama ahora "Recibir código por WhatsApp", y el orden se
+    // dice paso a paso -- los casos reales (…459, …936) mandaron este mensaje ANTES de poner su
+    // número en la app (probablemente un borrador guardado de un intento anterior).
     await responder(
-      'No encuentro un registro en curso para este número 🤔\n\n' +
-      'Abre la app Movi, escribe *este mismo número* de celular y, cuando te pida el código, ' +
-      'vuelve a tocar "Pedir código por WhatsApp".\n\n' +
-      'Por seguridad, el código solo se le puede enviar al dueño del número.',
+      'Todavía no me llega tu solicitud desde la app 🤔\n\n' +
+      '1️⃣ Abre la app Movi y escribe *este mismo número* de celular.\n' +
+      '2️⃣ Toca *Continuar*.\n' +
+      '3️⃣ En la pantalla del código toca *"Recibir código por WhatsApp"*.\n\n' +
+      'Ahí te llega el código al instante. Por seguridad solo se le envía al dueño del número.',
     );
     return true;
   }
@@ -5525,9 +5529,11 @@ async function handleOtpCodeRequest(
   const hash      = await sha256Hex(code);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  // Mismo patrón que ag-otp-send: invalidar los códigos viejos sin usar antes de emitir uno
-  // nuevo, para que solo haya uno válido a la vez.
-  await db().from('ag_otp_codes').delete().eq('phone', phone).eq('used', false);
+  // CAMBIO 2026-10-02: ya NO se borran los códigos vigentes antes de emitir uno nuevo. Antes,
+  // pedirlo dos veces anulaba el primero y quien escribía ese primer código recibía "Código
+  // incorrecto" (…224, …619). ag-otp-verify ahora acepta cualquiera vigente; acá solo se limpian
+  // los vencidos.
+  await db().from('ag_otp_codes').delete().eq('phone', phone).eq('used', false).lt('expires_at', new Date().toISOString());
   const { error: insErr } = await db()
     .from('ag_otp_codes')
     .insert({ phone, code_hash: hash, expires_at: expiresAt });
