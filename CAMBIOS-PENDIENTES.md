@@ -17,6 +17,33 @@ _(vacío — lo de abajo ya salió el 2026-10-01)_
 
 ---
 
+## Subido el 2026-10-01, noche (tercera tanda) — WhatsApp de pasajeros
+
+### Flujo rápido, Cotizar y recordatorio de viajes
+- **Por qué**: quejas de "muy enredado, confuso y demorado". Medido: 58 conversaciones en 30
+  días, solo 8 pedidos (14%), 16 mensajes del pasajero por pedido. Caso real …833: 8 preguntas
+  y 6 minutos para saber el precio al aeropuerto, y su "es para mañana" terminó en un conductor
+  saliendo esa misma noche.
+- **Flujo rápido (Carro/Moto para uno mismo)**: ¿dónde te recojo? -> ¿a dónde vas? (si no lo
+  dijo) -> UN resumen con recogida, destino y precio [Pedir] [Ofrecer otro] [Corregir]. Sin
+  "¿para ti o para otra persona?" (solo si escribe "otra persona"), sin barrio, sin confirmar
+  recogida y destino por separado. Dirección escrita + GPS seguidos = una sola recogida (queda
+  el texto escrito y el punto del GPS). La conversación ya no se pega a la dirección.
+- **Cotizar**: el menú pasa a lista (WhatsApp no admite más de 3 botones) con "💰 Cotizar un
+  viaje"; también al preguntar el precio o responder solo con un destino. Muestra carro y moto
+  a la vez, sin compromiso. Migración **296** (`cotizar`, `precio_moto` en la sesión).
+- **"Es para mañana a las 9"** en cualquier paso antes de tener conductor -> recordatorio 30 min
+  antes con el resumen y [Pedir]; si estaba buscando, se cancela esa búsqueda. No se crean
+  recordatorios fuera de la ventana de 24 h (se le dice). Migración **297** (tabla
+  `ag_wa_recordatorios` + cron `movi-recordatorios-viaje` cada 2 min).
+- **Textos recortados**: saludo ("¿A dónde vas?"), precio (sin el párrafo de 4 líneas),
+  "Buscando tu conductor" en una línea, y mientras busca ya no responde a todo con la cuenta
+  regresiva.
+- **Toca**: `supabase` solamente. Desplegado y probado en producción con 573148487506 hasta el
+  resumen, SIN pedir (0 viajes creados por las pruebas).
+
+---
+
 ## Subido el 2026-10-01, noche (segunda tanda)
 
 ### WA conductores: recordatorio #3, invitar, y fixes del informe horario

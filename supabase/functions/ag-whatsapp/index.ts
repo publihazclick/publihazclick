@@ -1207,6 +1207,7 @@ async function resetSession(phone: string) {
     driver_vehicle: null, driver_plate: null,
     matching_started_at: null, pending_dest_text: null,
     origin_barrio_hint: null, pending_location_kind: null,
+    cotizar: false, precio_moto: null, programado_para: null,
     last_message_at: new Date().toISOString(),
     expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
   }, { onConflict: 'wa_phone' });
@@ -1887,7 +1888,7 @@ async function sendUnsupportedServiceMessage(phone: string, svc: string): Promis
 }
 
 // ─── Arrancar el flujo a partir de una solicitud interpretada por IA ──────────
-async function startSmartFlow(phone: string, parsed: ParsedRequest): Promise<void> {
+async function startSmartFlow(phone: string, parsed: ParsedRequest, cotizar = false): Promise<void> {
   const svc = parsed.service_type as string;
   if (svc === 'ciudad' || svc === 'flete') { await sendUnsupportedServiceMessage(phone, svc); return; }
   const needsPackage = svc === 'domicilio' || svc === 'flete';
@@ -1906,6 +1907,12 @@ async function startSmartFlow(phone: string, parsed: ParsedRequest): Promise<voi
     pending_dest_text: parsed.dest_text,
   });
 
+  // Carro/Moto: flujo rápido (2026-10-01) -- directo a la ubicación, sin "¿para quién?".
+  if (!needsPackage) {
+    await askOriginDirect(phone, svc, parsed.dest_text, cotizar);
+    return;
+  }
+
   // "¿Para ti o para otra persona?" -- mismo paso nuevo que en el menú de
   // botones (awaiting_for_whom), por consistencia. Se pierde el atajo de
   // saltar directo a confirmar origen aunque parsed.origin_text ya lo traiga
@@ -1922,6 +1929,369 @@ async function startSmartFlow(phone: string, parsed: ParsedRequest): Promise<voi
       { id: 'for_other', title: 'Otra persona' },
     ]
   );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FLUJO RÁPIDO DE PASAJEROS (2026-10-01, pedido urgente del usuario)
+//
+// Caso real que lo motivó (…833, 20:23): "¿qué precio tiene una carrera al aeropuerto
+// Camilo Daza? estoy a cinco minutos". Recibió el precio SEIS minutos después, tras ~8
+// preguntas: ¿para ti o para otro? (dos veces), ¿en qué barrio?, ¿dónde estás? (ya lo había
+// dicho), confirmar recogida, confirmar destino... y además su frase "Te envío la ubicación y
+// te recuerdo la dirección también" quedó pegada DENTRO de la dirección.
+//
+// Ahora, para Carro/Moto pedidos por uno mismo:
+//   1. ¿Dónde te recojo? (botón de ubicación)           -- sin "¿para quién?" ni barrio
+//   2. ¿A dónde vas?  (solo si no lo dijo ya)
+//   3. RESUMEN: recogida + destino + precio sugerido    -- [Pedir $X] [Otro precio] [Corregir]
+// Un solo paso de confirmación en vez de tres. La creación del viaje y el precio mínimo siguen
+// siendo los de awaiting_price, sin duplicar nada (el resumen solo lo invoca).
+//
+// "Otra persona" y Domicilio siguen por su camino de siempre (responsabilidad, nombre y
+// celular de quien viaja, descripción del paquete): ahí esos pasos sí son necesarios.
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Paso 1 del flujo rápido: pedir la ubicación de recogida, sin preguntas previas. */
+async function askOriginDirect(phone: string, svc: string, destText: string | null, cotizar = false): Promise<void> {
+  await upsertSession(phone, {
+    state: 'awaiting_origin', service_type: svc, is_for_self: true, cotizar, precio_moto: null,
+    traveler_name: null, traveler_phone: null, origin_barrio_hint: null, pending_location_kind: null,
+  });
+  const cabeza = cotizar
+    ? `💰 Te cotizo *sin compromiso*${destText ? ` el viaje a *${destText}*` : ''} 🙌\n\n`
+    : destText
+      ? `${SERVICE_LABELS[svc] ?? svc} a *${destText}* ✨\n\n`
+      : `${SERVICE_LABELS[svc] ?? svc} 👍\n\n`;
+  await sendLocationRequest(phone,
+    `${cabeza}📍 *¿Dónde te recojo?* Toca el botón para compartir tu ubicación, o escríbeme la dirección.` +
+    (destText && !cotizar ? `\n\nApenas la tenga te digo el precio, sin compromiso.` : '') +
+    (cotizar ? '' : `\n\n_¿Es para otra persona? Escribe *otra persona*._`));
+}
+
+/** "Te envío la ubicación y te recuerdo la dirección también Urbanización Prados Norte Calle 21N..."
+ *  -> "Urbanización Prados Norte Calle 21N...". Se corta todo lo que va ANTES de la primera palabra
+ *  que arranca una dirección. Si no hay ninguna, se deja el texto como vino. */
+function limpiarDireccion(t: string): string {
+  const m = t.match(/\b(urbanizaci[oó]n|urb\.?|calle|cll?\.?|carrera|cra\.?|kr\.?|avenida|av\.?|diagonal|dg\.?|transversal|tv\.?|barrio|conjunto|edificio|manzana|mz\.?|anillo vial)\s/i);
+  if (!m || !m.index) return t.trim();
+  // Solo se corta si lo de adelante es conversación, no parte del lugar: "Hotel Tonchalá
+  // Calle 10" debe quedar entero.
+  const antes = t.slice(0, m.index);
+  return /env[ií]o|direcci[oó]n|ubicaci[oó]n|estoy|recuerdo|queda|me encuentro|rec[oó]g|es en|vivo/i.test(antes)
+    ? t.slice(m.index).trim() : t.trim();
+}
+
+/** ¿Pregunta el precio sin dar todavía una dirección? */
+function preguntaPrecio(t: string): boolean {
+  return /precio|cu[aá]nto (vale|cuesta|cobra|sale|me cobra|seria|ser[ií]a)|tarifa|valor de la carrera/i.test(t) && !/\d/.test(t);
+}
+
+/** Pedido "para otra persona" escrito en el paso de la ubicación. */
+function esParaOtraPersona(t: string): boolean {
+  const n = t.toLowerCase();
+  return /otra persona|para otr[oa]\b|no es para m[ií]|para (mi )?(mam[aá]|pap[aá]|hij[oa]|espos[oa]|novi[oa]|herman[oa]|amig[oa]|abuel[oa]|t[ií][oa]|prim[oa]|señora|señor)/.test(n);
+}
+
+/** Advertencia de responsabilidad de "otra persona" (antes vivía dentro de awaiting_for_whom). */
+async function presentLiabilityAck(phone: string): Promise<void> {
+  await upsertSession(phone, { state: 'awaiting_liability_ack', is_for_self: false });
+  // Pedido explícito del usuario 2026-08-14: resaltar acá que la seguridad
+  // de conductores Y pasajeros es la prioridad de Movi (conductores
+  // verificados, pasajeros identificados) -- "aun así" conecta esa
+  // tranquilidad con la advertencia de responsabilidad que sigue, sin
+  // restarle peso: la plataforma ya hace su parte, pero quien pide el
+  // servicio para otra persona sigue siendo responsable de a quién invita.
+  await sendButtons(phone,
+    `⚠️ *Importante antes de continuar*\n\n` +
+    `En Movi lo más importante es la seguridad de conductores y pasajeros: todos nuestros conductores pasan por un proceso de verificación, y cada pasajero también queda identificado en la plataforma.\n\n` +
+    `Aun así, al pedir el servicio para otra persona, *eres totalmente responsable* de cualquier daño físico o material que esa persona pueda causarle al conductor.\n\n` +
+    `Te recomendamos pedirlo solo para personas de tu entera confianza.\n\n` +
+    `¿Entiendes y aceptas esto?`,
+    [
+      { id: 'ack_yes', title: 'Sí, acepto' },
+      { id: 'ack_no', title: 'Cancelar' },
+    ]
+  );
+}
+
+/**
+ * Ya hay recogida (flujo rápido): se guarda SIN pedir confirmación aparte -- la recogida se
+ * muestra en el resumen, y ahí se corrige si hace falta. Si ya se sabe el destino (lo dijo en
+ * el primer mensaje, o venía de "Corregir recogida"), directo al resumen.
+ * `desdeTexto`: la recogida vino escrita. Si en los siguientes 90 s llega una ubicación GPS,
+ * es la misma recogida más precisa (…833 mandó texto y ubicación con 2 s de diferencia), no
+ * el destino.
+ */
+async function originDirectNext(
+  phone: string, addr: string, lat: number, lng: number,
+  session: Record<string, unknown>, desdeTexto: boolean,
+): Promise<void> {
+  const marca = desdeTexto ? `origen_texto:${Date.now()}` : null;
+  await upsertSession(phone, { origin_lat: lat, origin_lng: lng, origin_address: addr, pending_location_kind: marca });
+  const s: Record<string, unknown> = { ...session, origin_lat: lat, origin_lng: lng, origin_address: addr, pending_location_kind: marca };
+
+  // Destino ya conocido (coordenadas guardadas, p. ej. venía de "Corregir recogida").
+  if (s.dest_lat != null && s.dest_lng != null && s.dest_name) {
+    await presentTripSummary(phone, s.dest_name as string, s.dest_lat as number, s.dest_lng as number, s);
+    return;
+  }
+  // Destino dicho en el primer mensaje ("al aeropuerto Camilo Daza").
+  const pendingDest = s.pending_dest_text as string | null;
+  if (pendingDest) {
+    const geo = await forwardGeocode(pendingDest, lat, lng);
+    if (geo && isInColombia(geo.lat, geo.lng)) {
+      await presentTripSummary(phone, pendingDest, geo.lat, geo.lng, s);
+      return;
+    }
+    await upsertSession(phone, { pending_dest_text: null });
+  }
+  await upsertSession(phone, { state: 'awaiting_dest' });
+  await sendText(phone, `📍 Te recojo en *${addr}*\n\n🏁 *¿A dónde vas?* Escríbeme la dirección o comparte la ubicación.`);
+}
+
+/** ¿Esta ubicación GPS es la misma recogida que acaba de escribir? (ver originDirectNext) */
+function esRecogidaRecienEscrita(session: Record<string, unknown>): boolean {
+  const k = session.pending_location_kind as string | null;
+  if (!k?.startsWith('origen_texto:')) return false;
+  return Date.now() - Number(k.split(':')[1]) < 90_000;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// VIAJES PARA OTRO MOMENTO -> RECORDATORIO (2026-10-01, migración 297)
+//
+// No se programa el viaje (decisión del usuario: comprometer a un conductor con horas de
+// anticipación es riesgoso con la flota de hoy). Se RECUERDA: 30 min antes de la hora, el bot
+// le manda al pasajero su resumen con [Pedir], y se pide en ese momento.
+// ════════════════════════════════════════════════════════════════════════════
+
+const BOGOTA_OFFSET_MS = -5 * 3600e3; // Colombia no tiene horario de verano.
+const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+
+/**
+ * "es para mañana a las 9", "el viernes 6:30 pm", "a las 9 de la noche", "pasado mañana".
+ * Devuelve la hora del viaje (UTC) o null si el mensaje no habla de otro momento. Sin hora
+ * explícita se asume 7:00 am de ese día (y se le dice, para que la corrija si no es).
+ * OJO: "de la mañana" es AM, no el día de mañana.
+ */
+function leerProgramacion(texto: string): { viajeAt: Date; conHora: boolean } | null {
+  const t = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const sinFranja = t.replace(/de la manana/g, ' AMX ');
+  const ahoraLocal = new Date(Date.now() + BOGOTA_OFFSET_MS); // "reloj de Bogotá" en campos UTC
+
+  let dias: number | null = null;
+  if (/pasado manana/.test(sinFranja)) dias = 2;
+  else if (/\bmanana\b/.test(sinFranja)) dias = 1;
+  else if (/\bhoy\b|esta noche|esta tarde/.test(sinFranja)) dias = 0;
+  else {
+    // Con artículo obligatorio: "Santo Domingo" o "Domingo Savio" son lugares, no el domingo.
+    const d = DIAS.findIndex(n => new RegExp(`\\b(el|este|el proximo|para el|pal)\\s+${n}\\b`).test(sinFranja));
+    if (d >= 0) { dias = (d - ahoraLocal.getUTCDay() + 7) % 7 || 7; }
+  }
+
+  const h = sinFranja.match(/\b(?:a las|para las|tipo|como a las|a eso de las|sobre las)\s*(\d{1,2})(?:[:.h](\d{2}))?\s*(am|a\.?\s?m\.?|pm|p\.?\s?m\.?|AMX|de la tarde|de la noche)?/i)
+         ?? sinFranja.match(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(am|a\.\s?m\.|pm|p\.\s?m\.)/i);
+  if (dias === null && !h) return null;
+
+  let hora = 7, min = 0;
+  if (h) {
+    hora = Number(h[1]); min = h[2] ? Number(h[2]) : 0;
+    const franja = (h[3] ?? '').toLowerCase().replace(/[\s.]/g, '');
+    if (hora > 23 || min > 59) return null;
+    if (/pm|tarde|noche/.test(franja) && hora < 12) hora += 12;
+    else if (/am|amx/.test(franja) && hora === 12) hora = 0;
+    else if (!franja && hora >= 1 && hora <= 6) hora += 12; // "a las 3" casi siempre es de la tarde
+    if (/de la noche|esta noche|esta tarde/.test(sinFranja) && hora < 12) hora += 12;
+  }
+
+  const local = new Date(Date.UTC(ahoraLocal.getUTCFullYear(), ahoraLocal.getUTCMonth(), ahoraLocal.getUTCDate() + (dias ?? 0), hora, min));
+  let viajeAt = new Date(local.getTime() - BOGOTA_OFFSET_MS);
+  // Dijo solo la hora y esa hora ya pasó hoy: es mañana ("a las 9am" dicho a las 8:30 pm).
+  if (dias === null && viajeAt.getTime() < Date.now()) viajeAt = new Date(viajeAt.getTime() + 864e5);
+  // Solo cuenta si es de verdad "otro momento": al menos 45 min en el futuro. "Mándamelo a las
+  // 9" cuando son las 8:50 es para ya, y se sigue con el flujo normal.
+  if (viajeAt.getTime() - Date.now() < 45 * 60e3) return null;
+  return { viajeAt, conHora: !!h };
+}
+
+/** "mañana viernes a las 9:00 am" / "hoy a las 8:30 pm" (hora de Bogotá). */
+function describirHora(d: Date): string {
+  const l = new Date(d.getTime() + BOGOTA_OFFSET_MS);
+  const hoy = new Date(Date.now() + BOGOTA_OFFSET_MS);
+  const diff = Math.round((Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate()) - Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate())) / 864e5);
+  const dia = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][l.getUTCDay()];
+  const cuando = diff === 0 ? 'hoy' : diff === 1 ? `mañana ${dia}` : `el ${dia}`;
+  const h = l.getUTCHours(), m = l.getUTCMinutes();
+  return `${cuando} a las ${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+/**
+ * Ya hay recogida y destino y el viaje es para otro momento: se guarda el recordatorio y se le
+ * confirma. WhatsApp solo deja escribirle dentro de las 24 h de su último mensaje (que es
+ * ahora), así que un recordatorio que caiga después NO se crea: se le dice de frente.
+ */
+async function crearRecordatorio(phone: string, session: Record<string, unknown>, viajeAt: Date, conHora: boolean, precio?: number): Promise<void> {
+  const recordarAt = new Date(Math.max(viajeAt.getTime() - 30 * 60e3, Date.now() + 2 * 60e3));
+  const svc = (session.service_type as string) ?? 'carro';
+  const vehiculo = svc === 'moto' ? 'la moto' : 'el carro';
+  await resetSession(phone);
+
+  if (recordarAt.getTime() - Date.now() > 23 * 3600e3) {
+    await sendText(phone,
+      `Para ${describirHora(viajeAt)} escríbeme ese mismo día y te consigo ${vehiculo} en minutos 🙌\n\n` +
+      `_Por WhatsApp solo te puedo escribir yo dentro de las 24 horas siguientes a tu último mensaje, por eso no te puedo recordar con tanta anticipación._`);
+    return;
+  }
+
+  const { error } = await db().from('ag_wa_recordatorios').insert({
+    wa_phone: phone, viaje_at: viajeAt.toISOString(), recordar_at: recordarAt.toISOString(), service_type: svc,
+    origin_lat: session.origin_lat, origin_lng: session.origin_lng, origin_address: session.origin_address,
+    dest_name: session.dest_name, dest_lat: session.dest_lat, dest_lng: session.dest_lng,
+  });
+  if (error) {
+    console.error('[WA] crearRecordatorio error:', error);
+    await sendText(phone, `No pude guardar el recordatorio 😔 Escríbeme un rato antes de la hora y te lo pido en minutos.`);
+    return;
+  }
+  await sendText(phone,
+    `✅ Listo. *${describirHora(recordarAt).replace(/^./, c => c.toUpperCase())}* te escribo por acá para pedirte ${vehiculo} con un toque.\n\n` +
+    `📍 ${session.origin_address}\n🏁 ${session.dest_name}\n` +
+    (precio ? `💰 Hoy sale en unos *$${precio.toLocaleString('es-CO')}* (puede variar un poco según la hora).\n` : '') +
+    (conHora ? '' : `\n_Lo anoté para las 7:00 am. Si es a otra hora, dime "a las ..."._\n`) +
+    `\n_Si se te adelanta el plan, escríbeme y te lo pido ya._`);
+}
+
+/** Habló de otro momento a mitad de la conversación (ver el pre-chequeo en handleConversation). */
+async function manejarProgramado(phone: string, session: Record<string, unknown>, state: string, text: string, prog: { viajeAt: Date; conHora: boolean }): Promise<void> {
+  // Estaba buscando conductor: esa búsqueda se cancela, el viaje no es para ya (…833).
+  if ((state === 'matching' || state === 'stale_search_confirm') && session.trip_request_id) {
+    await db().from('ag_trip_requests').update({
+      status: 'cancelled', cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      cancel_reason: 'El pasajero aclaró que el viaje es para otro momento (WhatsApp)',
+    }).eq('id', session.trip_request_id as string).eq('status', 'searching');
+  }
+  // Ya le habíamos dejado un recordatorio hace poco ("lo anoté para las 7:00 am, si es a otra
+  // hora dime") y ahora dice la hora: se corrige ese, no se arranca un pedido nuevo.
+  if (state === 'idle' || state === 'awaiting_service') {
+    const { data: previo } = await db().from('ag_wa_recordatorios').select('id')
+      .eq('wa_phone', phone).eq('estado', 'pendiente')
+      .gte('created_at', new Date(Date.now() - 30 * 60e3).toISOString())
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (previo) {
+      const recordarAt = new Date(Math.max(prog.viajeAt.getTime() - 30 * 60e3, Date.now() + 2 * 60e3));
+      await db().from('ag_wa_recordatorios').update({ viaje_at: prog.viajeAt.toISOString(), recordar_at: recordarAt.toISOString() }).eq('id', previo.id);
+      await sendText(phone, `✅ Corregido: te escribo *${describirHora(recordarAt)}* para pedírtelo con un toque.`);
+      return;
+    }
+  }
+  const conRuta = session.origin_lat != null && session.dest_lat != null && session.dest_name;
+  if (conRuta) {
+    await crearRecordatorio(phone, session, prog.viajeAt, prog.conHora, session.offered_price as number | undefined);
+    return;
+  }
+  await upsertSession(phone, { programado_para: prog.viajeAt.toISOString() });
+  const anotado = `⏰ Anotado para *${describirHora(prog.viajeAt)}*.`;
+  if (state === 'idle' || state === 'awaiting_service') {
+    const parsed = text.length >= 8 ? await parseFreeTextRequest(text) : null;
+    await sendText(phone, `${anotado} Te ayudo a dejarlo listo y te escribo 30 minutos antes para pedirlo con un toque.`);
+    await askOriginDirect(phone, parsed?.service_type === 'moto' ? 'moto' : 'carro', parsed?.dest_text ?? null);
+    await upsertSession(phone, { programado_para: prog.viajeAt.toISOString(), pending_dest_text: parsed?.dest_text ?? null });
+    return;
+  }
+  if (state === 'awaiting_dest') {
+    await sendText(phone, `${anotado}\n\n🏁 ¿A dónde vas? Escríbeme la dirección o comparte la ubicación.`);
+    return;
+  }
+  await sendLocationRequest(phone, `${anotado}\n\n📍 ¿Dónde te recojo? Toca el botón o escríbeme la dirección.`);
+}
+
+/** Evento del cron (migración 297): ya es la hora, se le manda su resumen con [Pedir]. */
+async function enviarRecordatorioViaje(phone: string, recordatorioId: string): Promise<void> {
+  const { data: r } = await db().from('ag_wa_recordatorios').select('*').eq('id', recordatorioId).maybeSingle();
+  if (!r) return;
+  // ¿Todavía se le puede escribir? Su último mensaje tiene que ser de hace menos de 24 h.
+  const { data: ult } = await db().from('ag_wa_message_log').select('created_at')
+    .eq('wa_phone', phone).eq('role', 'pasajero').eq('direction', 'in')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (!ult || Date.now() - new Date(ult.created_at as string).getTime() > 23.8 * 3600e3) {
+    await db().from('ag_wa_recordatorios').update({ estado: 'ventana_cerrada' }).eq('id', recordatorioId);
+    return;
+  }
+  const session: Record<string, unknown> = {
+    wa_phone: phone, state: 'awaiting_summary', service_type: r.service_type, is_for_self: true, cotizar: false,
+    origin_lat: r.origin_lat, origin_lng: r.origin_lng, origin_address: r.origin_address,
+  };
+  await resetSession(phone);
+  await upsertSession(phone, session);
+  await presentTripSummary(phone, r.dest_name as string, r.dest_lat as number, r.dest_lng as number, session,
+    undefined, `⏰ *¡Hola! Como quedamos*, ya casi es la hora de tu viaje.`);
+}
+
+/** Paso 3 del flujo rápido: TODO en un mensaje, con el precio, y una sola confirmación. */
+async function presentTripSummary(
+  phone: string, destAddr: string, dLat: number, dLng: number,
+  session: Record<string, unknown>, precomputedRoute?: { distKm: number; durationMin: number },
+  encabezado?: string,
+): Promise<void> {
+  const oLat = session.origin_lat as number;
+  const oLng = session.origin_lng as number;
+  const svc = (session.service_type as string) ?? 'carro';
+  const route = precomputedRoute ?? await getRouteDistanceDuration(oLat, oLng, dLat, dLng);
+  const distText = route.distKm > 0 ? ` (${route.distKm.toFixed(1)} km)` : '';
+
+  // Viaje para otro momento: en vez de pedirlo, se deja el recordatorio.
+  if (session.programado_para) {
+    const precio = await suggestPrice(route.distKm, svc, oLat, oLng, route.durationMin);
+    await crearRecordatorio(phone, { ...session, dest_name: destAddr, dest_lat: dLat, dest_lng: dLng },
+      new Date(session.programado_para as string), true, precio);
+    return;
+  }
+
+  // Cotizar: los dos precios del mismo recorrido, y el pasajero escoge con un toque.
+  if (session.cotizar) {
+    const [carro, moto] = await Promise.all([
+      suggestPrice(route.distKm, 'carro', oLat, oLng, route.durationMin),
+      suggestPrice(route.distKm, 'moto', oLat, oLng, route.durationMin),
+    ]);
+    await upsertSession(phone, {
+      state: 'awaiting_summary', service_type: 'carro',
+      dest_name: destAddr, dest_lat: dLat, dest_lng: dLng,
+      offered_price: carro, precio_moto: moto, pending_dest_text: null,
+    });
+    await sendButtons(phone,
+      `💰 *Tu cotización* _(sin compromiso)_\n` +
+      `📍 *Recogida:* ${session.origin_address}\n` +
+      `🏁 *Destino:* ${destAddr}${distText}\n\n` +
+      `🚗 Carro: *$${carro.toLocaleString('es-CO')}*\n` +
+      `🏍️ Moto: *$${moto.toLocaleString('es-CO')}*\n\n` +
+      `Si te sirve, toca el que quieras y te lo pido ya.`,
+      [
+        { id: 'sum_ok_carro', title: `🚗 Carro $${carro.toLocaleString('es-CO')}` },
+        { id: 'sum_ok_moto',  title: `🏍️ Moto $${moto.toLocaleString('es-CO')}` },
+        { id: 'sum_edit',     title: '✏️ Corregir' },
+      ]);
+    return;
+  }
+
+  const suggested = await suggestPrice(route.distKm, svc, oLat, oLng, route.durationMin);
+  const vehiculo = svc === 'moto' ? 'la moto' : 'el carro';
+
+  await upsertSession(phone, {
+    state: 'awaiting_summary',
+    dest_name: destAddr, dest_lat: dLat, dest_lng: dLng,
+    offered_price: suggested, pending_dest_text: null,
+  });
+  await sendButtons(phone,
+    (encabezado ? `${encabezado}\n\n` : '') +
+    `${SERVICE_LABELS[svc] ?? svc}\n` +
+    `📍 *Recogida:* ${session.origin_address}\n` +
+    `🏁 *Destino:* ${destAddr}${distText}\n\n` +
+    `💰 Precio sugerido: *$${suggested.toLocaleString('es-CO')}* _(sin compromiso)_\n\n` +
+    `¿Te pido ${vehiculo}?`,
+    [
+      { id: 'sum_ok',    title: `✅ Pedir $${suggested.toLocaleString('es-CO')}` },
+      { id: 'sum_price', title: '💰 Ofrecer otro' },
+      { id: 'sum_edit',  title: '✏️ Corregir' },
+    ]);
 }
 
 // ─── Invitar a instalar la app real tras un par de viajes por WhatsApp ────────
@@ -1984,12 +2354,24 @@ async function maybeOfferReferralProgram(phone: string, agUserId: string | null)
 // WhatsApp (carro/moto/domicilio comparten tabla y flujo). Ciudad a Ciudad y
 // Flete siguen accesibles escribiéndolos -- viven en otro sistema, ver
 // sendUnsupportedServiceMessage().
+//
+// Desde 2026-10-01 es una LISTA y no 3 botones: se sumó "💰 Cotizar un viaje" (pedido del
+// usuario) y WhatsApp no admite más de 3 botones. El título de cada fila llega como texto
+// igual que antes ("🚗 Carro" contiene "carro"), así que awaiting_service no cambia.
 async function sendServiceButtons(phone: string, bodyText: string): Promise<void> {
-  await sendButtons(phone, bodyText, [
-    { id: 'svc_carro', title: '🚗 Carro' },
-    { id: 'svc_moto', title: '🏍️ Moto' },
-    { id: 'svc_domicilio', title: '📦 Domicilio' },
-  ]);
+  await sendGraph({ to: phone, type: 'interactive', interactive: {
+    type: 'list',
+    body: { text: bodyText },
+    action: {
+      button: 'Ver opciones',
+      sections: [{ title: 'Servicios', rows: [
+        { id: 'svc_cotizar',   title: '💰 Cotizar un viaje', description: 'Precio de carro y moto, sin compromiso' },
+        { id: 'svc_carro',     title: '🚗 Carro' },
+        { id: 'svc_moto',      title: '🏍️ Moto' },
+        { id: 'svc_domicilio', title: '📦 Domicilio' },
+      ] }],
+    },
+  } });
 }
 
 // Punto único para mostrar el menú de servicios y dejar la sesión lista para
@@ -2563,9 +2945,21 @@ async function handleConversation(
   // Saludo/reinicio a mitad de un pedido ya en curso -- ya NO cancela nada
   // (ver isGreeting arriba). Solo se le recuerda que sigue esperando su
   // respuesta anterior, sin perder el servicio/origen/destino ya elegidos.
+  // En el menú no hay "respuesta anterior" que esperar (p. ej. justo después de cancelar):
+  // un saludo ahí se atiende como saludo, desde cero.
+  if (isGreeting(text) && state === 'awaiting_service') state = 'idle';
   if (isGreeting(text) && state !== 'idle') {
     await sendText(phone, `¡Hola de nuevo! 👋 Sigo aquí, esperando tu respuesta anterior.\n\nEscribe *cancelar* si prefieres empezar de nuevo.`);
     return;
+  }
+
+  // "Es para mañana a las 9" en cualquier punto ANTES de tener conductor (2026-10-01). Caso real
+  // …833: lo dijo tres veces mientras se buscaba conductor, el bot solo respondía "Buscando…" y
+  // un conductor salió a recogerlo esa misma noche. Ver manejarProgramado / migración 297.
+  if (msgType === 'text' && ['idle', 'awaiting_service', 'awaiting_origin', 'awaiting_dest', 'awaiting_summary',
+       'awaiting_price', 'matching', 'stale_search_confirm'].includes(state)) {
+    const prog = leerProgramacion(text);
+    if (prog) { await manejarProgramado(phone, session, state, text, prog); return; }
   }
 
   // ── IDLE / WELCOME ──────────────────────────────────────────────────────────
@@ -2586,7 +2980,16 @@ async function handleConversation(
     if (text.length >= 8) {
       const parsed = await parseFreeTextRequest(text);
       if (parsed?.service_type) {
-        await startSmartFlow(phone, parsed);
+        // "¿Qué precio tiene una carrera al aeropuerto?" es una cotización: carro y moto,
+        // sin compromiso (2026-10-01, caso real …833).
+        await startSmartFlow(phone, parsed, /precio|cu[aá]nto|cotiz|tarifa|valor/i.test(text));
+        return;
+      }
+      // Solo dijo a dónde va ("al aeropuerto"): cotización de carro y moto con ese destino.
+      if (parsed?.dest_text) {
+        await upsertSession(phone, { pending_dest_text: parsed.dest_text });
+        await askOriginDirect(phone, 'carro', parsed.dest_text, true);
+        await upsertSession(phone, { pending_dest_text: parsed.dest_text });
         return;
       }
     }
@@ -2595,9 +2998,11 @@ async function handleConversation(
     // de contacto, y se veía poco profesional/impreciso (pedido explícito del
     // usuario 2026-08-10). Sí se usa el nombre REAL de la cuenta si ya existe.
     const realName = await lookupRealFirstName(phone);
+    // Recortado 2026-10-01: la primera pregunta ahora es la que de verdad importa (a dónde va),
+    // y el menú queda como alternativa. Si responde con un destino, arranca la cotización.
     await presentServiceMenu(phone,
-      `${greetingOpener(realName)} Soy *Leidy Guzmán,* servicio al cliente de *Movi.*\n¿En qué te ayudo hoy?\n\n` +
-      `_¿Necesitas viaje urbano, domicilio, viaje de ciudad a ciudad o un flete? Selecciona la opción o escríbeme cuál._`,
+      `${greetingOpener(realName)} Soy *Leidy* de *Movi* 🚗\n\n` +
+      `*¿A dónde vas?* Escríbeme el destino y te digo el precio, o mira las opciones 👇`,
       { contact_name: contactName }
     );
     return;
@@ -2615,6 +3020,13 @@ async function handleConversation(
     // Pregunta por la descarga -- se responde con el link oficial, siempre.
     if (isAppDownloadInquiry(text)) {
       await sendText(phone, appDownloadReply());
+      return;
+    }
+    // "💰 Cotizar un viaje" (2026-10-01): mismo camino que pedir, pero el resumen trae carro y
+    // moto y no se pide nada hasta que toque uno. Va antes del mapa de abajo porque el título
+    // no contiene ningún servicio.
+    if (msgBtnId === 'svc_cotizar' || /cotiz|^precio|cu[aá]nto (vale|cuesta|cobra)/i.test(text)) {
+      await askOriginDirect(phone, 'carro', null, true);
       return;
     }
     const map: Record<string, string> = {
@@ -2641,11 +3053,17 @@ async function handleConversation(
       if (text.length >= 8) {
         const parsed = await parseFreeTextRequest(text);
         if (parsed?.service_type) {
-          await startSmartFlow(phone, parsed);
+          await startSmartFlow(phone, parsed, /precio|cu[aá]nto|cotiz|tarifa|valor/i.test(text));
+          return;
+        }
+        // Respondió el "¿A dónde vas?" del saludo con solo el destino: cotización.
+        if (parsed?.dest_text) {
+          await askOriginDirect(phone, 'carro', parsed.dest_text, true);
+          await upsertSession(phone, { pending_dest_text: parsed.dest_text });
           return;
         }
       }
-      await sendServiceButtons(phone, `Creo que no te entendí bien 🤔 ¿cuál de estas necesitas?`);
+      await sendServiceButtons(phone, `Creo que no te entendí bien 🤔 ¿A dónde vas? Escríbeme el destino, o elige una opción 👇`);
       return;
     }
 
@@ -2660,18 +3078,10 @@ async function handleConversation(
         `_(ej: "Ropa, bolsa pequeña")_`
       );
     } else {
-      // "¿Para ti o para otra persona?" -- solo aplica a Carro/Moto (viajes de
-      // pasajero). Domicilio ya tiene su propio concepto de "destinatario"
-      // (recipient_name/recipient_phone, quien recibe el paquete) -- distinto,
-      // no se toca. Pedido explícito del usuario 2026-08-11.
-      await upsertSession(phone, { state: 'awaiting_for_whom', service_type: svc, is_for_self: true, traveler_name: null, traveler_phone: null });
-      await sendButtons(phone,
-        `${SERVICE_LABELS[svc]} seleccionado 👍\n\n¿Este viaje es para ti o para otra persona?`,
-        [
-          { id: 'for_self', title: 'Para mí' },
-          { id: 'for_other', title: 'Otra persona' },
-        ]
-      );
+      // Flujo rápido (2026-10-01): directo a la ubicación. Antes aquí se preguntaba "¿para ti
+      // o para otra persona?" (pedido del usuario 2026-08-11); sigue existiendo, pero solo si
+      // el pasajero escribe "otra persona" en el paso de la ubicación (ver awaiting_origin).
+      await askOriginDirect(phone, svc, null);
     }
     return;
   }
@@ -2709,26 +3119,11 @@ async function handleConversation(
       }
     }
     if (resolution === 'other') {
-      await upsertSession(phone, { state: 'awaiting_liability_ack' });
-      // Pedido explícito del usuario 2026-08-14: resaltar acá que la seguridad
-      // de conductores Y pasajeros es la prioridad de Movi (conductores
-      // verificados, pasajeros identificados) -- "aun así" conecta esa
-      // tranquilidad con la advertencia de responsabilidad que sigue, sin
-      // restarle peso: la plataforma ya hace su parte, pero quien pide el
-      // servicio para otra persona sigue siendo responsable de a quién invita.
-      await sendButtons(phone,
-        `⚠️ *Importante antes de continuar*\n\n` +
-        `En Movi lo más importante es la seguridad de conductores y pasajeros: todos nuestros conductores pasan por un proceso de verificación, y cada pasajero también queda identificado en la plataforma.\n\n` +
-        `Aun así, al pedir el servicio para otra persona, *eres totalmente responsable* de cualquier daño físico o material que esa persona pueda causarle al conductor.\n\n` +
-        `Te recomendamos pedirlo solo para personas de tu entera confianza.\n\n` +
-        `¿Entiendes y aceptas esto?`,
-        [
-          { id: 'ack_yes', title: 'Sí, acepto' },
-          { id: 'ack_no', title: 'Cancelar' },
-        ]
-      );
+      await presentLiabilityAck(phone);
     } else if (resolution === 'self') {
-      await askOriginBarrio(phone, 'self');
+      // Sesiones que quedaron en este paso de antes del flujo rápido: igual van directo
+      // a la ubicación, sin la pregunta del barrio.
+      await askOriginDirect(phone, (session.service_type as string) ?? 'carro', session.pending_dest_text as string | null);
     } else {
       await sendButtons(phone, interpForWhom?.reply_text || `¿Es para ti o para otra persona?`, [
         { id: 'for_self', title: 'Para mí' },
@@ -2940,6 +3335,19 @@ async function handleConversation(
     let lat: number | undefined;
     let lng: number | undefined;
     let addr = '';
+    // Flujo rápido = Carro/Moto pedido por uno mismo (ver askOriginDirect).
+    const rapido = session.is_for_self !== false && !isDeliveryService(session.service_type as string);
+
+    if (rapido && msgType !== 'location') {
+      // "Es para otra persona" -> el camino de siempre (responsabilidad, nombre, celular).
+      if (esParaOtraPersona(text)) { await presentLiabilityAck(phone); return; }
+      // "¿Cuánto vale?" antes de dar la dirección: se le dice cuándo lo va a saber, sin
+      // regañarlo ni repetir la pregunta en seco.
+      if (preguntaPrecio(text)) {
+        await sendLocationRequest(phone, `Te digo el precio exacto apenas sepa dónde te recojo 👇\n\nToca el botón para compartir tu ubicación, o escríbeme la dirección.`);
+        return;
+      }
+    }
 
     if (msgType === 'location' && msgLat != null && msgLng != null) {
       lat = msgLat; lng = msgLng;
@@ -2956,7 +3364,10 @@ async function handleConversation(
       addr = precomputedAddr ?? await reverseGeocode(lat, lng);
     } else if (text.length > 4) {
       const bias = await lastKnownCityBias(phone);
-      const geo = await forwardGeocode(text, bias?.lat, bias?.lng);
+      // Solo la dirección, sin la conversación de antes ("Te envío la ubicación y te
+      // recuerdo la dirección también Urbanización..." quedaba pegado dentro de la recogida).
+      const textoDir = limpiarDireccion(text);
+      const geo = await forwardGeocode(textoDir, bias?.lat, bias?.lng);
       if (!geo) {
         await sendText(phone, `No encontré esa dirección 🔍\n\nIntenta ser más específico (calle, barrio y ciudad) o envía tu ubicación con el clip 📎.`);
         return;
@@ -2970,7 +3381,7 @@ async function handleConversation(
       // siguen usándose para el mapa/ruta, pero el texto que confirma el
       // pasajero es exactamente el suyo (reportado 2026-08-12: la dirección
       // devuelta salía "un poco diferente" a la escrita).
-      lat = geo.lat; lng = geo.lng; addr = text.trim();
+      lat = geo.lat; lng = geo.lng; addr = textoDir;
     } else {
       await sendText(phone, `Por favor envía tu ubicación (📎 → Ubicación) o escribe la dirección completa (calle, barrio y ciudad).`);
       return;
@@ -2979,6 +3390,10 @@ async function handleConversation(
     // Complementa (nunca reemplaza) con el barrio que el pasajero ya escribió
     // a mano en awaiting_barrio -- ver combineWithBarrioHint().
     addr = combineWithBarrioHint(addr, session.origin_barrio_hint as string | undefined);
+    if (rapido) {
+      await originDirectNext(phone, addr, lat, lng, session, msgType !== 'location');
+      return;
+    }
     await presentOriginConfirm(phone, addr, lat, lng, session);
     return;
   }
@@ -3105,6 +3520,20 @@ async function handleConversation(
     let lat: number | undefined;
     let lng: number | undefined;
     let addr = '';
+    const rapido = session.is_for_self !== false && !isDeliveryService(session.service_type as string);
+
+    // Escribió la recogida y segundos después mandó la ubicación GPS: es la MISMA recogida, más
+    // precisa -- no el destino (ver originDirectNext). Caso real …833, con 2 s de diferencia.
+    if (rapido && msgType === 'location' && msgLat != null && msgLng != null && esRecogidaRecienEscrita(session)) {
+      // Si acaba de ESCRIBIR la recogida, se queda su texto ("Urb. Prados Norte Calle 21N #5-118
+      // apto 101" le sirve más al conductor que "Avenida 19 16l-42 n" del mapa) y del GPS solo
+      // se toma el punto exacto.
+      const addrGps = esRecogidaRecienEscrita(session) && session.origin_address
+        ? session.origin_address as string
+        : (precomputedAddr ?? await reverseGeocode(msgLat, msgLng));
+      await originDirectNext(phone, addrGps, msgLat, msgLng, session, false);
+      return;
+    }
 
     if (msgType === 'location' && msgLat != null && msgLng != null) {
       lat = msgLat; lng = msgLng;
@@ -3131,7 +3560,87 @@ async function handleConversation(
     // -- para una dirección escrita el destino recién se resuelve arriba (forwardGeocode), no
     // había forma de haberlo precalculado antes de llegar aquí.
     const routeForConfirm = msgType === 'location' ? precomputedRoute : undefined;
+    if (rapido && lat != null && lng != null) {
+      await presentTripSummary(phone, addr, lat, lng, session, routeForConfirm);
+      return;
+    }
     await presentDestConfirm(phone, addr, lat ?? null, lng ?? null, session, routeForConfirm);
+    return;
+  }
+
+  // ── AWAITING_SUMMARY (flujo rápido) ─────────────────────────────────────────
+  // Una sola confirmación: recogida + destino + precio. "Pedir" y "otro precio" se resuelven
+  // re-entrando a awaiting_price, que es el único lugar que crea el viaje y exige el mínimo.
+  if (state === 'awaiting_summary') {
+    const n = text.toLowerCase().trim();
+    const comoPrecio = (t: string) => handleConversation(phone, contactName, 'text', t,
+      undefined, undefined, undefined, { ...session, state: 'awaiting_price' });
+
+    // GPS justo después de una recogida escrita: corrige la recogida y vuelve a resumir.
+    if (msgType === 'location' && msgLat != null && msgLng != null) {
+      // Si acaba de ESCRIBIR la recogida, se queda su texto ("Urb. Prados Norte Calle 21N #5-118
+      // apto 101" le sirve más al conductor que "Avenida 19 16l-42 n" del mapa) y del GPS solo
+      // se toma el punto exacto.
+      const addrGps = esRecogidaRecienEscrita(session) && session.origin_address
+        ? session.origin_address as string
+        : (precomputedAddr ?? await reverseGeocode(msgLat, msgLng));
+      await originDirectNext(phone, addrGps, msgLat, msgLng, session, false);
+      return;
+    }
+    // Cotización: escoge carro o moto, y desde ahí es un pedido normal al precio cotizado.
+    const eligeMoto  = msgBtnId === 'sum_ok_moto'  || (session.cotizar === true && /\bmoto\b/.test(n));
+    const eligeCarro = msgBtnId === 'sum_ok_carro' || (session.cotizar === true && /\bcarro\b/.test(n));
+    if (eligeMoto || eligeCarro) {
+      const svcElegido = eligeMoto ? 'moto' : 'carro';
+      const precio = eligeMoto ? ((session.precio_moto as number) ?? MIN_PRICE) : ((session.offered_price as number) ?? MIN_PRICE);
+      await upsertSession(phone, { state: 'awaiting_price', service_type: svcElegido, offered_price: precio, cotizar: false });
+      await handleConversation(phone, contactName, 'text', 'ok', undefined, undefined, undefined,
+        { ...session, state: 'awaiting_price', service_type: svcElegido, offered_price: precio, cotizar: false });
+      return;
+    }
+    if (msgBtnId === 'sum_ok' || isYes(text) || /^(pedir|p[ií]delo|dale|listo|ok|okay|de una|va|h[aá]gale)\b/.test(n)) {
+      await upsertSession(phone, { state: 'awaiting_price' });
+      await comoPrecio('ok');
+      return;
+    }
+    // Escribió un monto directo ("8000", "8 mil"): se toma como su oferta.
+    if (/\d/.test(n) && /^\D{0,15}\d[\d.\s]*(mil|k|pesos)?\D{0,10}$/.test(n)) {
+      await upsertSession(phone, { state: 'awaiting_price' });
+      await comoPrecio(text);
+      return;
+    }
+    if (msgBtnId === 'sum_price' || /otro precio|ofrecer|ofrezco|menos|m[aá]s barato|rebaja/.test(n)) {
+      const suggested = (session.offered_price as number) ?? MIN_PRICE;
+      const recommendedMin = Math.max(MIN_PRICE, Math.ceil(suggested * 0.7523 / 500) * 500);
+      await upsertSession(phone, { state: 'awaiting_price' });
+      await sendText(phone, `💰 ¿Cuánto ofreces? Escribe el monto (mínimo *$${recommendedMin.toLocaleString('es-CO')}*).`);
+      return;
+    }
+    if (msgBtnId === 'sum_edit' || /corregir|cambiar|editar|no es|est[aá] mal/.test(n)) {
+      await sendButtons(phone, `¿Qué corrijo?`, [
+        { id: 'sum_edit_origin', title: '📍 La recogida' },
+        { id: 'sum_edit_dest',   title: '🏁 El destino' },
+      ]);
+      return;
+    }
+    if (msgBtnId === 'sum_edit_origin') {
+      // El destino se conserva: al tener la nueva recogida, vuelve directo al resumen.
+      await upsertSession(phone, { state: 'awaiting_origin', origin_lat: null, origin_lng: null, origin_address: null, pending_location_kind: null });
+      await sendLocationRequest(phone, `📍 ¿Dónde te recojo? Toca el botón para compartir tu ubicación, o escríbeme la dirección exacta.`);
+      return;
+    }
+    if (msgBtnId === 'sum_edit_dest') {
+      await upsertSession(phone, { state: 'awaiting_dest', dest_name: null, dest_lat: null, dest_lng: null, pending_location_kind: null });
+      await sendText(phone, `🏁 ¿A dónde vas? Escríbeme la dirección o comparte la ubicación.`);
+      return;
+    }
+    // No se entendió: se le vuelve a mostrar SU resumen (el de cotizar o el normal).
+    if (session.dest_lat != null && session.dest_lng != null && session.origin_lat != null) {
+      await presentTripSummary(phone, session.dest_name as string, session.dest_lat as number, session.dest_lng as number, session);
+      return;
+    }
+    await resetSession(phone);
+    await presentServiceMenu(phone, `Empecemos de nuevo 🙂 ¿Qué necesitas?`);
     return;
   }
 
@@ -3168,13 +3677,12 @@ async function handleConversation(
       // quedar por debajo del 75.23% exacto, solo igual o por encima.
       const recommendedMin = Math.max(MIN_PRICE, Math.ceil(suggested * 0.7523 / 500) * 500);
       await upsertSession(phone, { state: 'awaiting_price' });
+      // Recortado 2026-10-01 ("muy enredado y muy demorado", quejas de pasajeros): el párrafo de
+      // 4 líneas de "conciencia y solidaridad" se cambió por el mínimo, que es lo que importa.
       await sendText(phone,
         `Destino confirmado ✅\n\n` +
-        (delivery ? `💰 *¿Cuánto ofreces por este envío?*\n\n` : `💰 *¿Cuánto ofreces por este viaje?*\n\n`) +
-        `Precio sugerido: *$${suggested.toLocaleString('es-CO')}*\n\n` +
-        `_Te recomendamos, por conciencia y solidaridad con nuestros conductores que están dispuestos a prestarte el mejor servicio, no ofrecer menos de $${recommendedMin.toLocaleString('es-CO')} -- son conductores que día a día buscan, después de una larga jornada, llevar el sustento a sus hogares. Gracias por tu comprensión 🙏_\n\n` +
-        `• Escribe un monto (ej: *${recommendedMin.toLocaleString('es-CO')}*)\n` +
-        `• O escribe *ok* para usar el precio sugerido`
+        `💰 Precio sugerido: *$${suggested.toLocaleString('es-CO')}*\n\n` +
+        `Escribe *ok* para pedirlo a ese precio, o escribe tu oferta (mínimo $${recommendedMin.toLocaleString('es-CO')}${delivery ? '' : ', por respeto al conductor'}).`
       );
     } else if (decision === 'no') {
       await upsertSession(phone, { state: 'awaiting_dest', dest_name: null, dest_lat: null, dest_lng: null });
@@ -3245,29 +3753,19 @@ async function handleConversation(
 
     await upsertSession(phone, { trip_request_id: tripId });
 
-    const svc = SERVICE_LABELS[session.service_type as string] ?? 'Servicio';
     const delivery = isDeliveryService(session.service_type as string);
     const forName = travelerLabel(session);
+    // Recortado 2026-10-01 (quejas de "muy enredado"): antes repetía recogida, destino y oferta
+    // que acababa de confirmar, más 3 líneas de instrucciones. Ahora una línea y lo que puede hacer.
+    // (No se promete un tiempo: la búsqueda se renueva en ventanas de 4 min por conductor y un
+    // caso real del 2026-09-02 duró 23 minutos -- ver la nota histórica en git.)
     await sendText(phone,
       (delivery
-        ? `🔍 Buscando mensajero disponible...\n\n`
+        ? `🔍 *Buscando tu mensajero* por $${price.toLocaleString('es-CO')}…`
         : forName
-          ? `🔍 Buscando conductores cerca de *${forName}*...\n\n`
-          : `🔍 Buscando conductores cerca de ti...\n\n`) +
-      `${svc}\n` +
-      `📍 Desde: ${session.origin_address}\n` +
-      `📍 Hasta: ${session.dest_name}\n` +
-      `💰 Tu oferta: *$${price.toLocaleString('es-CO')}*\n\n` +
-      // Decia "Max. 5 minutos" y era falso por partida doble. La solicitud le aparece al
-      // conductor exactamente 4 minutos (240000 ms, ver reqRemainingMs/driverRequests en
-      // anda-gana.component.ts, donde el numero esta repetido en 9 sitios y cuenta desde
-      // driver_visible_since). Y el "max" tampoco: cuando nadie responde, el rebroadcast
-      // renueva driver_visible_since y arranca otra ventana de 4 minutos, asi que la busqueda
-      // total dura mucho mas (un caso real del 2026-09-02 duro 23 minutos). Por eso ahora se
-      // dice de quien son los 4 minutos, en vez de prometer un tope que no existe.
-      `Te avisamos cuando alguien acepte. Cada conductor tiene 4 minutos para responderte.\n` +
-      `Escribe *cancelar* si deseas cancelar la solicitud.\n\n` +
-      `✅ ¡Solicitud enviada!`
+          ? `🔍 *Buscando conductor para ${forName}* por $${price.toLocaleString('es-CO')}…`
+          : `🔍 *Buscando tu conductor* por $${price.toLocaleString('es-CO')}…`) +
+      `\n\nTe aviso apenas alguien acepte. Si cambias de idea, escribe *cancelar*.`
     );
     return;
   }
@@ -3380,9 +3878,14 @@ async function handleConversation(
       return;
     }
 
-    const minLeft = Math.ceil(12 - elapsedMin);
-    const waitingNoun = isDeliveryService(session.service_type as string) ? 'mensajero' : 'conductores';
-    await sendText(phone, `⏳ Buscando ${waitingNoun}... (${minLeft} min restantes)\n\nEscribe *cancelar* para cancelar.`);
+    // Antes respondía "⏳ Buscando conductores... (12 min restantes)" a CUALQUIER cosa, sin
+    // acusar recibo de lo que dijo (…833 escribió tres veces "es para mañana" y recibió eso
+    // mismo tres veces). "Para mañana" ya lo atiende el pre-chequeo de manejarProgramado; aquí
+    // queda el resto: se reconoce el mensaje y se dice qué puede hacer.
+    const waitingNoun = isDeliveryService(session.service_type as string) ? 'tu mensajero' : 'tu conductor';
+    await sendText(phone,
+      `Te leo 👍 Sigo buscando ${waitingNoun} y te aviso apenas alguien acepte.\n\n` +
+      `_Si es para otro momento dime "para mañana a las ..." · Si ya no lo necesitas escribe *cancelar*._`);
     return;
   }
 
@@ -4106,6 +4609,11 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
       payload.ya_contactado === true,
       payload.recibio_error === true,
     );
+    return;
+  }
+
+  if (event === 'recordatorio_viaje') {
+    await enviarRecordatorioViaje(phone, payload.recordatorio_id as string);
     return;
   }
 
