@@ -248,7 +248,17 @@ function recipientField(id: string): { to: string } | { recipient: string } {
 }
 
 // ─── WhatsApp API helpers ─────────────────────────────────────────────────────
+/**
+ * WhatsApp marca la negrita con UN asterisco. La IA a veces escribe Markdown (**así**) y en
+ * WhatsApp se ven los asteriscos literales (caso real 2026-10-02: "**Del conductor**"). Se
+ * normaliza en el envío para que no dependa de que el modelo obedezca la instrucción.
+ */
+function negritaWhatsApp(t: string): string {
+  return t.replace(/\*\*([^*\n]+?)\*\*/g, '*$1*').replace(/^#{1,6}\s+/gm, '');
+}
+
 async function sendText(to: string, text: string, sentBy: WaSentBy = 'bot', sentByName: string | null = null): Promise<{ ok: boolean; status?: number; body?: string }> {
+  text = negritaWhatsApp(text);
   try {
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
@@ -5274,7 +5284,7 @@ async function sendSupportGraph(payload: Record<string, unknown>, sentBy: WaSent
 }
 
 async function sendSupportText(to: string, text: string, sentBy: WaSentBy = 'bot', sentByName: string | null = null): Promise<WaResult> {
-  return sendSupportGraph({ to, type: 'text', text: { preview_url: false, body: text } }, sentBy, sentByName);
+  return sendSupportGraph({ to, type: 'text', text: { preview_url: false, body: negritaWhatsApp(text) } }, sentBy, sentByName);
 }
 
 // ─── Videos del número de conductores (pedido del usuario, 2026-09-30) ────────
@@ -7063,7 +7073,20 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
     // Se presenta o saluda ("Hola hbla con Jefferson López") sin haber avisado la descarga. Caso
     // real 2026-10-01: al que ya tenía cuenta no se le preguntó el nombre, lo escribió igual, y
     // como no es una pregunta el FAQ lo escaló a un humano. Se le responde y se le recuerda el paso.
-    if (lead.paso === 'pitch' && !/[?¿]/.test(msgText) && leeNombreDado(msgText)) {
+    // Saludo suelto ("Buenas tardes") con el link ya en la mano (caso real …957, 2026-10-02): antes
+    // caía al menú genérico "Soy el asistente de conductores…" y la conversación parecía empezar de
+    // cero con otra persona. Se le contesta como Katherine, en el paso donde va.
+    if (lead.paso === 'pitch' && /^(hola|ola|buenas( tardes| noches)?|buenos dias|buen dia|hey|que mas|saludos)$/.test(t.replace(/[¡!¿?.,]/g, '').trim())) {
+      await sendSupportButtons(phone,
+        `¡Hola! 🙌 ¿Alcanzaste a descargar la app? Me avisas y te envío el video para seguir.\n\n` +
+        `Si tienes alguna duda antes, pregúntame con confianza.`,
+        LEAD_BTN_CIERRE);
+      return true;
+    }
+    // "Pero deme primero información" se leía como el nombre "Pero" (caso real …346): si el mensaje
+    // pide algo, no es un nombre -- va al FAQ, que sí explica cómo funciona.
+    const pideAlgo = /\b(informaci[oó]n|info|deme|d[eé]me|quiero|necesito|explica|expl[ií]queme|c[oó]mo|cu[aá]nto|qu[eé]|cu[aá]l|documentos?|requisitos?)\b/i.test(msgText);
+    if (lead.paso === 'pitch' && !/[?¿]/.test(msgText) && !pideAlgo && leeNombreDado(msgText)) {
       await sendSupportButtons(phone,
         `¡Mucho gusto! 🙌 Me avisas apenas tengas la app descargada y te envío el video para seguir.`,
         LEAD_BTN_CIERRE);
@@ -7108,6 +7131,17 @@ const RESPUESTA_COMO_RECARGAR =
   `Recuerda que *tu primer viaje no necesita saldo*.`;
 
 async function handleSupportConversation(phone: string, name: string, msgText: string, btnId?: string): Promise<void> {
+  // Foto, audio, sticker o archivo sin texto (2026-10-02, caso real …957): mandó una foto
+  // (seguramente de sus documentos) y el bot la escaló a un asesor sin saber qué era. Por acá el
+  // bot solo lee texto, y los documentos se suben en la app, así que se le dice eso.
+  if (!btnId && !msgText.trim()) {
+    await sendSupportText(phone,
+      `Recibí tu archivo 📎 pero por este chat solo puedo leer texto.\n\n` +
+      `Si son *documentos*, se suben directo en la app, en *"Quiero ser conductor"* (ahí los revisamos). ` +
+      `Si tienes una pregunta, escríbemela y te respondo 🙂`);
+    return;
+  }
+
   // Captación primero: es el único camino que atiende bien al lead de la pauta, y
   // si no le corresponde el mensaje devuelve false y todo sigue exactamente igual
   // que antes (menú, datos de la cuenta, FAQ con IA, escalada).
@@ -7188,7 +7222,10 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
   const lower = msgText.toLowerCase();
   const asksStatus   = /estado|solicitud|aprobad|aprueban|aprobaron|rechazad|revisaron/.test(lower);
   const asksWallet   = /saldo|billetera|cuanto tengo|cu[aá]nto tengo|cuanta plata|cu[aá]nta plata|recarg/.test(lower);
-  const asksDocs     = /vencen|vence|vencimiento|vencid|bloque|no puedo conectar|no me deja conectar|por qu[eé] no puedo|documentos/.test(lower);
+  // "documentos" suelto ya NO cuenta (2026-10-02, caso real …957): "Que documentos" es preguntar
+  // los REQUISITOS, no el estado de los suyos, y recibía "No encuentro ninguna solicitud". Solo
+  // consulta su cuenta si habla de SUS documentos o de vencimientos/bloqueo; lo demás va al FAQ.
+  const asksDocs     = /vencen|vence|vencimiento|vencid|bloque|no puedo conectar|no me deja conectar|por qu[eé] no puedo|mis documentos|mis papeles|estado de (mis|los) documentos/.test(lower);
   const asksBonus    = /bono|hito|cuantos viajes|cu[aá]ntos viajes|proximo bono|pr[oó]ximo bono/.test(lower);
   const asksReferral = /invit|referid|mi link|codigo de invitaci|c[oó]digo de invitaci|link de invitaci|gano.*(otro|amigo|persona)/.test(lower);
   const needsProfile = asksStatus || asksWallet || asksDocs || asksBonus || asksReferral;
