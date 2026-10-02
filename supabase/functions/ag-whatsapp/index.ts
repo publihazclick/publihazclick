@@ -5129,6 +5129,14 @@ async function sha256Hex(text: string): Promise<string> {
  * Devuelve false si no tiene nada que ver con pedir un código, para que el flujo de
  * siempre (viajes o soporte) lo procese como si esta función no existiera.
  */
+/** Aviso a quien pide el código con el número OCULTO en WhatsApp. El "Reenviar SMS" es el
+ *  nombre real del botón en la pantalla del código de la app (anda-gana.component.ts). */
+const MSG_CODIGO_NUMERO_OCULTO =
+  'Tu WhatsApp tiene el número oculto (nombre de usuario), y por seguridad no puedo mandarte el código a este chat 🔒\n\n' +
+  'Tienes dos opciones:\n' +
+  '1️⃣ En la app, en la pantalla del código, toca *"Reenviar SMS"* y te llega al celular.\n' +
+  '2️⃣ O escríbeme desde un WhatsApp que muestre tu número.';
+
 async function handleOtpCodeRequest(
   fromPhone: string,
   msgText: string,
@@ -5136,6 +5144,27 @@ async function handleOtpCodeRequest(
 ): Promise<boolean> {
   const t = normalizarTexto(msgText);
   if (!t) return false;
+
+  // Número oculto que, después del aviso de arriba, nos escribe su celular ("Mi wsp es
+  // 3115979824"). Caso real …471: el bot le respondió sobre contraseñas. Por seguridad el código
+  // NO se manda a este chat (no hay forma de comprobar que es el dueño de ese número); se le
+  // repite la salida real en vez de dejarlo sin respuesta. Solo si en los últimos 30 min se le
+  // dio el aviso, para no secuestrar otra conversación donde alguien dé un número.
+  if (isBsuid(fromPhone) && /(^|\D)3\d{9}(\D|$)/.test(msgText.replace(/[\s.-]/g, ''))) {
+    const { data: avisoReciente } = await db().from('ag_wa_message_log').select('id')
+      .eq('wa_phone', fromPhone).eq('direction', 'out')
+      .like('body', 'Tu WhatsApp tiene el número oculto%')
+      .gte('created_at', new Date(Date.now() - 30 * 60e3).toISOString())
+      .limit(1).maybeSingle();
+    if (avisoReciente) {
+      const texto = `Gracias 🙏 Por seguridad no puedo mandar el código a este chat aunque me digas el número: ` +
+        `solo así nadie puede entrar a tu cuenta escribiéndonos con un número ajeno.\n\n` +
+        `👉 En la app, en la pantalla del código, toca *"Reenviar SMS"* y te llega a ese celular en segundos.`;
+      if (isSupportNumber) await sendSupportText(fromPhone, texto);
+      else                 await sendText(fromPhone, texto);
+      return true;
+    }
+  }
 
   // Escribió el código EN EL CHAT en vez de en la app (caso real 2026-10-01, …213: recibió
   // "397158", lo devolvió por acá y el bot le contestó "Ya te conecto con un asesor"). Solo si
@@ -5181,12 +5210,14 @@ async function handleOtpCodeRequest(
   // Un BSUID no es un número de teléfono (ver isBsuid/toE164), así que no hay forma de
   // comprobar que quien escribe es el dueño del número que se está registrando -- y sin esa
   // comprobación no se manda ningún código. Falla cerrado, a propósito.
+  //
+  // Texto reescrito 2026-10-01 (caso real …471): "WhatsApp no me está compartiendo tu número"
+  // sonaba a falla y "escríbeme desde el mismo número" no tenía sentido -- SÍ escribía desde su
+  // número, solo que lo tiene OCULTO (nombre de usuario de WhatsApp). Ahora se dice eso, en
+  // palabras normales, con las dos salidas reales.
   if (isBsuid(fromPhone)) {
     if (!explicita) return false;
-    await responder(
-      'No puedo enviarte el código por acá porque WhatsApp no me está compartiendo tu número 😔\n\n' +
-      'Pídelo por SMS desde la app, o escríbeme desde el mismo número que estás registrando.',
-    );
+    await responder(MSG_CODIGO_NUMERO_OCULTO);
     return true;
   }
 
