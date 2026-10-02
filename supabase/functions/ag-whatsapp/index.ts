@@ -6486,6 +6486,10 @@ async function leadPrimerPaso(phone: string, nombre: string | null, intro?: stri
   const primera = intro ?? '¡Mucho gusto! 🙌';
   await sendSupportButtons(phone,
     `${primera}\n\n` +
+    // Frase pedida textualmente por el usuario (2026-10-02) para retener la atención. Se le
+    // advirtió que es una afirmación comparativa sin datos que la respalden hoy (ver el video
+    // "por qué Movi", apagado por cifras que no cuadraban) y decidió dejarla así.
+    `Lo primero que quiero que sepas es que *somos la app que mejor paga el kilómetro a los conductores* 💰\n\n` +
     `Para iniciar tu atención, el *primer paso para ser conductor es descargar la app* 👇\n` +
     `${APP_DOWNLOAD_LINK}\n\n` +
     LEAD_AVISAME_DESCARGA,
