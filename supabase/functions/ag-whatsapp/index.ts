@@ -2226,17 +2226,146 @@ async function enviarRecordatorioViaje(phone: string, recordatorioId: string): P
     undefined, `⏰ *¡Hola! Como quedamos*, ya casi es la hora de tu viaje.`);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// CONDUCTOR QUE ACEPTA Y NO ARRANCA (2026-10-02, migración 298)
+// Caso real …833: JORGE GARCÍA aceptó a las 09:02 y no se movió en 16 min; el pasajero se fue a
+// la autopista a buscar carro. Ahora, a los 5 min sin arrancar, el bot le pregunta al pasajero.
+// ════════════════════════════════════════════════════════════════════════════
+
+async function responderConductorQuieto(phone: string, contactName: string, session: Record<string, unknown>, btnId: string): Promise<void> {
+  const otro = btnId.startsWith('quieto_otro_');
+  const tripId = btnId.replace(/^quieto_(otro|esperar)_/, '');
+
+  const { data: trip } = await db().from('ag_trip_requests')
+    .select('status, driver_id, driver_stage, offered_price').eq('id', tripId).maybeSingle();
+  if (!trip || trip.status !== 'accepted') {
+    await sendText(phone, `Ese viaje ya no está activo 🙂 Si necesitas un carro, escríbeme a dónde vas.`);
+    return;
+  }
+
+  if (!otro) {
+    await sendText(phone, `Listo, seguimos esperando ⏳ Si en unos minutos no arranca, te vuelvo a preguntar.`);
+    return;
+  }
+
+  // El conductor arrancó justo antes de que tocara el botón: mejor no cancelarle.
+  if (trip.driver_stage) {
+    await sendText(phone, `¡Buenas noticias! Tu conductor acaba de arrancar hacia ti 🚗 Te aviso cuando llegue.`);
+    return;
+  }
+
+  // 1) Cancelar el viaje del conductor quieto (el trigger de cancelación devuelve su comisión).
+  const { data: cancelado } = await db().from('ag_trip_requests').update({
+    status: 'cancelled', cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    cancel_reason: 'El conductor aceptó y no arrancó en 5+ min; el pasajero pidió otro (WhatsApp)',
+  }).eq('id', tripId).eq('status', 'accepted').select('driver_id').maybeSingle();
+  if (!cancelado) { await sendText(phone, `Ese viaje ya no está activo 🙂`); return; }
+
+  // 2) Avisarle al conductor (push), igual que cuando el pasajero cancela.
+  if (cancelado.driver_id) {
+    const { data: driver } = await db().from('ag_drivers').select('ag_user_id').eq('id', cancelado.driver_id as string).maybeSingle();
+    const { data: driverUser } = driver?.ag_user_id
+      ? await db().from('ag_users').select('auth_user_id').eq('id', driver.ag_user_id as string).maybeSingle()
+      : { data: null };
+    if (driverUser?.auth_user_id) {
+      fetch(`${SUPABASE_URL}/functions/v1/ag-send-push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+        body: JSON.stringify({
+          user_ids: [driverUser.auth_user_id], title: '❌ El pasajero buscó otro conductor',
+          body: 'Aceptaste el viaje pero no arrancaste hacia la recogida.', url: '/anda-gana', tag: `trip-${tripId}`, urgent: true,
+        }),
+      }).catch((e) => console.error('[WA] push conductor quieto error:', e));
+    }
+  }
+
+  // 3) Relanzar el MISMO pedido (mismo recorrido y precio) con el flujo de siempre.
+  const precio = (session.offered_price as number) ?? (trip.offered_price as number) ?? MIN_PRICE;
+  await upsertSession(phone, {
+    state: 'awaiting_price', trip_request_id: null, active_offer_id: null, offered_price: precio,
+    driver_name: null, driver_price: null, driver_phone: null, driver_vehicle: null, driver_plate: null, chat_trip_id: null,
+  });
+  await sendText(phone, `Listo 👍 Cancelé ese viaje. Te busco otro conductor ya mismo.`);
+  await handleConversation(phone, contactName, 'text', 'ok', undefined, undefined, undefined,
+    { ...session, state: 'awaiting_price', trip_request_id: null, offered_price: precio });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CAMBIO DE DESTINO ESCRITO (2026-10-02, caso real …833)
+// Pidió "un taxi para la Urbanización Prados Norte..." (su casa: era la RECOGIDA), el bot la
+// tomó como destino, y cuando aclaró "Es para el aeropuerto Camilo Daza" mientras se buscaba
+// conductor, solo recibió "Te leo 👍". El conductor salió con destino a 200 m de la recogida.
+// ════════════════════════════════════════════════════════════════════════════
+
+/** "es para el aeropuerto Camilo Daza", "voy para Unicentro", "el destino es ...". Devuelve el lugar. */
+function leerCambioDestino(texto: string): string | null {
+  const m = texto.trim().match(/\b(?:es para|voy para|voy a|vamos para|vamos a|el destino es|mi destino es|me lleva(?:s)? a|ll[eé]v[ae]me a|ll[eé]v[ae]me al)\s+(?:el |la |los |las |al )?(.{3,80}?)[.!¡¿?]*$/i);
+  if (!m) return null;
+  const lugar = m[1].trim();
+  // Lo que no es un lugar: "voy para allá", "es para mañana", "es para mí", "es para ya".
+  if (/^(all[aá]|ac[aá]|ya|mañana|manana|hoy|m[ií]|mi |otra persona|que|donde|el centro de)$/i.test(lugar)) return null;
+  if (/^(ma[ñn]ana|hoy|las? \d|un |una )/i.test(lugar)) return null;
+  return lugar;
+}
+
+/**
+ * Aplica el cambio de destino a un viaje en curso (buscando o ya aceptado). Solo si el lugar
+ * se encuentra de verdad en el mapa y no está pegado a la recogida; si no, devuelve false y el
+ * mensaje sigue su curso normal (chat con el conductor / "sigo buscando").
+ */
+async function aplicarCambioDestino(phone: string, session: Record<string, unknown>, tripId: string, lugar: string): Promise<boolean> {
+  const oLat = session.origin_lat as number, oLng = session.origin_lng as number;
+  const geo = await forwardGeocode(lugar, oLat, oLng);
+  if (!geo || !isInColombia(geo.lat, geo.lng)) return false;
+  const route = await getRouteDistanceDuration(oLat, oLng, geo.lat, geo.lng);
+  if (route.distKm < 0.3) return false;
+
+  const { data: trip } = await db().from('ag_trip_requests')
+    .update({ dest_name: lugar, dest_lat: geo.lat, dest_lng: geo.lng, distance_km: route.distKm, updated_at: new Date().toISOString() })
+    .eq('id', tripId).in('status', ['searching', 'accepted'])
+    .select('driver_id, status').maybeSingle();
+  if (!trip) return false;
+  await upsertSession(phone, { dest_name: lugar, dest_lat: geo.lat, dest_lng: geo.lng });
+
+  if (trip.driver_id && session.ag_user_id) {
+    // Al chat del viaje: el conductor lo ve en su app y le suena (trigger ag_chat_push_trigger).
+    await db().from('ag_chat_messages').insert({
+      request_id: tripId, sender_ag_user_id: session.ag_user_id,
+      message: `📍 CAMBIO DE DESTINO: voy para ${lugar} (${route.distKm.toFixed(1)} km desde la recogida).`,
+    });
+    await sendText(phone,
+      `✅ Cambié el destino a *${lugar}* (${route.distKm.toFixed(1)} km) y se lo mandé a tu conductor.\n\n` +
+      `_El precio que acordaron era para el destino anterior: si cambia, cuádrenlo entre ustedes._`);
+  } else {
+    await sendText(phone, `✅ Cambié el destino a *${lugar}* (${route.distKm.toFixed(1)} km). Sigo buscando tu conductor.`);
+  }
+  return true;
+}
+
 /** Paso 3 del flujo rápido: TODO en un mensaje, con el precio, y una sola confirmación. */
 async function presentTripSummary(
   phone: string, destAddr: string, dLat: number, dLng: number,
   session: Record<string, unknown>, precomputedRoute?: { distKm: number; durationMin: number },
-  encabezado?: string,
+  encabezado?: string, cercaOk = false,
 ): Promise<void> {
   const oLat = session.origin_lat as number;
   const oLng = session.origin_lng as number;
   const svc = (session.service_type as string) ?? 'carro';
   const route = precomputedRoute ?? await getRouteDistanceDuration(oLat, oLng, dLat, dLng);
   const distText = route.distKm > 0 ? ` (${route.distKm.toFixed(1)} km)` : '';
+
+  // Destino a menos de 500 m de la recogida: casi siempre es la MISMA dirección leída al revés
+  // ("un taxi para la Urbanización X" = que vengan a X). Se pregunta antes de mostrar el precio.
+  if (!cercaOk && route.distKm < 0.5) {
+    await upsertSession(phone, { state: 'awaiting_dest_cerca', dest_name: destAddr, dest_lat: dLat, dest_lng: dLng });
+    await sendButtons(phone,
+      `📍 *${destAddr}* queda a solo ${Math.round(route.distKm * 1000)} m de donde estás.\n\n¿Esa dirección es *donde te recojo* o *a donde vas*?`,
+      [
+        { id: 'cerca_origen',  title: '📍 Donde me recogen' },
+        { id: 'cerca_destino', title: '🏁 A donde voy' },
+      ]);
+    return;
+  }
 
   // Viaje para otro momento: en vez de pedirlo, se deja el recordatorio.
   if (session.programado_para) {
@@ -2794,6 +2923,12 @@ async function handleConversation(
   // vehículo"), y la conversación lleva un solo cursor: para cuando toca el botón, el
   // estado puede haber cambiado o apuntar a otro viaje. El id del botón trae el viaje
   // exacto, así que no depende del cursor para nada.
+  // Respuesta a "¿Te busco otro conductor?" (migración 298). El id trae el viaje exacto.
+  if (msgBtnId && (msgBtnId.startsWith('quieto_otro_') || msgBtnId.startsWith('quieto_esperar_'))) {
+    await responderConductorQuieto(phone, contactName, session, msgBtnId);
+    return;
+  }
+
   if (msgBtnId && msgBtnId.startsWith('call_trip_')) {
     await llamarAlConductorDelViaje(phone, msgBtnId.replace('call_trip_', ''), session);
     return;
@@ -3568,6 +3703,42 @@ async function handleConversation(
     return;
   }
 
+  // ── AWAITING_DEST_CERCA ─────────────────────────────────────────────────────
+  // El "destino" quedó a menos de 500 m (ver presentTripSummary): ¿es la recogida o el destino?
+  if (state === 'awaiting_dest_cerca') {
+    const n = normalizarTexto(text);
+    const esRecogida = msgBtnId === 'cerca_origen' || /recog|donde estoy|aqui|ahi estoy|mi casa|es donde/.test(n);
+    const esDestino  = msgBtnId === 'cerca_destino' || /a donde voy|destino|voy para alla|si,? (es )?(el|mi) destino/.test(n);
+    if (esRecogida) {
+      // Esa dirección escrita pasa a ser la recogida (más precisa que el GPS para el conductor).
+      await upsertSession(phone, {
+        state: 'awaiting_dest',
+        origin_lat: session.dest_lat, origin_lng: session.dest_lng, origin_address: session.dest_name,
+        dest_name: null, dest_lat: null, dest_lng: null, pending_location_kind: null,
+      });
+      await sendText(phone, `Listo, te recojo en *${session.dest_name}* 📍\n\n🏁 *¿A dónde vas?* Escríbeme el destino o comparte la ubicación.`);
+      return;
+    }
+    if (esDestino) {
+      await presentTripSummary(phone, session.dest_name as string, session.dest_lat as number, session.dest_lng as number,
+        session, undefined, undefined, true);
+      return;
+    }
+    // Escribió otra dirección: es el destino de verdad.
+    if (text.length > 4) {
+      const geo = await forwardGeocode(text, session.origin_lat as number, session.origin_lng as number);
+      if (geo && isInColombia(geo.lat, geo.lng)) {
+        await presentTripSummary(phone, text.trim(), geo.lat, geo.lng, session);
+        return;
+      }
+    }
+    await sendButtons(phone, `¿*${session.dest_name}* es donde te recojo o a donde vas?`, [
+      { id: 'cerca_origen',  title: '📍 Donde me recogen' },
+      { id: 'cerca_destino', title: '🏁 A donde voy' },
+    ]);
+    return;
+  }
+
   // ── AWAITING_SUMMARY (flujo rápido) ─────────────────────────────────────────
   // Una sola confirmación: recogida + destino + precio. "Pedir" y "otro precio" se resuelven
   // re-entrando a awaiting_price, que es el único lugar que crea el viaje y exige el mínimo.
@@ -3882,6 +4053,10 @@ async function handleConversation(
     // acusar recibo de lo que dijo (…833 escribió tres veces "es para mañana" y recibió eso
     // mismo tres veces). "Para mañana" ya lo atiende el pre-chequeo de manejarProgramado; aquí
     // queda el resto: se reconoce el mensaje y se dice qué puede hacer.
+    // "Es para el aeropuerto Camilo Daza" mientras se busca: se corrige el destino del viaje.
+    const lugarNuevo = msgType === 'text' ? leerCambioDestino(text) : null;
+    if (lugarNuevo && session.trip_request_id && await aplicarCambioDestino(phone, session, session.trip_request_id as string, lugarNuevo)) return;
+
     const waitingNoun = isDeliveryService(session.service_type as string) ? 'tu mensajero' : 'tu conductor';
     await sendText(phone,
       `Te leo 👍 Sigo buscando ${waitingNoun} y te aviso apenas alguien acepte.\n\n` +
@@ -4378,6 +4553,10 @@ async function handleConversation(
       // del pasajero; si no ha elegido, o si el viaje elegido ya terminó, se cae al cursor.
       const tripId         = await destinoDelChat(phone, session);
       const senderAgUserId = session.ag_user_id as string | null;
+      // Cambio de destino con el conductor ya asignado ("es para el aeropuerto"): se actualiza
+      // el viaje (su app navega al lugar correcto) y le llega como mensaje destacado.
+      const lugarNuevo = leerCambioDestino(text);
+      if (tripId && lugarNuevo && await aplicarCambioDestino(phone, session, tripId, lugarNuevo)) return;
       if (tripId && senderAgUserId) {
         const supabase = db();
         const { data: trip } = await supabase
@@ -4609,6 +4788,23 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
       payload.ya_contactado === true,
       payload.recibio_error === true,
     );
+    return;
+  }
+
+  // Conductor que aceptó y no arranca (cron movi-conductor-quieto, migración 298). Se le pregunta
+  // al pasajero si quiere otro; él decide. Solo si su conversación sigue en ESE viaje.
+  if (event === 'conductor_quieto') {
+    const tripId = payload.trip_id as string;
+    const session = await getSession(phone);
+    if (!session || session.trip_request_id !== tripId || session.state !== 'in_trip') return;
+    const conductor = (payload.conductor as string) || 'Tu conductor';
+    await sendButtons(phone,
+      `😕 *${conductor}* aceptó hace ${payload.minutos ?? 5} minutos pero todavía no ha arrancado hacia ti.\n\n` +
+      `¿Te busco otro conductor ya? Lo pido al mismo precio y por el mismo recorrido.`,
+      [
+        { id: `quieto_otro_${tripId}`,    title: '🔄 Buscar otro' },
+        { id: `quieto_esperar_${tripId}`, title: '⏳ Seguir esperando' },
+      ]);
     return;
   }
 

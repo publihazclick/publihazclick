@@ -29,6 +29,25 @@
 
 ---
 
+## Desplegado el 2026-10-02 (supabase; falta solo el push a GitHub)
+
+### WA pasajeros: destino a 200 m, cambio de destino, conductor que no arranca
+- **Por qué**: pasajero real (…833) al aeropuerto: "un taxi para la Urbanización X" (su casa) se
+  tomó como destino; "es para el aeropuerto" mientras buscaba no corrigió nada; Jorge García
+  aceptó y no arrancó en 16 min; las llamadas fallan (Telnyx bloqueado, D17); 6 avisos idénticos
+  al admin. El pasajero terminó buscando carro en la autopista.
+- **Destino a < 500 m de la recogida** -> "¿Esa dirección es donde te recojo o a donde vas?".
+- **"Es para el aeropuerto" / "voy para X" / "el destino es X"** buscando o con conductor ->
+  actualiza el viaje y se lo manda al conductor por el chat.
+- **Conductor quieto** (migración **298**, cron `movi-conductor-quieto` cada minuto): aceptó hace
+  5+ min, sin etapa ni ubicación -> el bot le pregunta al pasajero [Buscar otro] [Seguir
+  esperando]; "Buscar otro" cancela, avisa al conductor y relanza el mismo pedido. Máx 2 veces.
+- **Un solo aviso al admin por viaje** (antes uno por mensaje sin leer).
+- Los informes de cada hora miden cuántas veces preguntó el bot y qué respondió el pasajero.
+- **Toca**: `supabase` solamente.
+
+---
+
 ## Subido el 2026-10-01, noche (tercera tanda) — WhatsApp de pasajeros
 
 ### Flujo rápido, Cotizar y recordatorio de viajes
