@@ -211,14 +211,17 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Rate limit: máximo 3 códigos por número en los últimos 10 minutos
+    // Rate limit: máximo 8 códigos por número en los últimos 10 minutos. Era 3, pero desde
+    // 2026-10-01 en la misma tabla también caen los códigos que entrega el bot por WhatsApp (y la
+    // plantilla del número oculto): un conductor real (…027, 2026-10-02) pidió 5 en 6 minutos y
+    // la app le habría respondido "Demasiados intentos" justo cuando intentaba entrar.
     const { count } = await sb
       .from('ag_otp_codes')
       .select('id', { count: 'exact', head: true })
       .eq('phone', normalized)
       .gte('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString());
 
-    if ((count ?? 0) >= 3) {
+    if ((count ?? 0) >= 8) {
       return json({ error: 'Demasiados intentos. Espera unos minutos.' });
     }
 
@@ -238,8 +241,11 @@ Deno.serve(async (req) => {
     const hash = await sha256(code);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    // Invalidar códigos anteriores del mismo número
-    await sb.from('ag_otp_codes').delete().eq('phone', normalized).eq('used', false);
+    // CAMBIO 2026-10-02: ya NO se invalidan los códigos anteriores vigentes. Caso real (…027):
+    // recibió el código por WhatsApp, volvió a la app, la app pidió otro, y ESE borrado dejaba
+    // inválido el que tenía en la mano -- 5 códigos y ninguno le sirvió. ag-otp-verify acepta
+    // cualquiera vigente y al usar uno cierra los demás. Solo se limpian los vencidos.
+    await sb.from('ag_otp_codes').delete().eq('phone', normalized).eq('used', false).lt('expires_at', new Date().toISOString());
 
     // Insertar nuevo código
     const { error: insertError } = await sb.from('ag_otp_codes').insert({

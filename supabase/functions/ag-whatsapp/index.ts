@@ -5555,7 +5555,13 @@ async function handleOtpCodeRequest(
   //    registro"). Solo se atiende si de verdad hay un registro en curso para ese número --
   //    si no, se deja pasar al bot normal para no secuestrar una conversación cualquiera.
   const explicita = t.includes('codigo de verificacion');
-  const generica  = /(codigo|clave)/.test(t)
+  // "No me quiere llegar el código" / "no me quiero llegar el conigo" (caso real …848,
+  // 2026-10-02): la persona dice que el código no le llega y el bot le daba consejos genéricos
+  // ("revisa tu señal"). Si el número tiene un registro en curso, se le manda el código acá
+  // mismo -- es su propio WhatsApp, tan seguro como el botón de la app.
+  const noLeLlega = /(codigo|conigo|codgo|cogido|clave|sms|mensaje)/.test(t)
+                 && /no (me )?(quiere |quiero |ha |han |esta |le )?(llega|llego|llegar|lleg|sale|salio|entra)/.test(t);
+  const generica  = noLeLlega || /(codigo|clave)/.test(t)
                  && /(verific|registr|ingres|entrar|acced|acces|activar|sms|no me lleg|no lleg|nunca lleg)/.test(t);
   if (!explicita && !generica) return false;
 
@@ -5631,7 +5637,8 @@ async function handleOtpCodeRequest(
   if (!pendiente) {
     // Sin registro en curso no se manda nada. Si lo pidió con sus propias palabras, se deja
     // pasar al bot normal (que sabe responder dudas); si usó el botón de la app, se le explica.
-    if (!explicita) return false;
+    // "No me llega el código" también recibe el paso a paso (no consejos genéricos de señal).
+    if (!explicita && !noLeLlega) return false;
     // Texto 2026-10-02: el botón se llama ahora "Recibir código por WhatsApp", y el orden se
     // dice paso a paso -- los casos reales (…459, …936) mandaron este mensaje ANTES de poner su
     // número en la app (probablemente un borrador guardado de un intento anterior).
