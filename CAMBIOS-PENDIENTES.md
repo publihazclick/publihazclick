@@ -13,7 +13,7 @@
 
 ## Pendiente de subir
 
-- `ag-whatsapp` v247 (dirección mejorada sin mezclar con el mapa): ya desplegado en Supabase, falta el push. (Este archivo actualizado viaja en el próximo push que se pida.)
+_Nada por ahora._ (Este archivo actualizado viaja en el próximo push que se pida.)
 
 ---
 
