@@ -19,7 +19,7 @@ _Nada por ahora._ (Este archivo actualizado viaja en el próximo push que se pid
 
 ## Subido el 2026-10-03 (push `4dd5285..08b69c3`, 1 build, todo `supabase`)
 
-Todo esto ya estaba desplegado en Supabase antes del push (`ag-whatsapp` v234 → v244 y
+Todo esto ya estaba desplegado en Supabase antes del push (`ag-whatsapp` v234 → v246 y
 migración 301 aplicada por Management API); el push solo dejó el repo al día.
 
 ### WA pasajeros: la recogida llega al conductor con dirección, barrio y número de vivienda
@@ -44,7 +44,11 @@ migración 301 aplicada por Management API); el push solo dejó el repo al día.
 - **Texto final (v244)**: "¡Listo, ya tengo un rango *aproximado* de tu ubicación!" y "Si prefieres
   darnos la ubicación más precisa para el conductor, escríbeme…". Se descartó "a 50 metros de
   precisión": WhatsApp no manda la precisión y un número fijo haría que quien quedó lejos no corrija.
-- **Falta**: prueba de punta a punta desde un celular con la v244 (la tabla se probó directo en
+- **Botones (v246)**: [Mejorar dirección] -> el bot pide la dirección completa; [✅ Continuar] ->
+  sigue con la del mapa (sin él, un "ok" se guardaba como barrio). La dirección completa escrita
+  (trae calle/avenida o "#") reemplaza la calle del mapa y conserva barrio y ciudad; si solo escribe
+  barrio/casa, se suma a la del mapa. El punto GPS no cambia.
+- **Falta**: prueba de punta a punta desde un celular con la v246 (la tabla se probó directo en
   la base; el mensaje del rango se vio en vivo con la v241).
 - **Commits**: `2d2b638` → `08b69c3` (10).
 
