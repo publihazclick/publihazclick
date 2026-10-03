@@ -2094,7 +2094,14 @@ async function originDirectNext(
     await upsertSession(phone, { pending_dest_text: null });
   }
   await upsertSession(phone, { state: 'awaiting_dest' });
-  await sendText(phone, `📍 Te recojo en *${addr}*\n\n🏁 *¿A dónde vas?* Escríbeme la dirección o comparte la ubicación.`);
+  // Recogida por GPS: se le dice dirección y barrio por separado (pedido del usuario
+  // 2026-10-03: "que le devolvamos la dirección en que lo está ubicando el mapa y el barrio
+  // o sector"), así nota de un vistazo si el mapa lo puso en otro lado. Escrita: es su
+  // propio texto, basta con repetírselo.
+  const recojo = desdeTexto
+    ? `📍 Te recojo en *${addr}*`
+    : `📍 El mapa te ubica en:\n${lineasUbicacion(addr)}`;
+  await sendText(phone, `${recojo}\n\n🏁 *¿A dónde vas?* Escríbeme la dirección o comparte la ubicación.`);
 }
 
 /** ¿Esta ubicación GPS es la misma recogida que acaba de escribir? (ver originDirectNext) */
@@ -2124,6 +2131,20 @@ function esRecogidaRecienEscrita(session: Record<string, unknown>): boolean {
  * "calle, barrio, ciudad" cuando lo encuentra, y "calle, ciudad" (o coordenadas crudas
  * "7.92, -72.49") cuando no.
  */
+/**
+ * "Calle 1B 2-15, La Ínsula, Cúcuta" ->
+ *   🏠 *Dirección:* Calle 1B 2-15, Cúcuta
+ *   🏘️ *Barrio o sector:* La Ínsula
+ * reverseGeocode arma "calle, barrio, ciudad" y combineWithBarrioHint mete lo que escribió el
+ * pasajero justo después de la calle, así que todo lo del medio es barrio/sector.
+ */
+function lineasUbicacion(addr: string): string {
+  const p = addr.split(',').map(s => s.trim()).filter(Boolean);
+  const calle = p.length >= 2 ? `${p[0]}, ${p[p.length - 1]}` : (p[0] ?? addr);
+  const barrio = p.length >= 3 ? p.slice(1, -1).join(', ') : null;
+  return `🏠 *Dirección:* ${calle}\n🏘️ *Barrio o sector:* ${barrio ?? '_no lo pude identificar_'}`;
+}
+
 function recogidaSinBarrio(addr: string): boolean {
   const partes = addr.split(',').map(s => s.trim()).filter(Boolean);
   if (partes.length < 3) return true;
@@ -2203,7 +2224,7 @@ async function seguirConRecogida(
     const esCoordenada = /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(addr.trim());
     await sendText(phone,
       `📍 ¡Listo, ya tengo un *rango* de ${forName ? 'su' : 'tu'} ubicación!\n\n` +
-      (esCoordenada ? '' : `El mapa ${forName ? 'lo' : 'te'} ubica cerca de: *${addr}*\n\n`) +
+      (esCoordenada ? '' : `El mapa ${forName ? 'lo' : 'te'} ubica en:\n${lineasUbicacion(addr)}\n\n`) +
       `Para darle la ubicación precisa al conductor, escríbeme *¿En qué barrio o sector ${who}?* ` +
       `y el número de vivienda si lo hay.\n\n` +
       `_(ej: "La Ínsula, casa 2-15") -- así el conductor sabe exactamente a dónde ir._`
