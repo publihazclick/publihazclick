@@ -13,6 +13,46 @@
 
 ## Pendiente de subir
 
+_Nada por ahora._ (Este archivo actualizado viaja en el próximo push que se pida.)
+
+---
+
+## Subido el 2026-10-03 (push `4dd5285..08b69c3`, 1 build, todo `supabase`)
+
+Todo esto ya estaba desplegado en Supabase antes del push (`ag-whatsapp` v234 → v243 y
+migración 301 aplicada por Management API); el push solo dejó el repo al día.
+
+### WA pasajeros: la recogida llega al conductor con dirección, barrio y número de vivienda
+- **Por qué**: viaje `265e13d0` (9:46 a.m.): el pasajero estaba en La Ínsula (Cenabastos), el GPS
+  era correcto, pero la tarjeta decía "Calle 1B 2-15, San José de Cúcuta". Luis Felipe aceptó
+  creyendo que era el barrio San José, cerca de él, y el viaje se canceló a los 7 minutos. En
+  30 días, 2 de 32 viajes por WA salieron sin barrio y los 2 se cancelaron ya aceptados.
+- **"San José de Cúcuta" → "Cúcuta"** (es el nombre oficial de la ciudad, no un barrio).
+- **Con GPS el bot pide SIEMPRE barrio y número de vivienda** (texto del usuario: "¡Listo, ya
+  tengo un *rango* de tu ubicación!"), mostrando antes dónde lo ubica el mapa: 🏠 Dirección y
+  🏘️ Barrio o sector. Estado `awaiting_barrio_recogida`, función `seguirConRecogida`. La
+  respuesta se une sin repetir el barrio del mapa: "Avenida 2 1a-60, La Ínsula, casa 2-15, Cúcuta".
+- **Barrios de Cúcuta en nuestra base** (migración **301**, `ag_barrios_osm` + RPC
+  `ag_barrio_en`): 509 barrios y conjuntos de OpenStreetMap con PostGIS. Causa de fondo: Nominatim
+  falla al instante desde Supabase (bloquea servidores en la nube) aunque desde un PC sí responde.
+  Probado: La Insula, Conjunto Cerrado Manet/Juana Paula, San Carlos. Nominatim queda de respaldo
+  (con 2,5 s y la comuna si no hay barrio).
+- **Dirección escrita** también muestra el barrio del punto que encontró Google (7 lugares).
+- **Lugar elegido en el mapa** (llega con nombre; la ubicación actual llega sin nombre, 29 de 31
+  en 30 días): el bot confirma "¿Te recojo en X?" [Sí, ahí] [Mi ubicación actual]. WhatsApp no
+  manda la precisión del GPS (confirmado en la referencia del webhook de Meta).
+- **Falta**: prueba de punta a punta desde un celular con la v243 (la tabla se probó directo en
+  la base; el mensaje del rango se vio en vivo con la v241).
+- **Commits**: `2d2b638` → `08b69c3` (10).
+
+---
+
+## Subido el 2026-10-02/03 (estaban "pendientes" pero ya salieron en pushes anteriores)
+
+Verificado el 2026-10-03: `main` local = `origin/main`, y el JS que sirve
+`www.publihazclick.com` (chunk `chunk-HN5LH73K.js`) ya trae "Recibir código por WhatsApp",
+"Recibir por SMS" y el margen `+3e3` de `maxOfferFor()`.
+
 ### Contraoferta del conductor: margen mínimo de $3.000 sobre el pasajero (2026-10-02)
 - **Por qué**: un conductor dijo que "solo pudo subir $1.000" (era por un destino mal leído a
   200 m), y los datos mostraron el mismo apretón en viajes cortos (moto 1 km: solo +$500).
@@ -20,8 +60,8 @@
   largos sigue mandando el 150% (10 km carro: hasta +$8.500/+$12.500).
 - **Base (YA aplicada, migración 299)**: `ag_enforce_max_offer_price()`. Probado en transacción
   que se deshace: viaje de 0,2 km a $6.000 acepta $9.000 y rechaza $9.500.
-- **App (WEB, falta push)**: `maxOfferFor()` con la misma regla, para que el botón "+" deje subir
-  hasta el nuevo techo. `ng build` OK. No necesita APK.
+- **App (WEB, ✅ en producción)**: `maxOfferFor()` con la misma regla, para que el botón "+" deje
+  subir hasta el nuevo techo. No necesita APK.
 
 
 ### Código de verificación: WhatsApp primero, SMS de respaldo (2026-10-02)
@@ -29,7 +69,7 @@
   SMS el 70% (16 personas pidieron SMS y nunca entraron). El usuario pensó en quitar el SMS; se
   dejó como respaldo porque sin él no entran quienes tienen el número oculto en WhatsApp ni
   quienes registran un número sin WhatsApp.
-- **App (WEB, falta push — no necesita APK, la app carga publihazclick.com/anda-gana)**: en las
+- **App (WEB, ✅ en producción — no necesita APK, la app carga publihazclick.com/anda-gana)**: en las
   dos pantallas del código (registro completo y registro rápido) el botón verde "Recibir código
   por WhatsApp" sale arriba de una; el SMS queda abajo ("Recibir por SMS" / "¿No tienes WhatsApp
   en este número? Recibir por SMS"). `ng build --configuration=production` OK.
@@ -40,7 +80,7 @@
 
 ---
 
-## Desplegado el 2026-10-02 (supabase; falta solo el push a GitHub)
+## Desplegado el 2026-10-02 (supabase; ✅ ya en GitHub)
 
 ### WA pasajeros: destino a 200 m, cambio de destino, conductor que no arranca
 - **Por qué**: pasajero real (…833) al aeropuerto: "un taxi para la Urbanización X" (su casa) se
