@@ -2105,6 +2105,21 @@ function recogidaSinBarrio(addr: string): boolean {
 }
 
 /**
+ * Nombre del lugar si la ubicación se ELIGIÓ de la lista del mapa; null si es la ubicación
+ * actual. El webhook deja en `text` el `name` (o el `address`) del mensaje de ubicación, y
+ * "Enviar tu ubicación actual" no trae ninguno de los dos.
+ */
+function lugarElegidoDe(msgType: string, text: string): string | null {
+  if (msgType !== 'location') return null;
+  // Cuando se elige una DIRECCIÓN (no un sitio con nombre) llega larga, p. ej. real del
+  // 2026-10: "Av. 2 #32-37, Cúcuta, Norte de Santander, Colombia". Se quitan país y
+  // departamento, que no ayudan a nadie a reconocer el punto.
+  const t = (text ?? '').split(',').map(s => s.trim())
+    .filter(s => s && !/^(colombia|norte de santander)$/i.test(s)).join(', ');
+  return t.length >= 2 ? t.slice(0, 80) : null;
+}
+
+/**
  * Punto único para seguir después de tener la recogida, en el flujo rápido y en el clásico.
  * Si vino del GPS, no trae barrio y el pasajero no lo escribió antes, se le pregunta primero.
  * `desdeTexto`: la escribió el pasajero; su texto ya es lo que él reconoce, no se pregunta.
@@ -2112,7 +2127,37 @@ function recogidaSinBarrio(addr: string): boolean {
 async function seguirConRecogida(
   phone: string, addr: string, lat: number, lng: number,
   session: Record<string, unknown>, desdeTexto: boolean,
+  lugarElegido: string | null = null,
 ): Promise<void> {
+  // ── Punto ELEGIDO en el mapa, no la ubicación actual (2026-10-03) ─────────────
+  // WhatsApp no manda la precisión del GPS (confirmado en la referencia del webhook de
+  // Meta: solo latitude, longitude, name, address, url). Lo que sí delata es CÓMO se
+  // compartió: "Enviar tu ubicación actual" llega sin nombre ni dirección; tocar un lugar
+  // de la lista ("Cenabastos", "Éxito San Mateo") llega CON nombre. Es fácil tocar el
+  // primer resultado sin querer y que el conductor vaya a otro sitio, así que se confirma.
+  if (lugarElegido) {
+    // El nombre del lugar le sirve al conductor más que la calle del mapa.
+    // - Sitio con nombre ("Cenabastos")      -> "Cenabastos, Calle 1B 2-15, La Insula, Cúcuta"
+    // - Dirección elegida ("Av. 2 #32-37, Cúcuta") -> su calle + el barrio/ciudad del mapa,
+    //   sin repetir la calle: "Av. 2 #32-37, <barrio>, Cúcuta".
+    const lugarCalle = lugarElegido.split(',')[0].trim();
+    const restoMapa = addr.split(',').slice(1).map(s => s.trim()).filter(Boolean);
+    const addrLugar = normalizarTexto(addr).includes(normalizarTexto(lugarCalle))
+      ? addr
+      : lugarElegido.includes(',')
+        ? [lugarCalle, ...restoMapa].join(', ')
+        : `${lugarElegido}, ${addr}`;
+    await upsertSession(phone, { state: 'awaiting_lugar_elegido', origin_lat: lat, origin_lng: lng, origin_address: addrLugar });
+    const forName = travelerLabel(session);
+    await sendButtons(phone,
+      `📍 ¿${forName ? `Recojo a *${forName}*` : 'Te recojo'} en *${lugarElegido}*?\n\n` +
+      `_Ojo: ese es un lugar que elegiste en el mapa, no ${forName ? 'su' : 'tu'} ubicación actual._`,
+      [
+        { id: 'lugar_si', title: 'Sí, ahí' },
+        { id: 'lugar_actual', title: 'Mi ubicación actual' },
+      ]);
+    return;
+  }
   if (!desdeTexto && !session.origin_barrio_hint && recogidaSinBarrio(addr)) {
     await upsertSession(phone, { state: 'awaiting_barrio_recogida', origin_lat: lat, origin_lng: lng, origin_address: addr });
     const forName = travelerLabel(session);
@@ -3195,7 +3240,7 @@ async function handleConversation(
   // bienvenida "¡Hola! Soy Leidy… ¿A dónde vas?", como si nada hubiera pasado. Ahora: se cancela
   // lo que esté buscando y se le pide disculpas, sin menú. No aplica con conductor ya asignado
   // (in_trip): ahí "déjelo así" puede ser una respuesta al conductor y la cancelación es explícita.
-  if (msgType === 'text' && seVaMolesto(text) && ['idle', 'awaiting_service', 'awaiting_origin', 'awaiting_barrio_recogida', 'awaiting_dest',
+  if (msgType === 'text' && seVaMolesto(text) && ['idle', 'awaiting_service', 'awaiting_origin', 'awaiting_barrio_recogida', 'awaiting_lugar_elegido', 'awaiting_dest',
        'awaiting_summary', 'awaiting_dest_cerca', 'awaiting_price', 'matching', 'stale_search_confirm',
        'stale_raise_offer_amount'].includes(state)) {
     let aplica = !['idle', 'awaiting_service'].includes(state);
@@ -3668,7 +3713,9 @@ async function handleConversation(
     addr = combineWithBarrioHint(addr, session.origin_barrio_hint as string | undefined);
     // Flujo rápido -> originDirectNext, clásico -> presentOriginConfirm; si el GPS no dio
     // barrio, antes se le pregunta (ver seguirConRecogida, caso Luis Felipe 2026-10-03).
-    await seguirConRecogida(phone, addr, lat, lng, session, msgType !== 'location');
+    // En una ubicación, `text` es el nombre/dirección del lugar elegido (ver el webhook):
+    // si viene, no compartió su ubicación actual y seguirConRecogida lo confirma.
+    await seguirConRecogida(phone, addr, lat, lng, session, msgType !== 'location', lugarElegidoDe(msgType, text));
     return;
   }
 
@@ -3686,7 +3733,7 @@ async function handleConversation(
         return;
       }
       const nueva = precomputedAddr ?? await reverseGeocode(msgLat, msgLng);
-      await seguirConRecogida(phone, nueva, msgLat, msgLng, session, false);
+      await seguirConRecogida(phone, nueva, msgLat, msgLng, session, false, lugarElegidoDe(msgType, text));
       return;
     }
     if (oLat == null || oLng == null || !oAddr) {
@@ -3711,6 +3758,57 @@ async function handleConversation(
     // Con origin_barrio_hint puesto, seguirConRecogida ya no vuelve a preguntar.
     await seguirConRecogida(phone, addrConBarrio, oLat, oLng,
       { ...session, origin_barrio_hint: barrio.slice(0, 60), origin_address: addrConBarrio }, false);
+    return;
+  }
+
+  // ── AWAITING_LUGAR_ELEGIDO ──────────────────────────────────────────────────
+  // La recogida llegó como un lugar elegido en el mapa, no como la ubicación actual (ver
+  // seguirConRecogida). La recogida ya está guardada; solo falta que confirme.
+  if (state === 'awaiting_lugar_elegido') {
+    const oLat = session.origin_lat as number | null;
+    const oLng = session.origin_lng as number | null;
+    const oAddr = session.origin_address as string | null;
+    // Mandó otra ubicación: se procesa como recogida nueva (si es la actual, ya no pregunta).
+    if (msgType === 'location' && msgLat != null && msgLng != null) {
+      if (!isInColombia(msgLat, msgLng)) {
+        await sendText(phone, `📍 Esa ubicación no parece estar en Colombia. Comparte tu ubicación actual o escríbeme la dirección.`);
+        return;
+      }
+      const nueva = precomputedAddr ?? await reverseGeocode(msgLat, msgLng);
+      await seguirConRecogida(phone, nueva, msgLat, msgLng, { ...session, origin_barrio_hint: null }, false, lugarElegidoDe(msgType, text));
+      return;
+    }
+    if (oLat == null || oLng == null || !oAddr) {
+      await upsertSession(phone, { state: 'awaiting_origin' });
+      await sendLocationRequest(phone, `📍 *¿Dónde te recojo?* Toca el botón para compartir tu ubicación, o escríbeme la dirección.`);
+      return;
+    }
+    const n = normalizarTexto(text);
+    const confirma = msgBtnId === 'lugar_si' || isYes(text) || /^(si|ahi|alli|ese|correcto|exacto|listo|dale)\b/.test(n);
+    const otra = msgBtnId === 'lugar_actual' || isNo(text) || /actual|donde estoy|otra|no es|cambiar/.test(n);
+    if (confirma && !otra) {
+      // El nombre del lugar ya ubica la zona: no se pregunta el barrio encima (desdeTexto).
+      await seguirConRecogida(phone, oAddr, oLat, oLng, session, true);
+      return;
+    }
+    if (otra) {
+      await upsertSession(phone, { state: 'awaiting_origin', origin_lat: null, origin_lng: null, origin_address: null });
+      await sendLocationRequest(phone,
+        `👍 Toca el botón y elige *"Enviar tu ubicación actual"* (la primera opción, arriba de la lista).\n\n` +
+        `Si el GPS está lento, escríbeme la dirección o un punto de referencia.`);
+      return;
+    }
+    // Escribió una dirección: esa es la recogida (lo que él escribe es lo que reconoce).
+    if (msgType === 'text' && text.trim().length > 4) {
+      await upsertSession(phone, { state: 'awaiting_origin', origin_lat: null, origin_lng: null, origin_address: null });
+      await handleConversation(phone, contactName, 'text', text, undefined, undefined, undefined,
+        { ...session, state: 'awaiting_origin', origin_lat: null, origin_lng: null, origin_address: null });
+      return;
+    }
+    await sendButtons(phone, `¿Te recojo en *${oAddr.split(',')[0]}*?`, [
+      { id: 'lugar_si', title: 'Sí, ahí' },
+      { id: 'lugar_actual', title: 'Mi ubicación actual' },
+    ]);
     return;
   }
 
@@ -3940,7 +4038,7 @@ async function handleConversation(
       // Recogida nueva por GPS: si no trae barrio, se pregunta (ver seguirConRecogida).
       // Se limpia el barrio anterior: era de la recogida que se está reemplazando.
       const addrGps = precomputedAddr ?? await reverseGeocode(msgLat, msgLng);
-      await seguirConRecogida(phone, addrGps, msgLat, msgLng, { ...session, origin_barrio_hint: null }, false);
+      await seguirConRecogida(phone, addrGps, msgLat, msgLng, { ...session, origin_barrio_hint: null }, false, lugarElegidoDe(msgType, text));
       return;
     }
     // Cotización: escoge carro o moto, y desde ahí es un pedido normal al precio cotizado.
