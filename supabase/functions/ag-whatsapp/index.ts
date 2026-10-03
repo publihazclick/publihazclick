@@ -2246,9 +2246,11 @@ async function seguirConRecogida(
     // nada a nadie.
     const esCoordenada = /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(addr.trim());
     await sendText(phone,
-      `📍 ¡Listo, ya tengo un *rango* de ${forName ? 'su' : 'tu'} ubicación!\n\n` +
+      // "aproximado" y no "a 50 metros" (decisión del usuario 2026-10-03): WhatsApp no manda
+      // la precisión del GPS, y un número fijo haría que quien quedó a 200 m no corrija.
+      `📍 ¡Listo, ya tengo un rango *aproximado* de ${forName ? 'su' : 'tu'} ubicación!\n\n` +
       (esCoordenada ? '' : `El mapa ${forName ? 'lo' : 'te'} ubica en:\n${lineasUbicacion(addr)}\n\n`) +
-      `Para darle la ubicación precisa al conductor, escríbeme *¿En qué barrio o sector ${who}?* ` +
+      `Si prefieres darnos la ubicación más precisa para el conductor, escríbeme *¿En qué barrio o sector ${who}?* ` +
       `y el número de vivienda si lo hay.\n\n` +
       `_(ej: "La Ínsula, casa 2-15") -- así el conductor sabe exactamente a dónde ir._`
     );
