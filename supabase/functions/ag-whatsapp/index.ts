@@ -2207,21 +2207,30 @@ function esDireccionCompleta(t: string): boolean {
 }
 
 /**
- * Dirección mejorada por el pasajero sobre la del mapa.
- * - Escribió la dirección COMPLETA ("Calle 3 #4-15, casa 2"): reemplaza la calle del mapa, que
- *   suele ser la imprecisa; se conservan el barrio del mapa (si él no lo puso) y la ciudad.
- *   El punto GPS no se toca: el mapa del conductor sigue llevando a las coordenadas reales.
- * - Escribió solo barrio/sector/casa ("La Ínsula, casa 2-15"): se agrega a la del mapa
- *   (combineWithBarrioHint), como antes.
+ * Dirección que escribió el pasajero al mejorar la del mapa: se usa SOLA, más la ciudad si no
+ * la puso. Nada del mapa (decisión del usuario 2026-10-03, tras ver la mezcla en vivo):
+ * - el barrio del mapa es el punto de barrio más cercano a < 800 m y en los límites puede ser
+ *   el vecino; pegado al lado del que escribió el pasajero, el conductor ve dos barrios y no
+ *   sabe a cuál creerle (el mismo tipo de confusión del caso Luis Felipe);
+ * - el pasajero tocó "Mejorar dirección" justo porque la del mapa no le servía;
+ * - el conductor no pierde nada: el punto GPS sigue guardado y su mapa lo lleva ahí. El texto
+ *   es para encontrar la puerta, y para eso nada mejor que lo que escribe quien vive ahí.
  */
 function direccionMejorada(addrMapa: string, escrita: string): string {
-  if (!esDireccionCompleta(escrita)) return combineWithBarrioHint(addrMapa, escrita);
-  if (/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(addrMapa.trim())) return escrita;
   const p = addrMapa.split(',').map(s => s.trim()).filter(Boolean);
-  const ciudad = p.length >= 2 ? p[p.length - 1] : null;
-  const zonas = p.slice(1, -1).filter(z => !normalizarTexto(escrita).includes(normalizarTexto(z)));
-  const yaTraeCiudad = ciudad ? normalizarTexto(escrita).includes(normalizarTexto(ciudad)) : true;
-  return [escrita, ...zonas, ...(yaTraeCiudad || !ciudad ? [] : [ciudad])].join(', ');
+  const esCoordenada = /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(addrMapa.trim());
+  const ciudad = !esCoordenada && p.length >= 2 ? p[p.length - 1] : 'Cúcuta';
+  return normalizarTexto(escrita).includes(normalizarTexto(ciudad)) ? escrita : `${escrita}, ${ciudad}`;
+}
+
+/**
+ * ¿Alcanza para que el conductor encuentre la puerta? Al menos 3 palabras ("Torres de Santa
+ * Inés apto 302") o una calle con número ("Calle 3 #4-15"). "casa 5", "aquí" o un barrio suelto
+ * no alcanzan: como ya no se mezcla con el mapa, el texto tiene que valerse solo.
+ */
+function direccionSuficiente(t: string): boolean {
+  const palabras = t.split(/[\s,]+/).filter(w => /[a-z0-9áéíóúñ]/i.test(w)).length;
+  return palabras >= 3 || (esDireccionCompleta(t) && /\d/.test(t));
 }
 
 /**
@@ -3903,7 +3912,17 @@ async function handleConversation(
         BOTONES_RECOGIDA);
       return;
     }
-    // Su dirección (completa o solo barrio/casa) sobre la del mapa; el punto GPS no cambia.
+    // Muy poco ("casa 5", "aquí", un barrio suelto): se le pide completa, con los botones por
+    // si prefiere seguir con la del mapa.
+    if (!direccionSuficiente(escrita)) {
+      await sendButtons(phone,
+        `Necesito un poco más para que el conductor encuentre la puerta 🙏\n\n` +
+        `Escríbeme ${forName ? 'su' : 'tu'} dirección completa: calle o avenida con número, barrio y casa o apartamento ` +
+        `_(ej: "Avenida 2 #1A-60, La Ínsula, casa 5")_, o toca *Continuar* para seguir con la ubicación del mapa.`,
+        BOTONES_RECOGIDA);
+      return;
+    }
+    // Su dirección SOLA (ver direccionMejorada); el punto GPS no cambia.
     const addrNueva = direccionMejorada(oAddr, escrita);
     await upsertSession(phone, { origin_barrio_hint: escrita, origin_address: addrNueva });
     // Con origin_barrio_hint puesto, seguirConRecogida ya no vuelve a preguntar.

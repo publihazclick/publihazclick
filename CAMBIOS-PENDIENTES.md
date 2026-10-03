@@ -13,13 +13,13 @@
 
 ## Pendiente de subir
 
-_Nada por ahora._ (Este archivo actualizado viaja en el próximo push que se pida.)
+- `ag-whatsapp` v247 (dirección mejorada sin mezclar con el mapa): ya desplegado en Supabase, falta el push. (Este archivo actualizado viaja en el próximo push que se pida.)
 
 ---
 
 ## Subido el 2026-10-03 (push `4dd5285..08b69c3`, 1 build, todo `supabase`)
 
-Todo esto ya estaba desplegado en Supabase antes del push (`ag-whatsapp` v234 → v246 y
+Todo esto ya estaba desplegado en Supabase antes del push (`ag-whatsapp` v234 → v247 y
 migración 301 aplicada por Management API); el push solo dejó el repo al día.
 
 ### WA pasajeros: la recogida llega al conductor con dirección, barrio y número de vivienda
@@ -48,7 +48,11 @@ migración 301 aplicada por Management API); el push solo dejó el repo al día.
   sigue con la del mapa (sin él, un "ok" se guardaba como barrio). La dirección completa escrita
   (trae calle/avenida o "#") reemplaza la calle del mapa y conserva barrio y ciudad; si solo escribe
   barrio/casa, se suma a la del mapa. El punto GPS no cambia.
-- **Falta**: prueba de punta a punta desde un celular con la v246 (la tabla se probó directo en
+- **Sin mezclar (v247)**: lo que escribe el pasajero al mejorar se usa SOLO (+ ", Cúcuta" si falta);
+  nada de la calle ni del barrio del mapa, que podía contradecirlo (dos barrios distintos en la
+  tarjeta). Si escribe muy poco ("casa 5", "aquí", un barrio suelto: menos de 3 palabras y sin calle
+  con número) se le pide completa. El punto GPS no cambia.
+- **Falta**: prueba de punta a punta desde un celular con la v247 (la tabla se probó directo en
   la base; el mensaje del rango se vio en vivo con la v241).
 - **Commits**: `2d2b638` → `08b69c3` (10).
 
