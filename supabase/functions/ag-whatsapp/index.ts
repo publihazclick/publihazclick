@@ -922,6 +922,14 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
         // primer segmento (la calle) -- los demás son ciudad/barrio, no hace
         // falta tocarlos.
         if (segments[0]) segments[0] = expandStreetType(segments[0]);
+        // "San José de Cúcuta" es el nombre oficial de la ciudad, pero leído en la tarjeta
+        // del conductor parece el BARRIO San José. Caso real 2026-10-03 (viaje 265e13d0):
+        // el pasajero estaba en La Ínsula (Cenabastos), la tarjeta decía "Calle 1B 2-15,
+        // San José de Cúcuta" y Luis Felipe aceptó creyendo que era el barrio San José,
+        // cerca de él. Se deja solo "Cúcuta", que nadie confunde con un barrio.
+        for (let i = 1; i < segments.length; i++) {
+          segments[i] = segments[i].replace(/^San Jos[eé] de C[uú]cuta$/i, 'Cúcuta');
+        }
         const [street, city] = segments;
         // Para este punto ya pasó tiempo de sobra (todo lo de arriba: fetch a
         // Mapbox + parsear) -- normalmente neighborhoodPromise ya está resuelta
@@ -1755,7 +1763,13 @@ async function askOriginBarrio(
 function combineWithBarrioHint(addr: string, hint?: string | null): string {
   const h = hint?.trim();
   if (!h) return addr;
-  if (addr.toLowerCase().includes(h.toLowerCase())) return addr;
+  // Sin tildes: OpenStreetMap trae "La Insula" y el pasajero escribe "La Ínsula"; con
+  // toLowerCase() solo no se reconocían como el mismo barrio y salían los dos seguidos.
+  if (normalizarTexto(addr).includes(normalizarTexto(h))) return addr;
+  // Coordenadas crudas de respaldo ("7.92600, -72.49633", ver reverseGeocode): partirlas por
+  // la coma metía el barrio ENTRE latitud y longitud. El punto exacto ya va en el mapa del
+  // conductor; como texto le sirve más el barrio solo.
+  if (/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(addr.trim())) return h;
   const parts = addr.split(', ');
   if (parts.length >= 2) {
     // Justo después de la calle (parts[0]), antes de la zona/barrio
@@ -2067,6 +2081,59 @@ function esRecogidaRecienEscrita(session: Record<string, unknown>): boolean {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// RECOGIDA POR GPS SIN BARRIO -> PREGUNTARLO ANTES DE BUSCAR CONDUCTOR (2026-10-03)
+//
+// CASO REAL (viaje 265e13d0, 2026-10-03 9:46): el pasajero compartió su ubicación en
+// La Ínsula (Cenabastos). OpenStreetMap no alcanzó a dar el barrio en sus 900 ms (ver
+// fetchNeighborhood) y la tarjeta del conductor quedó "Calle 1B 2-15, San José de Cúcuta".
+// Luis Felipe aceptó creyendo que era el barrio San José, cerca de él, y el viaje se canceló
+// 7 minutos después. Medido en 30 días: 2 de 32 viajes por WhatsApp salieron sin barrio y
+// LOS DOS se cancelaron con conductor ya asignado.
+//
+// No se sube el timeout de OpenStreetMap: ese límite existe porque el chat se ponía lento al
+// mandar la ubicación (ver reverseGeocode). Se le pregunta al pasajero SOLO cuando falta,
+// que es poco frecuente, y nadie conoce su barrio mejor que él.
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ¿La dirección que salió del GPS quedó sin barrio? reverseGeocode() devuelve
+ * "calle, barrio, ciudad" cuando lo encuentra, y "calle, ciudad" (o coordenadas crudas
+ * "7.92, -72.49") cuando no.
+ */
+function recogidaSinBarrio(addr: string): boolean {
+  return addr.split(',').map(s => s.trim()).filter(Boolean).length < 3;
+}
+
+/**
+ * Punto único para seguir después de tener la recogida, en el flujo rápido y en el clásico.
+ * Si vino del GPS, no trae barrio y el pasajero no lo escribió antes, se le pregunta primero.
+ * `desdeTexto`: la escribió el pasajero; su texto ya es lo que él reconoce, no se pregunta.
+ */
+async function seguirConRecogida(
+  phone: string, addr: string, lat: number, lng: number,
+  session: Record<string, unknown>, desdeTexto: boolean,
+): Promise<void> {
+  if (!desdeTexto && !session.origin_barrio_hint && recogidaSinBarrio(addr)) {
+    await upsertSession(phone, { state: 'awaiting_barrio_recogida', origin_lat: lat, origin_lng: lng, origin_address: addr });
+    const forName = travelerLabel(session);
+    const who = forName ? `está *${forName}*` : 'estás';
+    // No se muestra la dirección del mapa: si es la que confunde (o son coordenadas
+    // crudas), repetirla solo confunde más.
+    await sendText(phone,
+      `📍 ¡Listo, ya tengo la ubicación!\n\n*¿En qué barrio o sector ${who}?*\n\n` +
+      `_(ej: "La Ínsula", "Comuneros", "Centro") -- así el conductor sabe exactamente a dónde ir._`
+    );
+    return;
+  }
+  const rapido = session.is_for_self !== false && !isDeliveryService(session.service_type as string);
+  if (rapido) {
+    await originDirectNext(phone, addr, lat, lng, session, desdeTexto);
+    return;
+  }
+  await presentOriginConfirm(phone, addr, lat, lng, session);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // VIAJES PARA OTRO MOMENTO -> RECORDATORIO (2026-10-01, migración 297)
 //
 // No se programa el viaje (decisión del usuario: comprometer a un conductor con horas de
@@ -2209,6 +2276,11 @@ async function manejarProgramado(phone: string, session: Record<string, unknown>
   }
   if (state === 'awaiting_dest') {
     await sendText(phone, `${anotado}\n\n🏁 ¿A dónde vas? Escríbeme la dirección o comparte la ubicación.`);
+    return;
+  }
+  // La ubicación ya está; solo falta el barrio (ver seguirConRecogida).
+  if (state === 'awaiting_barrio_recogida') {
+    await sendText(phone, `${anotado}\n\n📍 *¿En qué barrio o sector estás?*`);
     return;
   }
   await sendLocationRequest(phone, `${anotado}\n\n📍 ¿Dónde te recojo? Toca el botón o escríbeme la dirección.`);
@@ -3123,7 +3195,7 @@ async function handleConversation(
   // bienvenida "¡Hola! Soy Leidy… ¿A dónde vas?", como si nada hubiera pasado. Ahora: se cancela
   // lo que esté buscando y se le pide disculpas, sin menú. No aplica con conductor ya asignado
   // (in_trip): ahí "déjelo así" puede ser una respuesta al conductor y la cancelación es explícita.
-  if (msgType === 'text' && seVaMolesto(text) && ['idle', 'awaiting_service', 'awaiting_origin', 'awaiting_dest',
+  if (msgType === 'text' && seVaMolesto(text) && ['idle', 'awaiting_service', 'awaiting_origin', 'awaiting_barrio_recogida', 'awaiting_dest',
        'awaiting_summary', 'awaiting_dest_cerca', 'awaiting_price', 'matching', 'stale_search_confirm',
        'stale_raise_offer_amount'].includes(state)) {
     let aplica = !['idle', 'awaiting_service'].includes(state);
@@ -3156,7 +3228,7 @@ async function handleConversation(
   // "Es para mañana a las 9" en cualquier punto ANTES de tener conductor (2026-10-01). Caso real
   // …833: lo dijo tres veces mientras se buscaba conductor, el bot solo respondía "Buscando…" y
   // un conductor salió a recogerlo esa misma noche. Ver manejarProgramado / migración 297.
-  if (msgType === 'text' && ['idle', 'awaiting_service', 'awaiting_origin', 'awaiting_dest', 'awaiting_summary',
+  if (msgType === 'text' && ['idle', 'awaiting_service', 'awaiting_origin', 'awaiting_barrio_recogida', 'awaiting_dest', 'awaiting_summary',
        'awaiting_price', 'matching', 'stale_search_confirm'].includes(state)) {
     const prog = leerProgramacion(text);
     if (prog) { await manejarProgramado(phone, session, state, text, prog); return; }
@@ -3594,11 +3666,51 @@ async function handleConversation(
     // Complementa (nunca reemplaza) con el barrio que el pasajero ya escribió
     // a mano en awaiting_barrio -- ver combineWithBarrioHint().
     addr = combineWithBarrioHint(addr, session.origin_barrio_hint as string | undefined);
-    if (rapido) {
-      await originDirectNext(phone, addr, lat, lng, session, msgType !== 'location');
+    // Flujo rápido -> originDirectNext, clásico -> presentOriginConfirm; si el GPS no dio
+    // barrio, antes se le pregunta (ver seguirConRecogida, caso Luis Felipe 2026-10-03).
+    await seguirConRecogida(phone, addr, lat, lng, session, msgType !== 'location');
+    return;
+  }
+
+  // ── AWAITING_BARRIO_RECOGIDA ────────────────────────────────────────────────
+  // El GPS de la recogida llegó sin barrio (ver seguirConRecogida). La recogida ya está
+  // guardada en la sesión; solo falta el barrio para que el conductor no adivine la zona.
+  if (state === 'awaiting_barrio_recogida') {
+    const oLat = session.origin_lat as number | null;
+    const oLng = session.origin_lng as number | null;
+    const oAddr = session.origin_address as string | null;
+    // Mandó otra ubicación: es una recogida nueva, se procesa desde cero.
+    if (msgType === 'location' && msgLat != null && msgLng != null) {
+      if (!isInColombia(msgLat, msgLng)) {
+        await sendText(phone, `📍 Esa ubicación no parece estar en Colombia.\n\n*¿En qué barrio o sector estás?*`);
+        return;
+      }
+      const nueva = precomputedAddr ?? await reverseGeocode(msgLat, msgLng);
+      await seguirConRecogida(phone, nueva, msgLat, msgLng, session, false);
       return;
     }
-    await presentOriginConfirm(phone, addr, lat, lng, session);
+    if (oLat == null || oLng == null || !oAddr) {
+      // La sesión perdió la recogida (no debería pasar): se vuelve a pedir, sin inventar.
+      await upsertSession(phone, { state: 'awaiting_origin' });
+      await sendLocationRequest(phone, `📍 *¿Dónde te recojo?* Toca el botón para compartir tu ubicación, o escríbeme la dirección.`);
+      return;
+    }
+    const rapido = session.is_for_self !== false && !isDeliveryService(session.service_type as string);
+    if (rapido && msgType === 'text' && esParaOtraPersona(text)) { await presentLiabilityAck(phone); return; }
+    if (msgType === 'text' && preguntaPrecio(text)) {
+      await sendText(phone, `Te digo el precio apenas me digas el barrio 🙌\n\n*¿En qué barrio o sector estás?*`);
+      return;
+    }
+    const barrio = text.trim().replace(/^(barrio|sector)\s+/i, '').trim();
+    if (msgType !== 'text' || barrio.length < 2) {
+      await sendText(phone, `Escríbeme el nombre del barrio o sector (ej: "La Ínsula", "Comuneros", "Centro").`);
+      return;
+    }
+    const addrConBarrio = combineWithBarrioHint(oAddr, barrio.slice(0, 60));
+    await upsertSession(phone, { origin_barrio_hint: barrio.slice(0, 60), origin_address: addrConBarrio });
+    // Con origin_barrio_hint puesto, seguirConRecogida ya no vuelve a preguntar.
+    await seguirConRecogida(phone, addrConBarrio, oLat, oLng,
+      { ...session, origin_barrio_hint: barrio.slice(0, 60), origin_address: addrConBarrio }, false);
     return;
   }
 
@@ -3821,10 +3933,14 @@ async function handleConversation(
       // Si acaba de ESCRIBIR la recogida, se queda su texto ("Urb. Prados Norte Calle 21N #5-118
       // apto 101" le sirve más al conductor que "Avenida 19 16l-42 n" del mapa) y del GPS solo
       // se toma el punto exacto.
-      const addrGps = esRecogidaRecienEscrita(session) && session.origin_address
-        ? session.origin_address as string
-        : (precomputedAddr ?? await reverseGeocode(msgLat, msgLng));
-      await originDirectNext(phone, addrGps, msgLat, msgLng, session, false);
+      if (esRecogidaRecienEscrita(session) && session.origin_address) {
+        await originDirectNext(phone, session.origin_address as string, msgLat, msgLng, session, false);
+        return;
+      }
+      // Recogida nueva por GPS: si no trae barrio, se pregunta (ver seguirConRecogida).
+      // Se limpia el barrio anterior: era de la recogida que se está reemplazando.
+      const addrGps = precomputedAddr ?? await reverseGeocode(msgLat, msgLng);
+      await seguirConRecogida(phone, addrGps, msgLat, msgLng, { ...session, origin_barrio_hint: null }, false);
       return;
     }
     // Cotización: escoge carro o moto, y desde ahí es un pedido normal al precio cotizado.
