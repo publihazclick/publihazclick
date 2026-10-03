@@ -8032,6 +8032,34 @@ serve(async (req) => {
     return new Response(JSON.stringify({ sent: false, error: 'no text' }), { status: 400 });
   }
 
+  // Acción admin de SOLO LECTURA (2026-10-03, pregunta del usuario "¿cómo y cuándo me cobra Meta?
+  // ¿tengo saldo o tarjeta?"): estado de la cuenta de WhatsApp, medio de pago (primary_funding_id:
+  // si falta, Meta no deja mandar plantillas pagas) y gasto del mes por categoría. Solo con la
+  // llave de servicio (la usan los crons desde el vault); no cambia nada en Meta.
+  if (body._internal_event === 'admin_estado_pago_waba') {
+    // La llave del vault puede venir en el formato viejo (JWT) y la del entorno en el nuevo, así
+    // que no se comparan como texto: se le pregunta a la base si esa llave ve una tabla protegida
+    // (ag_otp_codes tiene RLS sin políticas: con la llave pública devuelve [] y con la de
+    // servicio devuelve filas).
+    const llave = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+    const prueba = llave
+      ? await fetch(`${Deno.env.get('SUPABASE_URL')}/rest/v1/ag_otp_codes?select=id&limit=1`, { headers: { apikey: llave, Authorization: `Bearer ${llave}` } })
+          .then(r => r.ok ? r.json() : []).catch(() => [])
+      : [];
+    if (!Array.isArray(prueba) || prueba.length === 0) {
+      return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
+    }
+    const g = (path: string) => fetch(`https://graph.facebook.com/v22.0/${path}`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } })
+      .then(r => r.json()).catch(e => ({ error: String(e) }));
+    const desde = Math.floor(new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1).getTime() / 1000);
+    const hasta = Math.floor(Date.now() / 1000);
+    const [cuenta, gasto] = await Promise.all([
+      g(`${WABA_ID}?fields=name,currency,timezone_id,account_review_status,business_verification_status,whatsapp_business_manager_messaging_limit`),
+      g(`${WABA_ID}?fields=pricing_analytics.start(${desde}).end(${hasta}).granularity(MONTHLY).dimensions(["PRICING_CATEGORY"])`),
+    ]);
+    return new Response(JSON.stringify({ cuenta, gasto }), { headers: { 'Content-Type': 'application/json' } });
+  }
+
   // Acción admin: crear (o consultar) la plantilla de autenticación del código (2026-10-02). Va
   // protegida con INFORME_KEY (secret del proyecto, el mismo de informe-conductores) y devuelve
   // la respuesta de Meta para poder ver si quedó aprobada.
