@@ -13,7 +13,22 @@
 
 ## Pendiente de subir
 
-_Nada por ahora._ (Este archivo actualizado viaja en el próximo push que se pida.)
+### Código de verificación: llega SOLO al WhatsApp del número (2026-10-03)
+- **Por qué**: medido en 7 días, ~17 entraron escribiéndole al bot, pero se quedaban por fuera los de
+  número oculto (…9199 recibió el mismo aviso 6 veces), los que escriben desde otro WhatsApp (…3603,
+  "Necesito el código a este wsp business": tenía solicitud pendiente y el bot no lo reconoció) y los
+  que lo pedían con otras palabras. Todos terminaban en soporte.
+- **Servidor (YA desplegado: `ag-otp-send` v45, `ag-whatsapp` v248)**: con canal `whatsapp` el código
+  sale solo con la plantilla `movi_codigo_verificacion` (botón "Copiar código"). Si Meta la rechaza al
+  enviar → SMS en el acto; si después avisa que no la pudo entregar (número sin WhatsApp) →
+  `otpRespaldoSms` manda el SMS una sola vez. Bot: cualquier mención del código con solicitud pendiente
+  manda el código; número oculto con sus palabras también recibe el aviso (nuevo texto: "el código ya te
+  llegó al WhatsApp de ese número"); la misma respuesta no se repite: a la segunda pasa a un asesor.
+  **Probado en vivo**: código pedido para …7506 → plantilla **entregada** según el acuse de Meta.
+- **Costo**: ~US$0,0009 por código entregado (autenticación, Colombia) ≈ US$0,10/mes con el volumen actual.
+- **App (WEB, falta push, no necesita APK)**: "Te enviamos un código a tu WhatsApp", "📲 Revisa tu
+  WhatsApp… Copiar código", y el botón verde pasa a "¿No te llegó? Pídelo por WhatsApp". `ngc` sin errores.
+- **Toca**: `src/app/features/anda-gana/*` + `supabase`. (Este archivo actualizado viaja en el próximo push que se pida.)
 
 ---
 

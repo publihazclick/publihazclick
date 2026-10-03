@@ -1053,7 +1053,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <h3 style="color:#fff;font-weight:900;font-size:18px;margin:0">Verifica tu número</h3>
           <p style="color:#94a3b8;font-size:13px;text-align:center;margin:0;line-height:1.5">
             @if (otpCanal() === 'whatsapp') {
-              Recibe tu código de 6 dígitos por WhatsApp para el número<br>
+              Te enviamos un código de 6 dígitos a tu WhatsApp, al número<br>
             } @else {
               Enviamos un código de 6 dígitos por SMS al número<br>
             }
@@ -1075,10 +1075,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <button (click)="openOtpWhatsApp()" type="button"
               style="width:100%;padding:14px;border-radius:14px;background:#25D366;color:#fff;font-weight:900;font-size:15px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
               <span class="material-symbols-outlined" style="font-size:20px">forum</span>
-              Recibir código por WhatsApp
+              {{ otpCanal() === 'whatsapp' ? '¿No te llegó? Pídelo por WhatsApp' : 'Recibir código por WhatsApp' }}
             </button>
+            <!-- 2026-10-03: con canal 'whatsapp' el código ya llega SOLO (plantilla de autenticación
+                 desde ag-otp-send); el botón verde queda como plan B (escribirle al bot). -->
             <p style="color:#94a3b8;font-size:11px;text-align:center;margin:-10px 0 0;line-height:1.5">
-              Se abre WhatsApp con el mensaje listo. Envíalo, copia el código y vuelve aquí.
+              @if (otpCanal() === 'whatsapp') {
+                📲 Revisa tu WhatsApp: te llegó un mensaje de Movi con el botón <b>Copiar código</b>. Cópialo y pégalo aquí abajo.
+              } @else {
+                Se abre WhatsApp con el mensaje listo. Envíalo, copia el código y vuelve aquí.
+              }
             </p>
           }
 
@@ -8457,7 +8463,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <p style="color:#6B7280;font-size:13px;text-align:center;margin:0;line-height:1.6">
               @if (qrOtpCanal() === 'whatsapp') {
-                Recibe tu código de 6 dígitos por WhatsApp para<br>
+                Te enviamos un código de 6 dígitos a tu WhatsApp, al<br>
               } @else {
                 Enviamos un código de 6 dígitos por SMS a<br>
               }
@@ -8471,10 +8477,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <button (click)="openQrOtpWhatsApp()" type="button"
                 style="width:100%;padding:15px;border-radius:14px;background:#25D366;color:#fff;font-weight:800;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
                 <span class="material-symbols-outlined" style="font-size:20px">forum</span>
-                Recibir código por WhatsApp
+                ¿No te llegó? Pídelo por WhatsApp
               </button>
+              <!-- 2026-10-03: el código ya llega solo al WhatsApp (ag-otp-send); este botón es el plan B. -->
               <p style="color:#6B7280;font-size:11px;margin:8px 0 0;line-height:1.5">
-                Se abre WhatsApp con el mensaje listo. Envíalo, copia el código y vuelve aquí.
+                📲 Revisa tu WhatsApp: te llegó un mensaje de Movi con el botón <b>Copiar código</b>. Cópialo y pégalo aquí abajo.
               </p>
             </div>
           }

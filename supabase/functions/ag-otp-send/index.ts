@@ -84,6 +84,66 @@ async function sendViaWhatsApp(phone: string, code: string): Promise<boolean> {
   return true;
 }
 
+// ─── Código automático al WhatsApp del número (plantilla de autenticación) ───────────────
+// 2026-10-03, decisión del usuario ("resolvamos de una vez para siempre"): antes, con canal
+// 'whatsapp' no se mandaba nada -- la persona tenía que escribirnos desde ESE MISMO número y el
+// bot le respondía el código. Medido en 7 días: así entraron ~17, pero se quedaban por fuera los
+// de número oculto (…9199 recibió el mismo aviso 6 veces), los que escriben desde otro WhatsApp
+// (…3603, "Necesito el código a este wsp business") y los que lo pedían con otras palabras.
+// Ahora el código le llega SOLO al WhatsApp del número registrado, con la plantilla aprobada
+// movi_codigo_verificacion (botón "Copiar código"). Ya no importa desde dónde escriba.
+// Costo: tarifa de autenticación de Meta para Colombia, ~US$0,0009 por código ENTREGADO.
+// Si Meta lo rechaza al enviar, se manda SMS en el acto. Si lo acepta pero después no se puede
+// entregar (el número no tiene WhatsApp), el acuse "failed" llega a ag-whatsapp y AHÍ se manda
+// el SMS de respaldo (ver otpRespaldoSms en ag-whatsapp). El chat con el bot sigue funcionando
+// igual que antes, como camino adicional.
+const PLANTILLA_OTP = 'movi_codigo_verificacion';
+
+async function sendViaWhatsAppTemplate(
+  // deno-lint-ignore no-explicit-any
+  sb: any, phoneE164: string, code: string,
+): Promise<{ ok: boolean; debug?: string }> {
+  const token = Deno.env.get('META_WA_TOKEN');
+  const phoneNumberId = Deno.env.get('META_WA_PHONE_NUMBER_ID');
+  if (!token || !phoneNumberId) return { ok: false, debug: 'meta: falta secret' };
+  const to = toWaNumber(phoneE164);
+  let res: Response;
+  try {
+    res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp', to, type: 'template',
+        template: {
+          name: PLANTILLA_OTP, language: { code: 'es' },
+          components: [
+            { type: 'body', parameters: [{ type: 'text', text: code }] },
+            { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] },
+          ],
+        },
+      }),
+    });
+  } catch (e) {
+    return { ok: false, debug: `meta fetch: ${String(e).slice(0, 200)}` };
+  }
+  const body = await res.text();
+  let wamid: string | null = null;
+  try { wamid = JSON.parse(body)?.messages?.[0]?.id ?? null; } catch { /* sin wamid */ }
+  // Se registra con el wamid: así el acuse de Meta (entregado / fallido) se casa con esta fila y
+  // ag-whatsapp sabe cuándo mandar el SMS de respaldo. El cuerpo NO lleva el código.
+  await sb.from('ag_wa_message_log').insert({
+    wa_phone: to, role: 'pasajero', direction: 'out', msg_type: 'template', sent_by: 'sistema',
+    body: `[plantilla ${PLANTILLA_OTP}] código automático desde la app`,
+    wamid, estado_entrega: res.ok ? 'aceptado' : 'fallido',
+    error_meta: res.ok ? null : body.slice(0, 500),
+  });
+  if (!res.ok) {
+    console.error('WhatsApp plantilla OTP error:', res.status, body.slice(0, 300));
+    return { ok: false, debug: `meta ${res.status}: ${body.slice(0, 300)}` };
+  }
+  return { ok: true };
+}
+
 /** Un solo intento contra la API de Telnyx. Devuelve el error crudo para poder diagnosticarlo. */
 async function telnyxPost(apiKey: string, payload: Record<string, string>, etiqueta: string): Promise<{ ok: boolean; debug?: string }> {
   const res = await fetch('https://api.telnyx.com/v2/messages', {
@@ -260,8 +320,14 @@ Deno.serve(async (req) => {
 
     if (isTestPhone) return json({ ok: true });
 
-    // WhatsApp primero: la fila ya quedó (es lo que el bot verifica antes de mandar el código).
-    if (canal === 'whatsapp') return json({ ok: true, canal: 'whatsapp' });
+    // WhatsApp primero: el código sale solo al WhatsApp del número (ver sendViaWhatsAppTemplate).
+    // La fila ya quedó, así que el camino viejo (escribirle al bot) también sigue sirviendo.
+    // Si Meta lo rechaza en el acto, cae al SMS de abajo sin que la persona tenga que hacer nada.
+    if (canal === 'whatsapp') {
+      const wa = await sendViaWhatsAppTemplate(sb, normalized, code);
+      if (wa.ok) return json({ ok: true, canal: 'whatsapp' });
+      console.error('Plantilla OTP rechazada, se pasa a SMS:', wa.debug);
+    }
 
     // CAMBIO 2026-07-30 (pedido explicito del usuario): WhatsApp via OpenWA reportaba envio
     // exitoso (201, messageId real) sin que el mensaje llegara de verdad en varios casos reales

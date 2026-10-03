@@ -5801,10 +5801,13 @@ async function sha256Hex(text: string): Promise<string> {
  *  Desde 2026-10-02 la primera opción es escribir el número: el código se le manda con la
  *  plantilla de autenticación al WhatsApp de ESE número (ver enviarCodigoPorPlantilla). Caso
  *  real …199: pidió 4 veces y el SMS nunca le llegó. */
+// El prefijo "Tu WhatsApp tiene el número oculto" NO se cambia: se busca con LIKE en el log
+// (handleOtpCodeRequest y yaSeLeDijo). Desde 2026-10-03 el código sale solo al WhatsApp del
+// número que escribió en la app (ag-otp-send), así que lo primero es decirle dónde buscarlo.
 const MSG_CODIGO_NUMERO_OCULTO =
   'Tu WhatsApp tiene el número oculto (nombre de usuario), y por seguridad no puedo mandarte el código a este chat 🔒\n\n' +
-  '👉 *Escríbeme el número de celular que estás registrando* (10 dígitos) y te mando el código al WhatsApp de ese número.\n\n' +
-  'O si prefieres, en la app, en la pantalla del código, toca *"Recibir por SMS"*.';
+  '📲 Si ya escribiste tu número en la app y tocaste *Continuar*, *el código ya te llegó* al WhatsApp de ese número: busca el mensaje de Movi con el botón *"Copiar código"*.\n\n' +
+  '👉 Si no lo ves, *escríbeme el número de celular que estás registrando* (10 dígitos) y te lo mando otra vez, o en la app toca *"Recibir por SMS"*.';
 
 // ─── Plantilla de autenticación (código con botón "Copiar código") ───────────
 // Meta exige una plantilla aprobada de categoría AUTHENTICATION para mandarle un código a un
@@ -5849,6 +5852,49 @@ async function enviarCodigoPorPlantilla(numero57: string, code: string, desdeSop
     },
   };
   return desdeSoporte ? sendSupportGraph(payload) : sendGraph(payload);
+}
+
+/**
+ * SMS de respaldo para el código automático (2026-10-03). ag-otp-send manda el código con la
+ * plantilla apenas la persona toca "Continuar" en la app; si Meta lo acepta pero después avisa
+ * que NO lo pudo entregar (lo típico: ese número no tiene WhatsApp), llega acá como acuse
+ * "failed" y se pide el SMS a ag-otp-send. Una sola vez por envío: la marca "[sms enviado]" en
+ * la fila del log, puesta con un update condicionado, evita duplicados si Meta repite el acuse.
+ */
+async function otpRespaldoSms(wamid: string, motivo: string | null): Promise<void> {
+  try {
+    const { data: fila } = await db().from('ag_wa_message_log').select('id, wa_phone, body, created_at')
+      .eq('wamid', wamid).like('body', '[plantilla movi_codigo_verificacion]%').maybeSingle();
+    if (!fila || (fila.body as string).includes('[sms enviado]')) return;
+    // Solo si el código todavía sirve (vence a los 10 min); después ya no ayuda a nadie.
+    if (Date.now() - new Date(fila.created_at as string).getTime() > 10 * 60e3) return;
+    const { data: marcada } = await db().from('ag_wa_message_log')
+      .update({ body: `${fila.body} [sms enviado]` })
+      .eq('id', fila.id as number).not('body', 'like', '%[sms enviado]%').select('id');
+    if (!marcada?.length) return;   // otro acuse ya lo hizo
+    const url = Deno.env.get('SUPABASE_URL')!;
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const r = await fetch(`${url}/functions/v1/ag-otp-send`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, apikey: key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: `+${fila.wa_phone}`, canal: 'sms' }),
+    });
+    console.log('[WA][otp] plantilla no entregada (', motivo, ') -> SMS de respaldo:', r.status, (await r.text()).slice(0, 200));
+  } catch (e) {
+    console.error('[WA][otp] error en el SMS de respaldo:', e);
+  }
+}
+
+/**
+ * ¿Ya le dimos esta misma respuesta en los últimos 15 min? Para no repetirle lo mismo a quien
+ * sigue sin poder entrar (…9199 recibió el aviso de número oculto 6 veces; …3603 dijo "me has
+ * dicho eso cuatro veces hoy"). A la segunda, en vez de repetir, pasa a un asesor.
+ */
+async function yaSeLeDijo(phone: string, prefijo: string): Promise<boolean> {
+  const { data } = await db().from('ag_wa_message_log').select('id')
+    .eq('wa_phone', normWaPhone(phone)).eq('direction', 'out').like('body', `${prefijo}%`)
+    .gte('created_at', new Date(Date.now() - 15 * 60e3).toISOString()).limit(1).maybeSingle();
+  return !!data;
 }
 
 async function handleOtpCodeRequest(
@@ -5947,7 +5993,14 @@ async function handleOtpCodeRequest(
                  && /no (me )?(quiere |quiero |ha |han |esta |le )?(llega|llego|llegar|lleg|sale|salio|entra)/.test(t);
   const generica  = noLeLlega || /(codigo|clave)/.test(t)
                  && /(verific|registr|ingres|entrar|acced|acces|activar|sms|no me lleg|no lleg|nunca lleg)/.test(t);
-  if (!explicita && !generica) return false;
+  // Cualquier mención del código (2026-10-03, caso real …3603: "Necesito el codigo a este wsp
+  // business" no calzaba con nada y el bot le contestó otra cosa, aunque SÍ tenía una solicitud
+  // pendiente). Solo se atiende si hay solicitud pendiente para ese número (ver más abajo); si
+  // no, sigue al bot normal como antes.
+  const mencionaCodigo = /(codigo|conigo|codgo|cogido|clave)/.test(t);
+  if (!explicita && !generica && !mencionaCodigo) return false;
+  // "Ya me llegó el código, gracias" menciona el código pero no lo pide: no mandar otro.
+  if (!explicita && !generica && /(ya (me )?(llego|lleg|entre|pude|funciono|sirvio)|gracias|listo)/.test(t)) return false;
 
   // El log lo hacen sendText()/sendSupportGraph() por dentro. Antes se llamaba
   // logWaMessage() otra vez acá, así que cada código de verificación aparecía DOS
@@ -5969,8 +6022,22 @@ async function handleOtpCodeRequest(
   // sonaba a falla y "escríbeme desde el mismo número" no tenía sentido -- SÍ escribía desde su
   // número, solo que lo tiene OCULTO (nombre de usuario de WhatsApp). Ahora se dice eso, en
   // palabras normales, con las dos salidas reales.
+  // Quien sigue sin poder entrar después de una respuesta no recibe la misma otra vez: pasa a
+  // un asesor (una sola escalada por conversación en el número de conductores, ver
+  // escalateSupportConversation).
+  const pasarAAsesor = async () => {
+    if (isSupportNumber) {
+      await escalateSupportConversation(fromPhone, 'Contacto', `[no le llega el código] ${msgText.slice(0, 200)}`);
+      return;
+    }
+    await responder('Veo que sigues sin poder entrar 😔 Ya le avisé a un asesor y te escribe por acá en un momento.');
+    await sendAdminAlert(SUPPORT_PHONE, '🔐 A un pasajero no le llega el código', `${fromPhone}: "${msgText.slice(0, 150)}"`);
+  };
+
   if (isBsuid(fromPhone)) {
-    if (!explicita) return false;
+    // También con sus palabras ("no me llega el código"), no solo con el mensaje de la app.
+    if (!explicita && !noLeLlega) return false;
+    if (await yaSeLeDijo(fromPhone, 'Tu WhatsApp tiene el número oculto')) { await pasarAAsesor(); return true; }
     await responder(MSG_CODIGO_NUMERO_OCULTO);
     return true;
   }
@@ -6023,6 +6090,7 @@ async function handleOtpCodeRequest(
     // pasar al bot normal (que sabe responder dudas); si usó el botón de la app, se le explica.
     // "No me llega el código" también recibe el paso a paso (no consejos genéricos de señal).
     if (!explicita && !noLeLlega) return false;
+    if (await yaSeLeDijo(fromPhone, 'Todavía no me llega tu solicitud')) { await pasarAAsesor(); return true; }
     // Texto 2026-10-02: el botón se llama ahora "Recibir código por WhatsApp", y el orden se
     // dice paso a paso -- los casos reales (…459, …936) mandaron este mensaje ANTES de poner su
     // número en la app (probablemente un borrador guardado de un intento anterior).
@@ -8003,6 +8071,8 @@ serve(async (req) => {
           await db().rpc('ag_wa_aplicar_acuse', {
             p_wamid: wamid, p_estado: estado, p_ts: ts, p_error: motivo,
           });
+          // Código automático que no se pudo entregar (el número no tiene WhatsApp): SMS solo.
+          if (estado === 'fallido') await otpRespaldoSms(wamid, motivo);
         }
         return new Response('ok', { status: 200 });
       }
