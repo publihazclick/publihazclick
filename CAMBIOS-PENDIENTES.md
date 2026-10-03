@@ -13,6 +13,12 @@
 
 ## Pendiente de subir
 
+_Nada por ahora._
+
+---
+
+## Subido el 2026-10-03, noche (código solo por WhatsApp con seguimiento en vivo)
+
 ### Código SOLO por WhatsApp con seguimiento en vivo y SMS automático si WhatsApp falla (2026-10-03)
 - **Por qué**: decisión del usuario: WhatsApp cuesta ~US$0,0009 por código vs ~US$0,06 un SMS (tarifa
   pública de Twilio para Colombia), y un conductor sin WhatsApp no sirve (las novedades del viaje van
