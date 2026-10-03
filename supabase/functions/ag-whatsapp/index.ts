@@ -2186,12 +2186,17 @@ async function seguirConRecogida(
     await upsertSession(phone, { state: 'awaiting_barrio_recogida', origin_lat: lat, origin_lng: lng, origin_address: addr });
     const forName = travelerLabel(session);
     const who = forName ? `está *${forName}*` : 'estás';
-    // No se muestra la dirección del mapa: si es la que confunde (o son coordenadas
-    // crudas), repetirla solo confunde más.
     // Texto pedido por el usuario 2026-10-03: "rango" a propósito -- el GPS que llega por
     // WhatsApp es aproximado (no trae precisión), y se pide también el número de vivienda.
+    // Se le muestra DÓNDE lo está ubicando el mapa (pedido del usuario el mismo día): al ver
+    // una dirección aproximada, la persona quiere escribir la exacta. Ya no confunde como en
+    // el caso de Luis Felipe porque "San José de Cúcuta" ahora sale "Cúcuta" (reverseGeocode).
+    // Las coordenadas crudas de respaldo ("7.92600, -72.49633") no se muestran: no le dicen
+    // nada a nadie.
+    const esCoordenada = /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(addr.trim());
     await sendText(phone,
       `📍 ¡Listo, ya tengo un *rango* de ${forName ? 'su' : 'tu'} ubicación!\n\n` +
+      (esCoordenada ? '' : `El mapa ${forName ? 'lo' : 'te'} ubica cerca de: *${addr}*\n\n`) +
       `Para darle la ubicación precisa al conductor, escríbeme *¿En qué barrio o sector ${who}?* ` +
       `y el número de vivienda si lo hay.\n\n` +
       `_(ej: "La Ínsula, casa 2-15") -- así el conductor sabe exactamente a dónde ir._`
