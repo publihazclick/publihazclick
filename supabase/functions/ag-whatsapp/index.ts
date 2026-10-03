@@ -2164,9 +2164,13 @@ async function seguirConRecogida(
     const who = forName ? `está *${forName}*` : 'estás';
     // No se muestra la dirección del mapa: si es la que confunde (o son coordenadas
     // crudas), repetirla solo confunde más.
+    // Texto pedido por el usuario 2026-10-03: "rango" a propósito -- el GPS que llega por
+    // WhatsApp es aproximado (no trae precisión), y se pide también el número de vivienda.
     await sendText(phone,
-      `📍 ¡Listo, ya tengo la ubicación!\n\n*¿En qué barrio o sector ${who}?*\n\n` +
-      `_(ej: "La Ínsula", "Comuneros", "Centro") -- así el conductor sabe exactamente a dónde ir._`
+      `📍 ¡Listo, ya tengo un *rango* de ${forName ? 'su' : 'tu'} ubicación!\n\n` +
+      `Para darle la ubicación precisa al conductor, escríbeme *¿En qué barrio o sector ${who}?* ` +
+      `y el número de vivienda si lo hay.\n\n` +
+      `_(ej: "La Ínsula, casa 2-15") -- así el conductor sabe exactamente a dónde ir._`
     );
     return;
   }
@@ -3750,14 +3754,14 @@ async function handleConversation(
     }
     const barrio = text.trim().replace(/^(barrio|sector)\s+/i, '').trim();
     if (msgType !== 'text' || barrio.length < 2) {
-      await sendText(phone, `Escríbeme el nombre del barrio o sector (ej: "La Ínsula", "Comuneros", "Centro").`);
+      await sendText(phone, `Escríbeme el barrio o sector y el número de vivienda si lo hay (ej: "La Ínsula, casa 2-15").`);
       return;
     }
-    const addrConBarrio = combineWithBarrioHint(oAddr, barrio.slice(0, 60));
-    await upsertSession(phone, { origin_barrio_hint: barrio.slice(0, 60), origin_address: addrConBarrio });
+    const addrConBarrio = combineWithBarrioHint(oAddr, barrio.slice(0, 100));
+    await upsertSession(phone, { origin_barrio_hint: barrio.slice(0, 100), origin_address: addrConBarrio });
     // Con origin_barrio_hint puesto, seguirConRecogida ya no vuelve a preguntar.
     await seguirConRecogida(phone, addrConBarrio, oLat, oLng,
-      { ...session, origin_barrio_hint: barrio.slice(0, 60), origin_address: addrConBarrio }, false);
+      { ...session, origin_barrio_hint: barrio.slice(0, 100), origin_address: addrConBarrio }, false);
     return;
   }
 
