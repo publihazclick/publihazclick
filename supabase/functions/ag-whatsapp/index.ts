@@ -2697,6 +2697,15 @@ function driverJobInquiryReply(): string {
 // encuentro". El bot contestaba "búscala en Play Store" y llegó a inventarse una
 // app inexistente ("MoviSur"). Se resuelve con un detector fijo (sin IA, sin
 // búsqueda web) que garantiza que el link salga SIEMPRE, en los dos números.
+/** "¿Cómo se usa / cómo funciona / cómo se trabaja con la app?" (ver handleSupportConversation). */
+function preguntaComoFunciona(t: string): boolean {
+  const n = t.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/[¿?¡!.,]/g, ' ').replace(/\s+/g, ' ').trim();
+  return /\bcomo\b.{0,25}\b(se usa|se utiliza|utilizo|uso la|usar la|usarla|utilizarla|funciona|se trabaja|trabajo con|trabajar con|se maneja|manejo la|recibo (los )?viajes|me llegan (los )?viajes)\b/.test(n)
+      || /\b(como|cual) es el (funcionamiento|procedimiento|proceso) (de|para) (la app|trabajar|la aplicacion)\b/.test(n)
+      // Sin el "cómo" (o mal escrito: "con se utiliza la aplicación para trabajar", caso real …848).
+      || /\bse (usa|utiliza|maneja)\b.{0,20}\b(app|aplicacion|aplicativo|plataforma)\b/.test(n);
+}
+
 function isAppDownloadInquiry(t: string): boolean {
   const n = t.toLowerCase()
     .normalize('NFD').replace(/\p{M}/gu, '')
@@ -2718,8 +2727,10 @@ function isAppDownloadInquiry(t: string): boolean {
   // capturar pedidos reales de servicio -- "necesito descargar un trasteo" es un
   // flete, no una pregunta por la app.
   const menciona = ['app', 'aplicacion', 'aplicativo', 'aplicasion', 'movi'].some(w => n.includes(w));
-  const accion = ['descarg', 'instal', 'bajar', 'encuentr', 'consig', 'link', 'enlace', 'logo', 'busco', 'buscar']
-    .some(w => n.includes(w));
+  // "bajar" va como PALABRA, no como pedazo: "para tra-BAJAR" calzaba y "¿cómo se utiliza la
+  // aplicación para trabajar?" recibía el link de descarga (caso real 2026-10-02, …848).
+  const accion = ['descarg', 'instal', 'encuentr', 'consig', 'link', 'enlace', 'logo', 'busco', 'buscar']
+    .some(w => n.includes(w)) || /\b(bajar|bajo|bajarla|bajarme)\b/.test(n);
   return menciona && accion;
 }
 
@@ -5885,6 +5896,10 @@ Un mismo conductor puede recibir solicitudes de varios de estos servicios según
 - Se puede cambiar el número de celular registrado (pide verificación por SMS al número nuevo) y dar de baja la cuenta desde el menú de Seguridad en la app -- dar de baja bloquea el acceso pero no borra el historial.
 
 ═══ CONFIANZA / "¿VALE LA PENA?" ═══
+Si preguntan CÓMO SE USA la app, cómo funciona, cómo se trabaja o cómo se reciben viajes -- aunque esté mal escrito o sea muy corto ("como como se utiliza", "y cómo es eso", "cómo se trabaja ahí") -- SIEMPRE "answer" con el paso a paso de "CÓMO FUNCIONA UN VIAJE" de arriba (En línea con GPS, llegan solicitudes, aceptar o contraofertar, recoger, el pasajero paga directo, Movi descuenta el 12% de la billetera, el primer viaje sin saldo). NUNCA escales esto: tienes toda la información. (Error real 2026-10-02: se escaló "Como como se utiliza".)
+
+Frases de cortesía o saludo ("qué pena la hora", "disculpe la hora", "buenas noches", "perdón la molestia") NO son pedidos de viaje: responde con calidez ("¡Tranquilo, aquí estoy a cualquier hora! ¿En qué te ayudo?"). Solo mándalo al número de pasajeros si de verdad pide un viaje o un domicilio. (Error real 2026-10-02: a "Que pena la hora" se le respondió que este número no es para pedir viajes.)
+
 Si preguntan si Movi es confiable, si vale la pena, cuánto se puede ganar en general, o algo similar (no es un reclamo, es duda genuina antes de animarse) -- respóndeles tú mismo, con confianza y calidez, usando lo de arriba: comisión fija transparente del 12%, bonos por hitos de viajes, programa de invitados con 2% de por vida, pasajeros y conductores se califican mutuamente, verificación de identidad en el registro, llamada enmascarada y SOS en cada viaje. Esto NO es motivo para escalar.
 
 ═══ SI ESCRIBEN PIDIENDO UN SERVICIO (NO SON CONDUCTORES) ═══
@@ -6708,7 +6723,7 @@ async function leadInvitaYGana(phone: string): Promise<void> {
 async function leadModeloNoSirve(phone: string, vehiculo: 'moto' | 'carro'): Promise<void> {
   await sendSupportText(phone,
     `Te lo digo de frente 🙏 ${vehiculo === 'moto' ? 'Las motos' : 'Los carros'} se aceptan desde modelo ` +
-    `*${leadAnioMinimo(vehiculo)}*; ${vehiculo === 'moto' ? 'más viejas' : 'más viejos'} el sistema no los deja registrar.\n\n` +
+    `*${leadAnioMinimo(vehiculo)}*; ${vehiculo === 'moto' ? 'más viejas el sistema no las' : 'más viejos el sistema no los'} deja registrar.\n\n` +
     `Pero puedes ganar *sin vehículo*: invitas gente con tu link y te queda el *2% de cada servicio* que hagan, de por vida. Aquí te explico 👇`);
   await upsertLead(phone, { paso: 'sin_vehiculo', vehiculo, modelo_ok: false, ultimo_out_at: new Date().toISOString(), nudges_enviados: 0 });
   // Video (2026-09-30): la salida real que le queda es ganar invitando; el video la hace concreta.
@@ -7196,6 +7211,26 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
       `Escribe tu pregunta y te respondo.`;
     await sendSupportText(phone, menuText);
     await logSupportInteraction(phone, msgText, 'greeting_menu', menuText);
+    return;
+  }
+
+  // "¿Cómo se usa / cómo funciona / cómo se trabaja?" -- respuesta fija, sin IA (2026-10-02, caso
+  // real …848): "cómo se utiliza la aplicación para trabajar" recibió el link de descarga, y
+  // "Como como se utiliza" se escaló a un asesor, teniendo toda la información. Va ANTES de la
+  // descarga para que gane cuando la pregunta es de USO aunque nombre la "aplicación".
+  if (preguntaComoFunciona(msgText)) {
+    const reply =
+      `Así se trabaja con Movi 🚗🏍️\n\n` +
+      `1️⃣ Abre la app y prende el botón verde *"En línea"* con el GPS activo.\n` +
+      `2️⃣ Te llegan las solicitudes cercanas con el precio que ofrece el pasajero.\n` +
+      `3️⃣ La aceptas, o le haces una contraoferta.\n` +
+      `4️⃣ Vas por el pasajero, lo llevas, y *él te paga directo a ti*.\n` +
+      `5️⃣ Movi descuenta el 12% de tu billetera (tu primer viaje no necesita saldo).\n\n` +
+      `Si aún no te registras: descarga la app 👉 ${APP_DOWNLOAD_LINK} y entra a *"Quiero ser conductor"*.\n\n` +
+      `Aquí abajo te dejo un video de 3 minutos donde lo ves todo 👇`;
+    await sendSupportText(phone, reply);
+    await logSupportInteraction(phone, msgText, 'como_funciona', reply);
+    await sendSupportVideo(phone, 'como_funciona', 'faq_como_funciona');
     return;
   }
 
