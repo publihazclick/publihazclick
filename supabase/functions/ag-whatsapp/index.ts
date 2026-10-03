@@ -1828,8 +1828,14 @@ function combineWithBarrioHint(addr: string, hint?: string | null): string {
     // automático y la ciudad -- "calle, [barrio del pasajero], zona grande
     // automática, ciudad", sin repetir la palabra "barrio" (se veía raro
     // repetida cuando también hay zona automática -- pedido explícito).
-    parts.splice(1, 0, h);
-    return parts.join(', ');
+    // Desde 2026-10-03 el bot pide barrio y número de vivienda SIEMPRE que llega un GPS,
+    // así que el pasajero suele repetir el barrio que el mapa ya encontró ("La Ínsula, casa
+    // 2-15" sobre "Avenida 2 1a-60, La Insula, Cúcuta"): se quita la zona automática que ya
+    // está dentro de lo que él escribió, para no mostrarla dos veces.
+    const calle = parts[0];
+    const ciudad = parts[parts.length - 1];
+    const zonas = parts.slice(1, -1).filter(z => !normalizarTexto(h).includes(normalizarTexto(z)));
+    return (parts.length === 2 ? [calle, h, ciudad] : [calle, h, ...zonas, ciudad]).join(', ');
   }
   // Sin suficientes segmentos para insertar con sentido (ej. coordenadas
   // crudas de respaldo cuando Mapbox no dio resultado) -- se agrega al
@@ -2126,7 +2132,8 @@ async function originDirectNext(
   // 2026-10-03: "que le devolvamos la dirección en que lo está ubicando el mapa y el barrio
   // o sector"), así nota de un vistazo si el mapa lo puso en otro lado. Escrita: es su
   // propio texto, basta con repetírselo.
-  const recojo = desdeTexto
+  // Ya respondió barrio y número (origin_barrio_hint): la dirección ya es la suya, no "el mapa".
+  const recojo = (desdeTexto || s.origin_barrio_hint)
     ? `📍 Te recojo en *${addr}*`
     : `📍 El mapa te ubica en:\n${lineasUbicacion(addr)}`;
   await sendText(phone, `${recojo}\n\n🏁 *¿A dónde vas?* Escríbeme la dirección o comparte la ubicación.`);
@@ -2140,7 +2147,7 @@ function esRecogidaRecienEscrita(session: Record<string, unknown>): boolean {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// RECOGIDA POR GPS SIN BARRIO -> PREGUNTARLO ANTES DE BUSCAR CONDUCTOR (2026-10-03)
+// RECOGIDA POR GPS -> PEDIR BARRIO Y NÚMERO DE VIVIENDA ANTES DE BUSCAR CONDUCTOR (2026-10-03)
 //
 // CASO REAL (viaje 265e13d0, 2026-10-03 9:46): el pasajero compartió su ubicación en
 // La Ínsula (Cenabastos). OpenStreetMap no alcanzó a dar el barrio en sus 900 ms (ver
@@ -2149,16 +2156,12 @@ function esRecogidaRecienEscrita(session: Record<string, unknown>): boolean {
 // 7 minutos después. Medido en 30 días: 2 de 32 viajes por WhatsApp salieron sin barrio y
 // LOS DOS se cancelaron con conductor ya asignado.
 //
-// No se sube el timeout de OpenStreetMap: ese límite existe porque el chat se ponía lento al
-// mandar la ubicación (ver reverseGeocode). Se le pregunta al pasajero SOLO cuando falta,
-// que es poco frecuente, y nadie conoce su barrio mejor que él.
+// Evolución el mismo día: primero se preguntaba solo cuando faltaba el barrio; luego también
+// con calle sin número ("Avenida 2"); al final el usuario pidió preguntarlo SIEMPRE que llega
+// un GPS, mostrando dónde lo ubica el mapa (dirección + barrio de la tabla ag_barrios_osm,
+// migración 301). Nadie conoce su barrio y su número de casa mejor que el propio pasajero.
 // ════════════════════════════════════════════════════════════════════════════
 
-/**
- * ¿La dirección que salió del GPS quedó sin barrio? reverseGeocode() devuelve
- * "calle, barrio, ciudad" cuando lo encuentra, y "calle, ciudad" (o coordenadas crudas
- * "7.92, -72.49") cuando no.
- */
 /**
  * "Calle 1B 2-15, La Ínsula, Cúcuta" ->
  *   🏠 *Dirección:* Calle 1B 2-15, Cúcuta
@@ -2171,17 +2174,6 @@ function lineasUbicacion(addr: string): string {
   const calle = p.length >= 2 ? `${p[0]}, ${p[p.length - 1]}` : (p[0] ?? addr);
   const barrio = p.length >= 3 ? p.slice(1, -1).join(', ') : null;
   return `🏠 *Dirección:* ${calle}\n🏘️ *Barrio o sector:* ${barrio ?? '_no lo pude identificar_'}`;
-}
-
-function recogidaSinBarrio(addr: string): boolean {
-  const partes = addr.split(',').map(s => s.trim()).filter(Boolean);
-  if (partes.length < 3) return true;
-  // Calle SIN número de casa ("Avenida 2, La Playa, Cúcuta") también es imprecisa: en
-  // Cúcuta hay una Avenida 2 que atraviesa media ciudad. Caso real 2026-10-03, prueba del
-  // usuario: "hay miles de avenida 2, es muy difícil esa ubicación". Mapbox, en muchas
-  // zonas de Cúcuta, solo tiene el trazado de la calle y no la numeración. Con número
-  // ("Calle 1B 2-15", "Av. 2 #32-37") se sigue sin preguntar.
-  return !/\d+\s*[A-Za-z]{0,2}\s*(#|-|n[°ºo]\.?)\s*\d+/i.test(partes[0]);
 }
 
 /**
@@ -2238,7 +2230,10 @@ async function seguirConRecogida(
       ]);
     return;
   }
-  if (!desdeTexto && !session.origin_barrio_hint && recogidaSinBarrio(addr)) {
+  // Pedido del usuario 2026-10-03: con GPS se pide barrio y número de vivienda SIEMPRE (antes
+  // solo si el mapa no daba barrio o número), mostrando dónde lo ubica el mapa. El conductor
+  // recibe lo que escribe el pasajero, que es lo más preciso que hay.
+  if (!desdeTexto && !session.origin_barrio_hint) {
     await upsertSession(phone, { state: 'awaiting_barrio_recogida', origin_lat: lat, origin_lng: lng, origin_address: addr });
     const forName = travelerLabel(session);
     const who = forName ? `está *${forName}*` : 'estás';
