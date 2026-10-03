@@ -19,7 +19,7 @@ _Nada por ahora._ (Este archivo actualizado viaja en el próximo push que se pid
 
 ## Subido el 2026-10-03 (push `4dd5285..08b69c3`, 1 build, todo `supabase`)
 
-Todo esto ya estaba desplegado en Supabase antes del push (`ag-whatsapp` v234 → v243 y
+Todo esto ya estaba desplegado en Supabase antes del push (`ag-whatsapp` v234 → v244 y
 migración 301 aplicada por Management API); el push solo dejó el repo al día.
 
 ### WA pasajeros: la recogida llega al conductor con dirección, barrio y número de vivienda
@@ -41,7 +41,10 @@ migración 301 aplicada por Management API); el push solo dejó el repo al día.
 - **Lugar elegido en el mapa** (llega con nombre; la ubicación actual llega sin nombre, 29 de 31
   en 30 días): el bot confirma "¿Te recojo en X?" [Sí, ahí] [Mi ubicación actual]. WhatsApp no
   manda la precisión del GPS (confirmado en la referencia del webhook de Meta).
-- **Falta**: prueba de punta a punta desde un celular con la v243 (la tabla se probó directo en
+- **Texto final (v244)**: "¡Listo, ya tengo un rango *aproximado* de tu ubicación!" y "Si prefieres
+  darnos la ubicación más precisa para el conductor, escríbeme…". Se descartó "a 50 metros de
+  precisión": WhatsApp no manda la precisión y un número fijo haría que quien quedó lejos no corrija.
+- **Falta**: prueba de punta a punta desde un celular con la v244 (la tabla se probó directo en
   la base; el mensaje del rango se vio en vivo con la v241).
 - **Commits**: `2d2b638` → `08b69c3` (10).
 
