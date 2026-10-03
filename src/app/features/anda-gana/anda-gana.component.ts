@@ -8445,7 +8445,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
             style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
             [style.opacity]="qrOtpSending() || !celularValido(qrPhone()) ? '0.9' : '1'">
             @if (qrOtpSending()) {
-              <span class="material-symbols-outlined animate-spin" style="font-size:18px;margin-right:8px">autorenew</span> Enviando SMS...
+              <span class="material-symbols-outlined animate-spin" style="font-size:18px;margin-right:8px">autorenew</span> Enviando código...
             } @else {
               Continuar
             }
