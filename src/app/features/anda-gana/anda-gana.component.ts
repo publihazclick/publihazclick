@@ -14,6 +14,8 @@ import { Room, RoomEvent, Track, RemoteTrack } from 'livekit-client';
 
 type AgScreen = 'splash' | 'loading' | 'home' | 'quick-register' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
 type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
+/** Estado del código en la pantalla (ver _seguirCodigo). null = sin seguimiento. */
+type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sms' | 'error';
 
 @Component({
   selector: 'app-anda-gana',
@@ -1068,24 +1070,48 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <span style="color:#94a3b8;font-size:14px">Preparando tu código...</span>
           </div>
         } @else {
-          <!-- WhatsApp PRIMERO (2026-10-01): medido en 30 días, por WhatsApp entra el 88% de quienes
-               reciben el código y por SMS el 70%. El SMS queda abajo como respaldo, para quien no
-               tiene WhatsApp en ese número o lo tiene con el número oculto. -->
-          @if (otpWaReady()) {
+          <!-- Estado del código EN VIVO (2026-10-03, ver _seguirCodigo): solo WhatsApp, con SMS
+               automático si WhatsApp no lo entrega en 30 s. -->
+          @switch (otpSeg()) {
+            @case ('esperando') {
+              <div style="display:flex;align-items:center;gap:10px;background:rgba(37,211,102,0.08);border:1px solid rgba(37,211,102,0.25);border-radius:12px;padding:10px 12px">
+                <span class="material-symbols-outlined animate-spin" style="font-size:18px;color:#25D366">autorenew</span>
+                <span style="color:#cbd5e1;font-size:12px;line-height:1.4">Enviando el código a tu WhatsApp…</span>
+              </div>
+            }
+            @case ('entregado') {
+              <div style="background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.35);border-radius:12px;padding:10px 12px;color:#bbf7d0;font-size:12px;line-height:1.5">
+                ✅ <b>Ya te llegó a tu WhatsApp.</b> Abre el mensaje de Movi, toca <b>Copiar código</b> y pégalo aquí abajo.
+              </div>
+            }
+            @case ('sms') {
+              <div style="background:rgba(36,91,219,0.12);border:1px solid rgba(36,91,219,0.35);border-radius:12px;padding:10px 12px;color:#bfdbfe;font-size:12px;line-height:1.5">
+                📩 <b>Te enviamos el código por SMS</b> a este mismo número (WhatsApp no lo entregó a tiempo). Escríbelo aquí abajo.
+              </div>
+            }
+            @case ('sin_whatsapp') {
+              <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:10px 12px;color:#fca5a5;font-size:12px;line-height:1.5">
+                Ese número <b>no tiene WhatsApp</b>. Movi funciona con WhatsApp (por ahí te llegan las novedades del viaje): usa un número que tenga WhatsApp.
+              </div>
+              <button (click)="cancelOtp()" type="button"
+                style="width:100%;padding:12px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#fff;font-weight:800;font-size:13px;cursor:pointer">
+                Cambiar número
+              </button>
+            }
+            @case ('error') {
+              <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:10px 12px;color:#fca5a5;font-size:12px;line-height:1.5">
+                No pudimos entregarte el código. Toca <b>Reenviar código</b> en un momento.
+              </div>
+            }
+          }
+
+          <!-- Plan B gratis: escribirle al bot desde ese WhatsApp (sigue funcionando igual). -->
+          @if (otpWaReady() && otpSeg() !== 'sin_whatsapp' && otpSeg() !== 'entregado') {
             <button (click)="openOtpWhatsApp()" type="button"
-              style="width:100%;padding:14px;border-radius:14px;background:#25D366;color:#fff;font-weight:900;font-size:15px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-              <span class="material-symbols-outlined" style="font-size:20px">forum</span>
-              {{ otpCanal() === 'whatsapp' ? '¿No te llegó? Pídelo por WhatsApp' : 'Recibir código por WhatsApp' }}
+              style="width:100%;padding:12px;border-radius:14px;background:#25D366;color:#fff;font-weight:900;font-size:14px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+              <span class="material-symbols-outlined" style="font-size:18px">forum</span>
+              ¿No te llegó? Pídelo por WhatsApp
             </button>
-            <!-- 2026-10-03: con canal 'whatsapp' el código ya llega SOLO (plantilla de autenticación
-                 desde ag-otp-send); el botón verde queda como plan B (escribirle al bot). -->
-            <p style="color:#94a3b8;font-size:11px;text-align:center;margin:-10px 0 0;line-height:1.5">
-              @if (otpCanal() === 'whatsapp') {
-                📲 Revisa tu WhatsApp: te llegó un mensaje de Movi con el botón <b>Copiar código</b>. Cópialo y pégalo aquí abajo.
-              } @else {
-                Se abre WhatsApp con el mensaje listo. Envíalo, copia el código y vuelve aquí.
-              }
-            </p>
           }
 
           <!-- Input código -->
@@ -1119,9 +1145,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               }
             </button>
             <div style="display:flex;gap:8px">
-              <button (click)="resendOtp()" [disabled]="otpStep() === 'verifying'"
+              <button (click)="resendOtp()" [disabled]="otpStep() === 'verifying' || otpSeg() === 'esperando'"
+                [style.opacity]="otpSeg() === 'esperando' ? '0.5' : '1'"
                 style="flex:1;padding:10px;border-radius:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;font-size:12px;font-weight:700;cursor:pointer">
-                {{ otpCanal() === 'whatsapp' ? 'Recibir por SMS' : 'Reenviar SMS' }}
+                Reenviar código
               </button>
               <button (click)="cancelOtp()"
                 style="flex:1;padding:10px;border-radius:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;font-size:12px;font-weight:700;cursor:pointer">
@@ -8473,19 +8500,47 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </p>
           </div>
 
-          <!-- WhatsApp PRIMERO (2026-10-01): mismo criterio que el registro completo (88% vs 70%). -->
-          @if (qrOtpCanal() === 'whatsapp' && qrOtpWaReady()) {
-            <div style="text-align:center;margin-top:-8px">
-              <button (click)="openQrOtpWhatsApp()" type="button"
-                style="width:100%;padding:15px;border-radius:14px;background:#25D366;color:#fff;font-weight:800;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-                <span class="material-symbols-outlined" style="font-size:20px">forum</span>
-                ¿No te llegó? Pídelo por WhatsApp
+          <!-- Estado del código EN VIVO (2026-10-03), igual que el registro completo (_seguirCodigo). -->
+          @switch (qrOtpSeg()) {
+            @case ('esperando') {
+              <div style="display:flex;align-items:center;justify-content:center;gap:10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:10px 12px;margin-top:-8px">
+                <span class="material-symbols-outlined animate-spin" style="font-size:18px;color:#16A34A">autorenew</span>
+                <span style="color:#166534;font-size:13px">Enviando el código a tu WhatsApp…</span>
+              </div>
+            }
+            @case ('entregado') {
+              <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;padding:10px 12px;color:#166534;font-size:13px;line-height:1.5;text-align:center;margin-top:-8px">
+                ✅ <b>Ya te llegó a tu WhatsApp.</b> Abre el mensaje de Movi, toca <b>Copiar código</b> y pégalo aquí abajo.
+              </div>
+            }
+            @case ('sms') {
+              <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:10px 12px;color:#1E40AF;font-size:13px;line-height:1.5;text-align:center;margin-top:-8px">
+                📩 <b>Te enviamos el código por SMS</b> a este mismo número (WhatsApp no lo entregó a tiempo).
+              </div>
+            }
+            @case ('sin_whatsapp') {
+              <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:10px 12px;color:#B91C1C;font-size:13px;line-height:1.5;text-align:center;margin-top:-8px">
+                Ese número <b>no tiene WhatsApp</b>. Movi funciona con WhatsApp (por ahí te llegan las novedades del viaje): usa un número que tenga WhatsApp.
+              </div>
+              <button (click)="qrCambiarNumero()" type="button"
+                style="width:100%;padding:13px;border-radius:14px;background:#111827;color:#fff;font-weight:700;font-size:14px;border:none;cursor:pointer">
+                Cambiar número
               </button>
-              <!-- 2026-10-03: el código ya llega solo al WhatsApp (ag-otp-send); este botón es el plan B. -->
-              <p style="color:#6B7280;font-size:11px;margin:8px 0 0;line-height:1.5">
-                📲 Revisa tu WhatsApp: te llegó un mensaje de Movi con el botón <b>Copiar código</b>. Cópialo y pégalo aquí abajo.
-              </p>
-            </div>
+            }
+            @case ('error') {
+              <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:10px 12px;color:#B91C1C;font-size:13px;line-height:1.5;text-align:center;margin-top:-8px">
+                No pudimos entregarte el código. Toca <b>Reenviar código</b> en un momento.
+              </div>
+            }
+          }
+
+          <!-- Plan B gratis: escribirle al bot desde ese WhatsApp. -->
+          @if (qrOtpWaReady() && qrOtpSeg() !== 'sin_whatsapp' && qrOtpSeg() !== 'entregado') {
+            <button (click)="openQrOtpWhatsApp()" type="button"
+              style="width:100%;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-weight:800;font-size:15px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+              <span class="material-symbols-outlined" style="font-size:18px">forum</span>
+              ¿No te llegó? Pídelo por WhatsApp
+            </button>
           }
 
           <!-- Input código -->
@@ -8521,32 +8576,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             }
           </button>
 
-          <!-- Respaldo: SMS (si vino por WhatsApp) o reenviar con countdown (si vino por SMS) -->
+          <!-- Reenviar (2026-10-03): siempre por WhatsApp; ya no hay "Recibir por SMS" (decisión del
+               usuario). Espera 30 s para no gastar códigos; el SMS sale solo si WhatsApp falla. -->
           <div style="text-align:center">
-            @if (qrOtpCanal() === 'whatsapp') {
-              <button (click)="qrResendOtp()"
-                style="background:none;border:none;color:#245BDB;font-weight:700;font-size:13px;cursor:pointer;padding:0">
-                ¿No tienes WhatsApp en este número? Recibir por SMS
-              </button>
-            } @else if (qrResendCountdown() > 0) {
+            @if (qrResendCountdown() > 0) {
               <p style="color:#6B7280;font-size:13px;margin:0">
                 Reenviar en <span style="color:#245BDB;font-weight:700">{{ qrResendCountdown() }}s</span>
               </p>
             } @else {
               <button (click)="qrResendOtp()"
                 style="background:none;border:none;color:#245BDB;font-weight:700;font-size:13px;cursor:pointer;padding:0">
-                ¿No llegó? Reenviar SMS
+                Reenviar código
               </button>
-            }
-            @if (qrOtpCanal() === 'sms' && qrOtpWaReady()) {
-              <button (click)="openQrOtpWhatsApp()" type="button"
-                style="width:100%;margin-top:12px;padding:14px;border-radius:14px;background:#25D366;color:#fff;font-weight:800;font-size:15px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-                <span class="material-symbols-outlined" style="font-size:18px">forum</span>
-                Pedir código por WhatsApp
-              </button>
-              <p style="color:#6B7280;font-size:11px;margin:8px 0 0;line-height:1.5">
-                Se abre WhatsApp con el mensaje listo. Solo envíalo y te llega el código al instante.
-              </p>
             }
           </div>
         </div>
@@ -12357,6 +12398,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _locationChannel: RealtimeChannel | null = null;
 
   ngOnDestroy() {
+    this._pararSeguimiento('full');
+    this._pararSeguimiento('qr');
     try { const el = document.getElementById('movi-nav-audio') as HTMLAudioElement; if (el) { el.pause(); el.src = ''; } } catch {}
     this._destroyMap();
     this._stopWaiting();
@@ -20965,9 +21008,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const res = await this.phoneAuth.sendOTP(phone, canal);
     if (res.ok) {
       this.otpStep.set('sent');
-      // WhatsApp primero: el botón verde sale de una. Si eligió SMS, WhatsApp vuelve a aparecer a
-      // los 30 s por si el SMS no llega (lo de siempre).
-      this._armOtpWhatsApp(canal === 'whatsapp' ? 0 : 30000);
+      // El servidor dice por dónde salió de verdad: 'sms' si WhatsApp falló o está en modo SMS.
+      this.otpCanal.set(res.canal ?? canal);
+      // Botón verde (plan B: escribirle al bot) disponible de una.
+      this._armOtpWhatsApp(0);
+      // Seguimiento en vivo de la entrega (entregado / sin WhatsApp / SMS a los 30 s).
+      this._seguirCodigo('full', res.ref, res.canal ?? canal);
     } else {
       const msg = res.message ?? 'Error enviando SMS';
       // Fuera de cobertura: es un error del formulario, no un fallo de envio. Ofrecer WhatsApp
@@ -20996,10 +21042,66 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.cdr.markForCheck();
   }
 
-  /** Botón de abajo: "Recibir por SMS" (si venía por WhatsApp) o "Reenviar SMS". */
+  /**
+   * "Reenviar código" (2026-10-03): vuelve a mandarlo por WhatsApp. Ya no hay botón "Recibir por
+   * SMS" (decisión del usuario: solo WhatsApp); el SMS sale solo si WhatsApp no entrega en 30 s.
+   */
   async resendOtp() {
     this.phoneAuth.reset();
-    await this._triggerOtp(this.otpContext(), this.otpPhone(), 'sms');
+    await this._triggerOtp(this.otpContext(), this.otpPhone(), 'whatsapp');
+  }
+
+  // ── Seguimiento del código en tiempo real (2026-10-03) ─────────────────────────
+  // Pedido del usuario: solo WhatsApp, sin perder a nadie si WhatsApp falla. La pantalla
+  // pregunta cada 3 s el estado de SU código a ag-otp-send:
+  //   entregado    -> "Ya te llegó a tu WhatsApp"
+  //   sin_whatsapp -> ese número no tiene WhatsApp (error 131026 de Meta): se pide otro número
+  //   30 s sin entregar o fallido -> se pide el SMS de respaldo y se avisa "te lo enviamos por SMS"
+  // El servidor garantiza un solo SMS por código. 'full' = registro completo, 'qr' = rápido.
+  otpSeg   = signal<SeguimientoCodigo>(null);
+  qrOtpSeg = signal<SeguimientoCodigo>(null);
+  private _segTimer: Record<'full' | 'qr', ReturnType<typeof setTimeout> | null> = { full: null, qr: null };
+  private _segToken: Record<'full' | 'qr', number> = { full: 0, qr: 0 };
+
+  private _pararSeguimiento(cual: 'full' | 'qr') {
+    this._segToken[cual]++;
+    const t = this._segTimer[cual];
+    if (t) { clearTimeout(t); this._segTimer[cual] = null; }
+  }
+
+  private _seguirCodigo(cual: 'full' | 'qr', ref: string | null | undefined, canal: 'whatsapp' | 'sms') {
+    const seg = cual === 'full' ? this.otpSeg : this.qrOtpSeg;
+    this._pararSeguimiento(cual);
+    if (canal === 'sms') { seg.set('sms'); this.cdr.markForCheck(); return; }
+    // Sin referencia (número de pruebas, o una respuesta vieja del servidor): sin seguimiento.
+    if (!ref) { seg.set(null); return; }
+    seg.set('esperando');
+    this.cdr.markForCheck();
+    const token = ++this._segToken[cual];
+    const t0 = Date.now();
+    const sigueEnPantalla = () => token === this._segToken[cual] &&
+      (cual === 'full' ? this.otpStep() !== 'idle' : this.qrStep() === 2);
+    const fijar = (v: SeguimientoCodigo) => { seg.set(v); this.cdr.markForCheck(); };
+    const tick = async () => {
+      this._segTimer[cual] = null;
+      if (!sigueEnPantalla()) return;
+      const transcurrido = (Date.now() - t0) / 1000;
+      const { estado } = await this.phoneAuth.estadoOTP(ref);
+      if (!sigueEnPantalla()) return;
+      if (estado === 'entregado')    { fijar('entregado'); return; }
+      if (estado === 'sin_whatsapp') { fijar('sin_whatsapp'); return; }
+      if (estado === 'fallido' || transcurrido >= 30) {
+        const r = await this.phoneAuth.smsRespaldo(ref);
+        if (!sigueEnPantalla()) return;
+        if (r.enviado || r.yaEnviado)     { fijar('sms'); return; }
+        if (r.estado === 'entregado')     { fijar('entregado'); return; }
+        if (r.estado === 'sin_whatsapp')  { fijar('sin_whatsapp'); return; }
+        // El SMS tampoco salió: se le dice que reenvíe, no se le deja esperando para siempre.
+        if (transcurrido >= 45) { fijar('error'); return; }
+      }
+      this._segTimer[cual] = setTimeout(tick, 3000);
+    };
+    this._segTimer[cual] = setTimeout(tick, 2500);
   }
 
   private _clearOtpWaTimer() {
@@ -21029,6 +21131,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   cancelOtp() {
     this.phoneAuth.reset();
+    this._pararSeguimiento('full');
+    this.otpSeg.set(null);
     this._clearOtpWaTimer();
     this.otpWaReady.set(false);
     this.otpStep.set('idle');
@@ -22703,9 +22807,12 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.qrOtpCode.set('');
       this.qrOtpError.set('');
       this.qrStep.set(2);
-      // WhatsApp primero: botón verde de una, sin cuenta regresiva. Por SMS, lo de siempre.
-      if (canal === 'whatsapp') this.qrOtpWaReady.set(true);
-      else this._startQrCountdown();
+      // Por dónde salió de verdad ('sms' si WhatsApp falló o está en modo SMS).
+      this.qrOtpCanal.set(result.canal ?? canal);
+      this.qrOtpWaReady.set(true);
+      // 30 s antes de poder reenviar, y seguimiento en vivo de la entrega (ver _seguirCodigo).
+      this._startQrCountdown();
+      this._seguirCodigo('qr', result.ref, result.canal ?? canal);
     } else {
       const msg = result.message ?? 'Error al enviar el SMS. Intenta de nuevo.';
       // Fuera de cobertura y numero mal escrito se arreglan en el formulario; WhatsApp no ayuda.
@@ -22752,8 +22859,19 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOtpCode.set('');
     this.qrOtpError.set('');
     setTimeout(() => this.phoneAuth.setupRecaptcha('qr-recaptcha-container'), 100);
-    // El botón de respaldo siempre es SMS ("Recibir por SMS" / "Reenviar SMS").
-    await this.qrSendOtp('sms');
+    // Siempre por WhatsApp (2026-10-03); el SMS lo decide el seguimiento si WhatsApp falla.
+    await this.qrSendOtp('whatsapp');
+  }
+
+  /** "Ese número no tiene WhatsApp" -> vuelve al paso del número para escribir otro. */
+  qrCambiarNumero() {
+    this._pararSeguimiento('qr');
+    this.qrOtpSeg.set(null);
+    this.phoneAuth.reset();
+    this.qrOtpCode.set('');
+    this.qrOtpError.set('');
+    this.qrStep.set(1);
+    this.cdr.markForCheck();
   }
 
   async qrVerifyOtp() {

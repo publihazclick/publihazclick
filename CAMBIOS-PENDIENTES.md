@@ -13,7 +13,22 @@
 
 ## Pendiente de subir
 
-_Nada por ahora._
+### Código SOLO por WhatsApp con seguimiento en vivo y SMS automático si WhatsApp falla (2026-10-03)
+- **Por qué**: decisión del usuario: WhatsApp cuesta ~US$0,0009 por código vs ~US$0,06 un SMS (tarifa
+  pública de Twilio para Colombia), y un conductor sin WhatsApp no sirve (las novedades del viaje van
+  por WhatsApp). Pero sin perder a nadie si WhatsApp se cae.
+- **Servidor (YA desplegado: `ag-otp-send` v48, `ag-whatsapp` v250)**: el envío devuelve `canal` y `ref`
+  (wamid). Acciones nuevas `estado` y `sms_respaldo` (un solo SMS por código, marca "[sms enviado]").
+  Capa 1: Meta rechaza o no responde en 8 s → SMS en el acto. Capa 3: si los 2 últimos códigos no se
+  entregaron (sin contar 131026) → "modo SMS" (SMS de una + plantilla para notar cuándo vuelve) y aviso
+  al admin por WhatsApp y SMS; se apaga solo. 131026 (número sin WhatsApp) → sin SMS. Alarma nueva si
+  el SMS falla. **Probado en vivo**: entregado en <7 s; respaldo no sale si ya se entregó; ref inventada
+  no revela nada; alarma de SMS caído registrada. Regla del modo SMS: 7/7 casos simulados.
+- **App (WEB, falta push)**: sin botón "Recibir por SMS"; panel en vivo en las dos pantallas del código
+  (enviando → ✅ ya te llegó / 📩 te lo enviamos por SMS / no tiene WhatsApp + Cambiar número / error);
+  "Reenviar código" siempre por WhatsApp. `ngc` sin errores.
+- **⚠️ BLOQUEANTE para el respaldo**: Telnyx responde 20012 "Account inactive" (sin saldo). Hasta recargar,
+  ningún SMS sale (tampoco salían antes: los que tocaban "Recibir por SMS" no recibían nada).
 
 ---
 

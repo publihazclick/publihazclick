@@ -115,17 +115,141 @@ async function sendViaWhatsApp(phone: string, code: string): Promise<boolean> {
 // igual que antes, como camino adicional.
 const PLANTILLA_OTP = 'movi_codigo_verificacion';
 
+// ─── Seguimiento en tiempo real de cada código (2026-10-03) ──────────────────────────────
+// Decisión del usuario: SOLO WhatsApp, sin perder a nadie si WhatsApp falla. Tres capas:
+//  1. Al enviar: si Meta rechaza o no responde -> SMS en el acto (abajo, en el handler).
+//  2. Por persona: la app pregunta cada pocos segundos el estado de SU código (accion 'estado',
+//     con el wamid como referencia). Entregado -> "ya te llegó"; error 131026 de Meta (ese
+//     número no tiene WhatsApp) -> se le pide un número con WhatsApp, SIN SMS; 30 s sin entregar
+//     -> la app pide 'sms_respaldo' y sale un SMS.
+//  3. General: si los 2 últimos códigos no se entregaron (y no por falta de WhatsApp), "modo
+//     SMS": los códigos nuevos salen por SMS de una (y también por WhatsApp, para notar cuándo
+//     vuelve), y se le avisa al admin por WhatsApp y por SMS. Se apaga solo cuando un código
+//     vuelve a entregarse. Sin bandera guardada: se calcula de los acuses de Meta.
+// La marca "[sms enviado]" en la fila del log garantiza UN solo SMS por código, la pida la app
+// o el acuse de fallo que procesa ag-whatsapp (otpRespaldoSms).
+const PREFIJO_LOG_OTP = `[plantilla ${'movi_codigo_verificacion'}]`;
+const ESPERA_SMS_SEG = 30;          // la app pide el SMS a los 30 s sin entrega
+const ADMIN_PHONE = '+573134453649';
+
+/** Error 131026 de Meta = "Message undeliverable": ese número no tiene WhatsApp (o no puede recibir). */
+function esSinWhatsApp(errorMeta: string | null | undefined): boolean {
+  return /^\s*131026\b/.test(errorMeta ?? '') || /131026/.test(errorMeta ?? '');
+}
+
+type EstadoCodigo = 'entregado' | 'sin_whatsapp' | 'fallido' | 'pendiente' | 'desconocido';
+
+// deno-lint-ignore no-explicit-any
+async function estadoCodigo(sb: any, ref: string): Promise<{ estado: EstadoCodigo; segundos: number; sms: boolean; fila: any }> {
+  const { data: fila } = await sb.from('ag_wa_message_log')
+    .select('id, wa_phone, body, estado_entrega, error_meta, created_at')
+    .eq('wamid', ref).like('body', `${PREFIJO_LOG_OTP}%`).maybeSingle();
+  if (!fila) return { estado: 'desconocido', segundos: 0, sms: false, fila: null };
+  const segundos = Math.round((Date.now() - new Date(fila.created_at).getTime()) / 1000);
+  const sms = String(fila.body).includes('[sms enviado]');
+  const e = fila.estado_entrega as string | null;
+  const estado: EstadoCodigo =
+    e === 'entregado' || e === 'leido' ? 'entregado'
+    : e === 'fallido' ? (esSinWhatsApp(fila.error_meta) ? 'sin_whatsapp' : 'fallido')
+    : 'pendiente';
+  return { estado, segundos, sms, fila };
+}
+
+/** "Modo SMS": los 2 códigos más recientes con más de 45 s no se entregaron (sin contar 131026). */
+// deno-lint-ignore no-explicit-any
+async function modoSmsActivo(sb: any): Promise<boolean> {
+  const { data } = await sb.from('ag_wa_message_log')
+    .select('estado_entrega, error_meta')
+    .like('body', `${PREFIJO_LOG_OTP}%`)
+    .gte('created_at', new Date(Date.now() - 15 * 60e3).toISOString())
+    .lte('created_at', new Date(Date.now() - 45e3).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(4);
+  const resueltos = (data ?? []).filter((r: { estado_entrega: string | null; error_meta: string | null }) =>
+    !(r.estado_entrega === 'fallido' && esSinWhatsApp(r.error_meta)));
+  if (resueltos.length < 2) return false;
+  const noEntregado = (r: { estado_entrega: string | null }) => r.estado_entrega !== 'entregado' && r.estado_entrega !== 'leido';
+  return noEntregado(resueltos[0]) && noEntregado(resueltos[1]);
+}
+
+/** Aviso al admin (WhatsApp + SMS, porque el WhatsApp puede ser justo lo caído). Uno cada 30 min. */
+// deno-lint-ignore no-explicit-any
+async function avisarAdminModoSms(sb: any): Promise<void> {
+  try {
+    const titulo = 'Códigos por WhatsApp NO se están entregando';
+    const { data: previo } = await sb.from('ag_admin_notifications').select('id')
+      .like('title', `%${titulo}%`).gte('created_at', new Date(Date.now() - 30 * 60e3).toISOString())
+      .limit(1).maybeSingle();
+    if (previo) return;
+    const detalle = 'Los 2 últimos códigos de verificación por WhatsApp no llegaron. Movi pasó a "modo SMS": ' +
+      'los códigos nuevos salen por SMS hasta que WhatsApp vuelva a entregar. Revisa Meta (estado de la plantilla movi_codigo_verificacion, token, calidad del número).';
+    const url = Deno.env.get('SUPABASE_URL')!;
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    // ag-whatsapp registra la notificación en ag_admin_notifications (es lo que evita repetir).
+    await fetch(`${url}/functions/v1/ag-whatsapp`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: 'admin', event: 'error_alert', data: { context: titulo, message: detalle, kind: 'error' } }),
+    }).catch(e => console.error('aviso admin por WhatsApp falló:', e));
+    const apiKey = Deno.env.get('TELNYX_API_KEY');
+    const from = Deno.env.get('TELNYX_FALLBACK_PHONE_NUMBER') ?? Deno.env.get('TELNYX_PHONE_NUMBER');
+    if (apiKey && from) {
+      await telnyxPost(apiKey, { from, to: ADMIN_PHONE, text: `Movi: ${titulo}. Paso a modo SMS automatico. Revisa Meta.`, type: 'SMS' }, 'telnyx-admin');
+    }
+  } catch (e) { console.error('avisarAdminModoSms:', e); }
+}
+
+/** Manda el código por SMS (Telnyx; Twilio solo si tuviera credenciales). Si falla, avisa al admin. */
+async function enviarSms(phone: string, code: string): Promise<{ ok: boolean; debug?: string }> {
+  let r = await sendViaTelnyx(phone, code);
+  const telnyxDebug = r.debug;
+  if (!r.ok) r = await sendViaTwilio(phone, code);
+  if (r.ok) return { ok: true };
+  const debug = `${telnyxDebug} || ${r.debug}`;
+  await avisarAdminSmsCaido(debug);
+  return { ok: false, debug };
+}
+
+/**
+ * El SMS es el respaldo de WhatsApp: si se cae, nadie se entera hasta que alguien no puede entrar.
+ * Pasó de verdad: el 2026-10-03, al probar el respaldo, Telnyx respondió 20012 "Account inactive"
+ * (sin saldo) -- ningún SMS salía y no había ninguna alarma. Ahora se avisa por WhatsApp al admin,
+ * una vez cada 2 horas.
+ */
+async function avisarAdminSmsCaido(debug: string): Promise<void> {
+  try {
+    const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const titulo = 'El SMS de respaldo NO está funcionando';
+    const { data: previo } = await sb.from('ag_admin_notifications').select('id')
+      .like('title', `%${titulo}%`).gte('created_at', new Date(Date.now() - 2 * 3600e3).toISOString())
+      .limit(1).maybeSingle();
+    if (previo) return;
+    const sinSaldo = /20012|inactive|out of funds/i.test(debug);
+    const detalle = sinSaldo
+      ? 'Telnyx dice que la cuenta está INACTIVA (sin saldo). Recarga Telnyx: si WhatsApp falla, nadie podrá recibir el código.'
+      : `El SMS de un código de verificación no salió: ${debug.slice(0, 300)}`;
+    await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ag-whatsapp`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: 'admin', event: 'error_alert', data: { context: titulo, message: detalle, kind: 'error' } }),
+    });
+  } catch (e) { console.error('avisarAdminSmsCaido:', e); }
+}
+
 async function sendViaWhatsAppTemplate(
   // deno-lint-ignore no-explicit-any
   sb: any, phoneE164: string, code: string,
-): Promise<{ ok: boolean; debug?: string }> {
+): Promise<{ ok: boolean; debug?: string; wamid?: string | null }> {
   const token = Deno.env.get('META_WA_TOKEN');
   const phoneNumberId = Deno.env.get('META_WA_PHONE_NUMBER_ID');
   if (!token || !phoneNumberId) return { ok: false, debug: 'meta: falta secret' };
   const to = toWaNumber(phoneE164);
   let res: Response;
   try {
+    // 8 s como máximo: si Meta está caída y no contesta, se pasa al SMS en vez de dejar a la
+    // persona mirando "Preparando tu código…" (capa 1 del seguimiento).
     res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+      signal: AbortSignal.timeout(8000),
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -155,9 +279,9 @@ async function sendViaWhatsAppTemplate(
   });
   if (!res.ok) {
     console.error('WhatsApp plantilla OTP error:', res.status, body.slice(0, 300));
-    return { ok: false, debug: `meta ${res.status}: ${body.slice(0, 300)}` };
+    return { ok: false, debug: `meta ${res.status}: ${body.slice(0, 300)}`, wamid };
   }
-  return { ok: true };
+  return { ok: true, wamid };
 }
 
 /** Un solo intento contra la API de Telnyx. Devuelve el error crudo para poder diagnosticarlo. */
@@ -265,7 +389,37 @@ Deno.serve(async (req) => {
     // Medido en 30 días: por WhatsApp entra el 88% de quienes reciben el código, por SMS el 70%
     // (16 personas pidieron SMS y nunca entraron). Sin canal = SMS, como siempre: las versiones
     // de la app que no mandan este campo siguen igual.
-    const { phone, canal } = await req.json();
+    const { phone, canal, accion, ref } = await req.json();
+
+    // ── Seguimiento de un código ya enviado (ver bloque "Seguimiento en tiempo real") ──
+    // `ref` es el wamid que devolvió el envío: no se puede adivinar, así que nadie consulta ni
+    // dispara SMS de un código ajeno.
+    if (accion === 'estado' || accion === 'sms_respaldo') {
+      if (!ref || typeof ref !== 'string') return json({ error: 'ref requerida' });
+      const sbS = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const st = await estadoCodigo(sbS, ref);
+      if (accion === 'estado') return json({ ok: true, estado: st.estado, segundos: st.segundos, sms: st.sms });
+
+      // sms_respaldo: solo si NO se entregó, NO es un número sin WhatsApp, ya pasó la espera
+      // (o Meta dijo que falló) y todavía no se mandó un SMS para este código.
+      if (!st.fila) return json({ ok: false, estado: st.estado });
+      if (st.sms) return json({ ok: true, enviado: false, ya_enviado: true, estado: st.estado });
+      const procede = st.estado === 'fallido' || (st.estado === 'pendiente' && st.segundos >= ESPERA_SMS_SEG - 3);
+      if (!procede) return json({ ok: true, enviado: false, estado: st.estado });
+      const { data: marcada } = await sbS.from('ag_wa_message_log')
+        .update({ body: `${st.fila.body} [sms enviado]` })
+        .eq('id', st.fila.id).not('body', 'like', '%[sms enviado]%').select('id');
+      if (!marcada?.length) return json({ ok: true, enviado: false, ya_enviado: true, estado: st.estado });
+      const tel = `+${st.fila.wa_phone}`;
+      const codeS = String(Math.floor(100000 + Math.random() * 900000));
+      await sbS.from('ag_otp_codes').insert({
+        phone: tel, code_hash: await sha256(codeS), expires_at: new Date(Date.now() + 10 * 60e3).toISOString(),
+      });
+      const envio = await enviarSms(tel, codeS);
+      if (!envio.ok) console.error('SMS de respaldo falló:', envio.debug);
+      return json({ ok: envio.ok, enviado: envio.ok, estado: st.estado });
+    }
+
     if (!phone) return json({ error: 'phone requerido' });
 
     // Colombia o Venezuela (ver normalizarCelular). Si no es ninguno, se rechaza abajo con el
@@ -343,9 +497,26 @@ Deno.serve(async (req) => {
     // La fila ya quedó, así que el camino viejo (escribirle al bot) también sigue sirviendo.
     // Si Meta lo rechaza en el acto, cae al SMS de abajo sin que la persona tenga que hacer nada.
     if (canal === 'whatsapp') {
+      // Capa 3: "modo SMS" si WhatsApp no viene entregando. Igual se manda la plantilla (para
+      // notar cuándo WhatsApp vuelve y salir solo del modo), pero el SMS sale de una.
+      const enModoSms = await modoSmsActivo(sb);
       const wa = await sendViaWhatsAppTemplate(sb, normalized, code);
-      if (wa.ok) return json({ ok: true, canal: 'whatsapp' });
-      console.error('Plantilla OTP rechazada, se pasa a SMS:', wa.debug);
+      if (wa.ok && !enModoSms) return json({ ok: true, canal: 'whatsapp', ref: wa.wamid ?? null });
+      if (enModoSms) {
+        await avisarAdminModoSms(sb);
+        // Marca el código para que ni la app ni el acuse de fallo manden un segundo SMS.
+        if (wa.wamid) {
+          await sb.from('ag_wa_message_log').update({ body: `${PREFIJO_LOG_OTP} código automático desde la app [sms enviado] [modo sms]` })
+            .eq('wamid', wa.wamid);
+        }
+      } else {
+        console.error('Plantilla OTP rechazada, se pasa a SMS:', wa.debug);
+      }
+      const sms = await enviarSms(normalized, code);
+      if (sms.ok) return json({ ok: true, canal: 'sms', ref: wa.wamid ?? null, motivo: enModoSms ? 'modo_sms' : 'whatsapp_fallo' });
+      // Si ni el SMS salió pero la plantilla sí, la persona igual tiene el código por WhatsApp.
+      if (wa.ok) return json({ ok: true, canal: 'whatsapp', ref: wa.wamid ?? null });
+      return json({ error: 'No se pudo enviar el código. Intenta de nuevo en un minuto.' });
     }
 
     // CAMBIO 2026-07-30 (pedido explicito del usuario): WhatsApp via OpenWA reportaba envio
@@ -359,6 +530,7 @@ Deno.serve(async (req) => {
     let result = await sendViaTelnyx(normalized, code);
     const telnyxDebug = result.debug;
     if (!result.ok) result = await sendViaTwilio(normalized, code);
+    if (!result.ok) await avisarAdminSmsCaido(`${telnyxDebug} || ${result.debug}`);
 
     if (!result.ok) {
       // Diagnostico temporal 2026-09-01 (usuario real bloqueado, "No se pudo enviar el

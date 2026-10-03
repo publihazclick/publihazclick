@@ -5796,8 +5796,8 @@ async function sha256Hex(text: string): Promise<string> {
  * Devuelve false si no tiene nada que ver con pedir un código, para que el flujo de
  * siempre (viajes o soporte) lo procese como si esta función no existiera.
  */
-/** Aviso a quien pide el código con el número OCULTO en WhatsApp. El "Recibir por SMS" es el
- *  nombre real del botón en la pantalla del código de la app (anda-gana.component.ts).
+/** Aviso a quien pide el código con el número OCULTO en WhatsApp. (El botón "Recibir por SMS" se quitó de la app el 2026-10-03; antes era el
+ *  nombre real del botón en la pantalla del código de la app, anda-gana.component.ts.)
  *  Desde 2026-10-02 la primera opción es escribir el número: el código se le manda con la
  *  plantilla de autenticación al WhatsApp de ESE número (ver enviarCodigoPorPlantilla). Caso
  *  real …199: pidió 4 veces y el SMS nunca le llegó. */
@@ -5807,7 +5807,7 @@ async function sha256Hex(text: string): Promise<string> {
 const MSG_CODIGO_NUMERO_OCULTO =
   'Tu WhatsApp tiene el número oculto (nombre de usuario), y por seguridad no puedo mandarte el código a este chat 🔒\n\n' +
   '📲 Si ya escribiste tu número en la app y tocaste *Continuar*, *el código ya te llegó* al WhatsApp de ese número: busca el mensaje de Movi con el botón *"Copiar código"*.\n\n' +
-  '👉 Si no lo ves, *escríbeme el número de celular que estás registrando* (10 dígitos) y te lo mando otra vez, o en la app toca *"Recibir por SMS"*.';
+  '👉 Si no lo ves, *escríbeme el número de celular que estás registrando* (10 dígitos) y te lo mando otra vez.';
 
 // ─── Plantilla de autenticación (código con botón "Copiar código") ───────────
 // Meta exige una plantilla aprobada de categoría AUTHENTICATION para mandarle un código a un
@@ -5866,6 +5866,10 @@ async function otpRespaldoSms(wamid: string, motivo: string | null): Promise<voi
     const { data: fila } = await db().from('ag_wa_message_log').select('id, wa_phone, body, created_at')
       .eq('wamid', wamid).like('body', '[plantilla movi_codigo_verificacion]%').maybeSingle();
     if (!fila || (fila.body as string).includes('[sms enviado]')) return;
+    // Decisión del usuario 2026-10-03: solo WhatsApp. Error 131026 = ese número no tiene
+    // WhatsApp -> NO se manda SMS; la app (que consulta el estado del código) le pide un número
+    // con WhatsApp. El SMS queda solo para cuando WhatsApp falla por otra razón.
+    if (/131026/.test(motivo ?? '')) return;
     // Solo si el código todavía sirve (vence a los 10 min); después ya no ayuda a nadie.
     if (Date.now() - new Date(fila.created_at as string).getTime() > 10 * 60e3) return;
     const { data: marcada } = await db().from('ag_wa_message_log')
@@ -5944,7 +5948,7 @@ async function handleOtpCodeRequest(
         return true;
       }
       if ((recientes ?? 0) >= 5) {
-        await responderOculto(`Ya te mandé varios códigos a ese número 🙏 Espera unos minutos y vuelve a intentar, o en la app toca *"Recibir por SMS"*.`);
+        await responderOculto(`Ya te mandé varios códigos a ese número 🙏 Espera unos minutos y vuelve a intentar desde la app.`);
         return true;
       }
 
@@ -5959,7 +5963,7 @@ async function handleOtpCodeRequest(
         // La plantilla aún no está aprobada por Meta, o falló: la salida de siempre.
         console.error('[WA][otp] plantilla de código falló:', envio.status, envio.body);
         await responderOculto(`No pude mandarte el código al WhatsApp de ese número 😔\n\n` +
-          `👉 En la app, en la pantalla del código, toca *"Recibir por SMS"* y te llega a ese celular en segundos.`);
+          `👉 Vuelve a la app y pide el código otra vez: si WhatsApp no lo entrega en 30 segundos, la app te lo manda por SMS automáticamente.`);
       }
       return true;
     }

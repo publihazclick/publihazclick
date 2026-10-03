@@ -13,7 +13,14 @@ export interface PhoneAuthResult {
   error?: PhoneAuthError;
   message?: string;
   profile?: any;
+  /** Por dónde salió el código: 'whatsapp' (lo normal) o 'sms' (WhatsApp falló / modo SMS). */
+  canal?: 'whatsapp' | 'sms';
+  /** wamid del código por WhatsApp: con esto la app sigue su entrega (estadoOTP / smsRespaldo). */
+  ref?: string | null;
 }
+
+/** Estado de entrega de un código por WhatsApp (ver ag-otp-send, accion 'estado'). */
+export type EstadoCodigoOTP = 'entregado' | 'sin_whatsapp' | 'fallido' | 'pendiente' | 'desconocido';
 
 /** Un solo texto, para que la app y ag-otp-send digan exactamente lo mismo. */
 export const FUERA_DE_COBERTURA =
@@ -60,9 +67,33 @@ export class AgPhoneAuthService {
         return { ok: false, error: this._mapMessage(msg), message: msg };
       }
 
-      return { ok: true };
+      return { ok: true, canal: data?.canal === 'sms' ? 'sms' : 'whatsapp', ref: data?.ref ?? null };
     } catch (e: any) {
       return { ok: false, error: 'unknown', message: e?.message ?? 'Error desconocido' };
+    }
+  }
+
+  /**
+   * Seguimiento en tiempo real del código por WhatsApp (2026-10-03). La pantalla del código
+   * pregunta cada pocos segundos; nunca lanza error (si falla la red, devuelve 'desconocido' y
+   * la pantalla simplemente vuelve a preguntar).
+   */
+  async estadoOTP(ref: string): Promise<{ estado: EstadoCodigoOTP; sms: boolean }> {
+    try {
+      const { data } = await getMoviClient().functions.invoke('ag-otp-send', { body: { accion: 'estado', ref } });
+      return { estado: (data?.estado as EstadoCodigoOTP) ?? 'desconocido', sms: !!data?.sms };
+    } catch {
+      return { estado: 'desconocido', sms: false };
+    }
+  }
+
+  /** Pide el SMS de respaldo para un código que WhatsApp no entregó a tiempo. */
+  async smsRespaldo(ref: string): Promise<{ enviado: boolean; yaEnviado: boolean; estado?: EstadoCodigoOTP }> {
+    try {
+      const { data } = await getMoviClient().functions.invoke('ag-otp-send', { body: { accion: 'sms_respaldo', ref } });
+      return { enviado: !!data?.enviado, yaEnviado: !!data?.ya_enviado, estado: data?.estado };
+    } catch {
+      return { enviado: false, yaEnviado: false };
     }
   }
 
