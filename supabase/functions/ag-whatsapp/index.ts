@@ -8036,19 +8036,68 @@ serve(async (req) => {
   // ¿tengo saldo o tarjeta?"): estado de la cuenta de WhatsApp, medio de pago (primary_funding_id:
   // si falta, Meta no deja mandar plantillas pagas) y gasto del mes por categoría. Solo con la
   // llave de servicio (la usan los crons desde el vault); no cambia nada en Meta.
-  if (body._internal_event === 'admin_estado_pago_waba') {
-    // La llave del vault puede venir en el formato viejo (JWT) y la del entorno en el nuevo, así
-    // que no se comparan como texto: se le pregunta a la base si esa llave ve una tabla protegida
-    // (ag_otp_codes tiene RLS sin políticas: con la llave pública devuelve [] y con la de
-    // servicio devuelve filas).
+  // La llave del vault puede venir en el formato viejo (JWT) y la del entorno en el nuevo, así
+  // que no se comparan como texto: se le pregunta a la base si esa llave ve una tabla protegida
+  // (ag_otp_codes tiene RLS sin políticas: con la llave pública devuelve [] y con la de servicio
+  // devuelve filas). La usan las acciones admin de abajo.
+  const esLlamadaDeServicio = async (): Promise<boolean> => {
     const llave = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
-    const prueba = llave
-      ? await fetch(`${Deno.env.get('SUPABASE_URL')}/rest/v1/ag_otp_codes?select=id&limit=1`, { headers: { apikey: llave, Authorization: `Bearer ${llave}` } })
-          .then(r => r.ok ? r.json() : []).catch(() => [])
-      : [];
-    if (!Array.isArray(prueba) || prueba.length === 0) {
-      return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
+    if (!llave) return false;
+    const prueba = await fetch(`${Deno.env.get('SUPABASE_URL')}/rest/v1/ag_otp_codes?select=id&limit=1`, { headers: { apikey: llave, Authorization: `Bearer ${llave}` } })
+      .then(r => r.ok ? r.json() : []).catch(() => []);
+    return Array.isArray(prueba) && prueba.length > 0;
+  };
+  const noAutorizado = () => new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
+
+  // Plantillas de Meta: crear o consultar (2026-10-03, aviso a quienes no pudieron registrarse).
+  if (body._internal_event === 'admin_plantilla') {
+    if (!(await esLlamadaDeServicio())) return noAutorizado();
+    const nombre = String(body.nombre ?? '');
+    if (!/^[a-z0-9_]{3,60}$/.test(nombre)) return new Response(JSON.stringify({ error: 'nombre inválido' }), { status: 400 });
+    const consultar = () => fetch(`https://graph.facebook.com/v22.0/${WABA_ID}/message_templates?name=${nombre}&fields=name,status,category,language,rejected_reason,components`, {
+      headers: { Authorization: `Bearer ${WA_TOKEN}` },
+    }).then(r => r.json()).catch(e => ({ error: String(e) }));
+    if (body.accion === 'crear') {
+      const ya = await consultar() as { data?: unknown[] };
+      if (Array.isArray(ya?.data) && ya.data.length) return new Response(JSON.stringify({ ya_existia: true, ...ya }), { headers: { 'Content-Type': 'application/json' } });
+      const comps: unknown[] = [{ type: 'BODY', text: String(body.cuerpo ?? '') }];
+      if (body.pie) comps.push({ type: 'FOOTER', text: String(body.pie) });
+      const r = await fetch(`https://graph.facebook.com/v22.0/${WABA_ID}/message_templates`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nombre, language: String(body.idioma ?? 'es'), category: String(body.categoria ?? 'UTILITY'), components: comps }),
+      });
+      return new Response(JSON.stringify({ creada: r.ok, status: r.status, respuesta: await r.json().catch(() => null) }), { headers: { 'Content-Type': 'application/json' } });
     }
+    return new Response(JSON.stringify(await consultar()), { headers: { 'Content-Type': 'application/json' } });
+  }
+
+  // Enviar una plantilla SIN variables a una lista de números. Se niega si la plantilla no está
+  // APROBADA o si Meta la clasificó en una categoría distinta de la esperada (así un aviso que
+  // debía cobrarse como UTILITY nunca sale como MARKETING sin que nadie lo decida).
+  if (body._internal_event === 'admin_enviar_plantilla') {
+    if (!(await esLlamadaDeServicio())) return noAutorizado();
+    const nombre = String(body.nombre ?? '');
+    const esperada = String(body.categoria_esperada ?? 'UTILITY');
+    const telefonos = (Array.isArray(body.telefonos) ? body.telefonos : []).map(String).filter(t => /^\d{11,15}$/.test(t));
+    const info = await fetch(`https://graph.facebook.com/v22.0/${WABA_ID}/message_templates?name=${nombre}&fields=name,status,category,language`, {
+      headers: { Authorization: `Bearer ${WA_TOKEN}` },
+    }).then(r => r.json()).catch(() => ({})) as { data?: Array<{ status: string; category: string; language: string }> };
+    const tpl = info?.data?.[0];
+    if (!tpl || tpl.status !== 'APPROVED' || tpl.category !== esperada) {
+      return new Response(JSON.stringify({ enviado: false, motivo: 'plantilla no aprobada o en otra categoría', plantilla: tpl ?? null }), { headers: { 'Content-Type': 'application/json' } });
+    }
+    const resultados: Array<{ tel: string; ok: boolean; error?: string }> = [];
+    for (const tel of telefonos) {
+      const r = await sendGraph({ to: tel, type: 'template', template: { name: nombre, language: { code: tpl.language } } });
+      resultados.push({ tel: tel.slice(-4), ok: r.ok, error: r.ok ? undefined : (r.body ?? '').slice(0, 160) });
+      await new Promise(res => setTimeout(res, 250));   // sin ráfagas hacia Meta
+    }
+    return new Response(JSON.stringify({ enviado: true, categoria: tpl.category, total: telefonos.length, ok: resultados.filter(x => x.ok).length, resultados }), { headers: { 'Content-Type': 'application/json' } });
+  }
+
+  if (body._internal_event === 'admin_estado_pago_waba') {
+    if (!(await esLlamadaDeServicio())) return noAutorizado();
     const g = (path: string) => fetch(`https://graph.facebook.com/v22.0/${path}`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } })
       .then(r => r.json()).catch(e => ({ error: String(e) }));
     const desde = Math.floor(new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1).getTime() / 1000);
