@@ -17,7 +17,7 @@ export interface PhoneAuthResult {
 
 /** Un solo texto, para que la app y ag-otp-send digan exactamente lo mismo. */
 export const FUERA_DE_COBERTURA =
-  'Por ahora Movi solo opera en Colombia 🇨🇴 Escribe un celular colombiano de 10 dígitos que empiece por 3.';
+  'Escribe tu celular de Colombia 🇨🇴 o Venezuela 🇻🇪 (ej: 300 123 4567 o 0414 123 4567).';
 
 @Injectable({ providedIn: 'root' })
 export class AgPhoneAuthService {
@@ -39,9 +39,13 @@ export class AgPhoneAuthService {
     // Se corta aca para que el aviso sea instantaneo; ag-otp-send lo vuelve a validar del lado
     // del servidor y ESA es la fuente de verdad. La regla vive en los dos sitios a proposito:
     // si se cambia una, hay que cambiar la otra.
-    if (!AgPhoneAuthService.esCelularColombiano(phone)) {
+    // Desde 2026-10-03 también Venezuela, sin selector: el número se reconoce solo (ver
+    // normalizarCelular). Lo que viaja al servidor y se guarda es siempre el E.164 limpio.
+    const e164 = AgPhoneAuthService.normalizarCelular(phone);
+    if (!e164) {
       return { ok: false, error: 'out-of-country', message: FUERA_DE_COBERTURA };
     }
+    phone = e164;
     try {
       this.pendingPhone = phone;
       const sb = getMoviClient();
@@ -167,6 +171,35 @@ export class AgPhoneAuthService {
     const digits = String(phone ?? '').replace(/[^0-9]/g, '');
     const nacional = digits.length === 12 && digits.startsWith('57') ? digits.slice(2) : digits;
     return nacional.length === 10 && nacional.startsWith('3');
+  }
+
+  /**
+   * Celular de Colombia o Venezuela -> E.164 ('+573001234567' / '+584141234567'), o null.
+   * Pedido del usuario 2026-10-03: aceptar números venezolanos (Cúcuta es frontera y el bot ya
+   * acepta carros con placa venezolana) SIN selector de país -- se reconoce por cómo se escribe:
+   *  - Colombia: 10 dígitos que empiezan por 3 (con o sin 57 delante).
+   *  - Venezuela: 0414 123 4567, 414 123 4567, 58 414…, 58 0414…, y también el '+57' que la app
+   *    le ponía delante a todo (574141234567). Celulares venezolanos: 412, 414, 416, 422, 424, 426.
+   * La MISMA regla vive en supabase/functions/ag-otp-send (fuente de verdad del servidor).
+   */
+  static normalizarCelular(raw: string): string | null {
+    const d = String(raw ?? '').replace(/\D/g, '');
+    if (d.length === 10 && d.startsWith('3')) return '+57' + d;
+    if (d.length === 12 && d.startsWith('573')) return '+' + d;
+    let v: string | null = null;
+    if (d.length === 11 && d.startsWith('0')) v = d.slice(1);
+    else if (d.length === 10) v = d;
+    else if (d.length === 12 && (d.startsWith('58') || d.startsWith('57'))) v = d.slice(2);
+    else if (d.length === 13 && (d.startsWith('580') || d.startsWith('570'))) v = d.slice(3);
+    return v && /^4(1[246]|2[246])\d{7}$/.test(v) ? '+58' + v : null;
+  }
+
+  /** '+584141234567' -> '🇻🇪 +58 414 123 4567'; '+573001234567' -> '🇨🇴 +57 300 123 4567'. */
+  static celularParaMostrar(raw: string): string {
+    const e = AgPhoneAuthService.normalizarCelular(raw);
+    if (!e) return raw;
+    const n = e.slice(3);
+    return `${e.startsWith('+58') ? '🇻🇪' : '🇨🇴'} ${e.slice(0, 3)} ${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}`;
   }
 
   private _mapMessage(msg: string): PhoneAuthError {

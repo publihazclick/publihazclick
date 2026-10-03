@@ -39,8 +39,24 @@ function toE164(phone: string): string {
 // Los pocos numeros extranjeros de 10 digitos que empiezan por 3 (Guadalajara 332..., Rosario
 // 341...) se cuelan por aca a sabiendas: los atrapa la segunda capa, en ag-whatsapp, donde SI
 // se ve el codigo de pais real de quien escribe.
-function esCelularColombiano(e164: string): boolean {
-  return e164.length === 13 && e164.startsWith('+573') && /^[0-9]+$/.test(e164.slice(1));
+/**
+ * Celular de Colombia o Venezuela -> E.164, o null. Desde 2026-10-03 (pedido del usuario:
+ * Cúcuta es frontera y el bot ya acepta carros con placa venezolana) también Venezuela, sin
+ * selector de país en la app: 0414 123 4567, 414…, 58 414…, 58 0414… y el '+57' que la app le
+ * ponía delante a todo (574141234567). Celulares venezolanos: 412, 414, 416, 422, 424, 426.
+ * MISMA regla que AgPhoneAuthService.normalizarCelular() en la app; si se cambia una, la otra.
+ * Venezuela recibe el código por WhatsApp (plantilla); el SMS queda solo de respaldo.
+ */
+function normalizarCelular(raw: string): string | null {
+  const d = String(raw ?? '').replace(/\D/g, '');
+  if (d.length === 10 && d.startsWith('3')) return '+57' + d;
+  if (d.length === 12 && d.startsWith('573')) return '+' + d;
+  let v: string | null = null;
+  if (d.length === 11 && d.startsWith('0')) v = d.slice(1);
+  else if (d.length === 10) v = d;
+  else if (d.length === 12 && (d.startsWith('58') || d.startsWith('57'))) v = d.slice(2);
+  else if (d.length === 13 && (d.startsWith('580') || d.startsWith('570'))) v = d.slice(3);
+  return v && /^4(1[246]|2[246])\d{7}$/.test(v) ? '+58' + v : null;
 }
 
 /** Evolution API usa número sin '+', ej: 573134453649 */
@@ -252,16 +268,19 @@ Deno.serve(async (req) => {
     const { phone, canal } = await req.json();
     if (!phone) return json({ error: 'phone requerido' });
 
-    const normalized = toE164(phone);
+    // Colombia o Venezuela (ver normalizarCelular). Si no es ninguno, se rechaza abajo con el
+    // aviso de cobertura, antes de insertar la fila y antes de gastar un mensaje.
+    const celular = normalizarCelular(phone);
+    const normalized = celular ?? toE164(phone);
     if (normalized.length < 10) return json({ error: 'Número de teléfono inválido' });
 
     // Fuera de cobertura: se corta ACA, antes de insertar la fila en ag_otp_codes y antes de
     // gastar un SMS que no va a llegar a ninguna parte. El flag `fuera_de_cobertura` es lo que
     // mira la app para tratarlo como error duro del formulario y NO ofrecer el respaldo por
     // WhatsApp -- que en este caso tampoco funcionaria y solo alargaria la frustracion.
-    if (!esCelularColombiano(normalized)) {
+    if (!celular) {
       return json({
-        error: 'Por ahora Movi solo opera en Colombia 🇨🇴 Escribe un celular colombiano de 10 dígitos que empiece por 3.',
+        error: 'Escribe tu celular de Colombia 🇨🇴 o Venezuela 🇻🇪 (ej: 300 123 4567 o 0414 123 4567).',
         fuera_de_cobertura: true,
       });
     }

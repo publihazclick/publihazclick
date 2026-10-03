@@ -1057,7 +1057,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             } @else {
               Enviamos un código de 6 dígitos por SMS al número<br>
             }
-            <span style="color:#fff;font-weight:700">{{ otpPhone() }}</span>
+            <span style="color:#fff;font-weight:700">{{ celularParaMostrar(otpPhone()) }}</span>
           </p>
         </div>
 
@@ -8389,15 +8389,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="display:flex;flex-direction:column;gap:5px">
               <label style="color:#374151;font-size:11px;font-weight:700;letter-spacing:0.08em">Teléfono</label>
               <div style="display:flex;align-items:center;gap:8px">
+                <!-- Bandera según lo que escribe (2026-10-03): 3… = Colombia, 04…/4… = Venezuela.
+                     Sin selector de país, para no agregarle un paso a nadie. -->
                 <div style="flex-shrink:0;padding:11px 12px;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:12px;color:#374151;font-size:14px;font-weight:700;white-space:nowrap">
-                  +57
+                  {{ qrPhone().startsWith('0') || qrPhone().startsWith('4') ? '🇻🇪 +58' : '🇨🇴 +57' }}
                 </div>
                 <input
                   #qrPhoneRef
                   [value]="qrPhone()"
-                  (blur)="qrPhone.set(qrPhoneRef.value.replace(/\D/g,'').slice(0,10))"
+                  (blur)="qrPhone.set(qrPhoneRef.value.replace(/\D/g,'').slice(0,11))"
                   name="qrPhone"
-                  type="tel" autocomplete="tel-national" inputmode="numeric" maxlength="10" placeholder="300 123 4567"
+                  type="tel" autocomplete="tel-national" inputmode="numeric" maxlength="11" placeholder="300 123 4567"
                   class="qr-input"
                   style="flex:1;background:#F9FAFB;border-style:solid;border-radius:12px;padding:11px 14px;color:#111827;font-size:16px;font-weight:700;letter-spacing:0.03em;box-sizing:border-box"
                 />
@@ -8414,7 +8416,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- CTA -->
           <button (click)="qrSendOtp()" [disabled]="qrOtpSending()"
             style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
-            [style.opacity]="qrOtpSending() || qrPhone().length !== 10 ? '0.9' : '1'">
+            [style.opacity]="qrOtpSending() || !celularValido(qrPhone()) ? '0.9' : '1'">
             @if (qrOtpSending()) {
               <span class="material-symbols-outlined animate-spin" style="font-size:18px;margin-right:8px">autorenew</span> Enviando SMS...
             } @else {
@@ -8467,7 +8469,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               } @else {
                 Enviamos un código de 6 dígitos por SMS a<br>
               }
-              <span style="color:#111827;font-weight:700;font-size:15px">+57 {{ qrPhone() }}</span>
+              <span style="color:#111827;font-weight:700;font-size:15px">{{ celularParaMostrar(qrPhone()) }}</span>
             </p>
           </div>
 
@@ -12032,7 +12034,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this._qrEdgeProfile = perfilBase ?? null;
         this.qrRole.set('conductor');
         this.qrName.set(perfilBase?.full_name ?? '');
-        this.qrPhone.set(String(perfilBase?.phone ?? '').replace('+57', ''));
+        this.qrPhone.set(this._celularNacional(String(perfilBase?.phone ?? '')));
         this.qrStep.set(3);
         this.screen.set('quick-register');
         this.cdr.markForCheck();
@@ -20220,6 +20222,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   qrStep              = signal<1 | 2 | 3>(1);
   qrName              = signal('');
   qrPhone             = signal('');
+
+  // Celulares de Colombia o Venezuela (2026-10-03), ver AgPhoneAuthService.normalizarCelular().
+  celularValido(raw: string): boolean { return AgPhoneAuthService.normalizarCelular(raw) !== null; }
+  celularParaMostrar(raw: string): string { return AgPhoneAuthService.celularParaMostrar(raw); }
+  /** '+584141234567' -> '04141234567' (como lo escribe un venezolano); '+573001234567' -> '3001234567'. */
+  private _celularNacional(e164: string): string {
+    const d = e164.replace(/\D/g, '');
+    if (d.length === 12 && d.startsWith('58')) return '0' + d.slice(2);
+    if (d.length === 12 && d.startsWith('57')) return d.slice(2);
+    return d;
+  }
   qrOtpCode           = signal('');
   // display var for [(ngModel)] — avoids cursor-jump caused by [value] re-evaluation on signal CD
   otpCodeDisplay   = '';
@@ -22610,7 +22623,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOtpVerifying.set(true);
     this.qrOtpError.set('');
     this.cdr.markForCheck();
-    const phone = '+57' + this.qrPhone().replace(/\D/g, '');
+    const phone = AgPhoneAuthService.normalizarCelular(this.qrPhone()) ?? ('+57' + this.qrPhone().replace(/\D/g, ''));
     const edgeProfile = this._qrEdgeProfile;
 
     // Use edge function with service_role — bypasses all client-side auth/RLS issues
@@ -22676,15 +22689,15 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
 
   async qrSendOtp(canal: 'whatsapp' | 'sms' = 'whatsapp') {
     const digits = this.qrPhone().replace(/\D/g, '');
-    if (digits.length !== 10) { this.qrError.set('Ingresa un número de celular de 10 dígitos.'); return; }
-    // Ver AgPhoneAuthService.esCelularColombiano(): por ahora Movi solo opera en Colombia.
-    if (!AgPhoneAuthService.esCelularColombiano(digits)) { this.qrError.set(FUERA_DE_COBERTURA); return; }
+    const e164 = AgPhoneAuthService.normalizarCelular(digits);
+    if (!e164) { this.qrError.set(FUERA_DE_COBERTURA); return; }
+    // Colombia o Venezuela (2026-10-03): ver AgPhoneAuthService.normalizarCelular().
     this.qrOtpSending.set(true);
     this.qrError.set('');
     this.qrOtpWaReady.set(false);
     this.cdr.markForCheck();
     this.qrOtpCanal.set(canal);
-    const result = await this.phoneAuth.sendOTP('+57' + digits, canal);
+    const result = await this.phoneAuth.sendOTP(e164, canal);
     this.qrOtpSending.set(false);
     if (result.ok) {
       this.qrOtpCode.set('');
@@ -22750,7 +22763,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOtpError.set('');
     this.cdr.markForCheck();
 
-    const phone = '+57' + this.qrPhone().replace(/\D/g, '');
+    const phone = AgPhoneAuthService.normalizarCelular(this.qrPhone()) ?? ('+57' + this.qrPhone().replace(/\D/g, ''));
     const name  = this.qrName().trim() || 'Usuario';
     const role  = this.qrRole() === 'conductor' ? 'driver' : 'passenger';
 
@@ -23237,7 +23250,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrError.set('');
     this.cdr.markForCheck();
 
-    const phone = '+57' + this.qrPhone().replace(/\D/g, '');
+    const phone = AgPhoneAuthService.normalizarCelular(this.qrPhone()) ?? ('+57' + this.qrPhone().replace(/\D/g, ''));
     const registerResult = await this.agService.registerQuickPassenger(
       this.qrName().trim() || 'Pasajero', phone, this.referredBy ?? undefined
     );

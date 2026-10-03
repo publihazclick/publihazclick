@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/angular';
 import { getMoviClient } from './movi.client';
+import { AgPhoneAuthService } from './ag-phone-auth.service';
 import { environment } from '../../../environments/environment';
 
 export interface PassengerFormData {
@@ -356,6 +357,10 @@ export class AndaGanaService {
   private _phoneE164(phone: string): string {
     const raw = (phone ?? '').trim();
     if (!raw) return raw;
+    // Colombia o Venezuela (2026-10-03): la misma regla del código de verificación, para que el
+    // teléfono que se guarda sea EXACTAMENTE el que se verificó. Lo de abajo queda de respaldo.
+    const celular = AgPhoneAuthService.normalizarCelular(raw);
+    if (celular) return celular;
     const digits = raw.replace(/D/g, '');
     if (!digits) return raw;
     if (raw.startsWith('+')) return '+' + digits;

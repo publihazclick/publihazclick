@@ -5910,7 +5910,11 @@ async function handleOtpCodeRequest(
   // NO se manda a este chat (no hay forma de comprobar que es el dueño de ese número); se le
   // repite la salida real en vez de dejarlo sin respuesta. Solo si en los últimos 30 min se le
   // dio el aviso, para no secuestrar otra conversación donde alguien dé un número.
-  if (isBsuid(fromPhone) && /(^|\D)3\d{9}(\D|$)/.test(msgText.replace(/[\s.-]/g, ''))) {
+  // Celular escrito: colombiano (3XXXXXXXXX) o, desde 2026-10-03, venezolano (0414…, 414…).
+  const limpioNum = msgText.replace(/[\s.()-]/g, '');
+  const escritoCo = limpioNum.match(/(?:^|\D)(3\d{9})(?:\D|$)/);
+  const escritoVe = escritoCo ? null : limpioNum.match(/(?:^|\D)0?(4(?:1[246]|2[246])\d{7})(?:\D|$)/);
+  if (isBsuid(fromPhone) && (escritoCo || escritoVe)) {
     const { data: avisoReciente } = await db().from('ag_wa_message_log').select('id')
       .eq('wa_phone', fromPhone).eq('direction', 'out')
       .like('body', 'Tu WhatsApp tiene el número oculto%')
@@ -5921,8 +5925,9 @@ async function handleOtpCodeRequest(
         if (isSupportNumber) await sendSupportText(fromPhone, texto);
         else                 await sendText(fromPhone, texto);
       };
-      const diez = msgText.replace(/[\s.-]/g, '').match(/3\d{9}/)![0];
-      const telE164 = `+57${diez}`;
+      // `diez` es como la persona reconoce su número (3001234567 / 04141234567).
+      const diez = escritoCo ? escritoCo[1] : `0${escritoVe![1]}`;
+      const telE164 = escritoCo ? `+57${escritoCo[1]}` : `+58${escritoVe![1]}`;
 
       // Mismo candado que el camino normal: solo si ESE número tiene un registro en curso
       // pedido desde la app en los últimos 30 min. Y tope de intentos, para que nadie use esto
@@ -5947,7 +5952,7 @@ async function handleOtpCodeRequest(
       await db().from('ag_otp_codes').insert({
         phone: telE164, code_hash: await sha256Hex(code), expires_at: new Date(Date.now() + 10 * 60e3).toISOString(),
       });
-      const envio = await enviarCodigoPorPlantilla(`57${diez}`, code, isSupportNumber);
+      const envio = await enviarCodigoPorPlantilla(telE164.slice(1), code, isSupportNumber);
       if (envio.ok) {
         await responderOculto(`✅ Te mandé el código al WhatsApp del *${diez}*.\n\nÁbrelo, toca *"Copiar código"* y pégalo en la app. Vence en 10 minutos.`);
       } else {
@@ -6054,12 +6059,13 @@ async function handleOtpCodeRequest(
   // Sin esto respondian "No encuentro un registro en curso para este numero", que es literalmente
   // cierto pero manda a la persona a repetir para siempre algo que nunca le va a funcionar. Los
   // dos casos reales del 2026-09-10 (Mexico y Argentina) salieron justo asi.
-  if (!phone.startsWith('+57')) {
+  // Desde 2026-10-03 también Venezuela (+58): la app y ag-otp-send ya aceptan sus celulares.
+  if (!phone.startsWith('+57') && !phone.startsWith('+58')) {
     if (!explicita) return false;
     await responder(
-      'Por ahora Movi solo opera en Colombia 🇨🇴\n\n' +
+      'Por ahora Movi funciona con celulares de Colombia 🇨🇴 y Venezuela 🇻🇪\n\n' +
       'Vi que escribes desde un número de otro país, y por eso no puedo enviarte el código: ' +
-      'la app solo acepta celulares colombianos.\n\n' +
+      'en la app escribe un celular colombiano o venezolano.\n\n' +
       '¡Gracias por el interés! Cuando lleguemos a tu país te esperamos 🙌',
     );
     return true;

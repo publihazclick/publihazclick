@@ -28,7 +28,21 @@
 - **Costo**: ~US$0,0009 por código entregado (autenticación, Colombia) ≈ US$0,10/mes con el volumen actual.
 - **App (WEB, falta push, no necesita APK)**: "Te enviamos un código a tu WhatsApp", "📲 Revisa tu
   WhatsApp… Copiar código", y el botón verde pasa a "¿No te llegó? Pídelo por WhatsApp". `ngc` sin errores.
-- **Toca**: `src/app/features/anda-gana/*` + `supabase`. (Este archivo actualizado viaja en el próximo push que se pida.)
+- **Toca**: `src/app/features/anda-gana/*` + `supabase`.
+
+### Celulares venezolanos (+58) sin selector de país (2026-10-03)
+- **Por qué**: Cúcuta es frontera; el bot acepta carros con placa venezolana pero la app rechazaba
+  cualquier celular que no fuera +57 3XX.
+- **Cómo**: el número se reconoce por cómo se escribe (`normalizarCelular`, misma regla en la app y en
+  `ag-otp-send`): 3XX… = Colombia; 0414…, 414…, +58 414…, 58 0414… (y el +57 que la app le ponía) =
+  Venezuela (412, 414, 416, 422, 424, 426). Registro rápido: la cajita muestra 🇨🇴 +57 o 🇻🇪 +58 y
+  admite 11 dígitos. Se guarda siempre el E.164 limpio (también arreglado `_phoneE164`, que tenía
+  `/D/g` en vez de `/D/g`). El código le llega por WhatsApp (plantilla); SMS solo de respaldo.
+- **Servidor (YA desplegado: `ag-otp-send` v46, `ag-whatsapp` v249)**: acepta +58; el bot acepta un
+  número venezolano escrito por quien tiene el número oculto. Probado: fijo de Caracas rechazado.
+- **App (WEB, falta push)**: `ngc` sin errores. Hasta el push, la app vieja sigue rechazando +58.
+- **Ojo**: el registro de CONDUCTOR exige cédula colombiana (`_isColombianCedula`); un venezolano sin
+  cédula colombiana todavía no puede registrarse como conductor (sí como pasajero). (Este archivo actualizado viaja en el próximo push que se pida.)
 
 ---
 
