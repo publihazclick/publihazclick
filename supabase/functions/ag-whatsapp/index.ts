@@ -833,14 +833,26 @@ async function fetchNeighborhood(lat: number, lng: number): Promise<string | und
     const r = await fetchWithTimeout(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&accept-language=es`,
       { headers: { 'User-Agent': 'Movi-App/1.0 (movi@publihazclick.com)' } },
-      900
+      // 2500 ms (antes 900). Medido 2026-10-03: Nominatim respondió en 0,46 / 0,92 / 0,94 /
+      // 1,83 s para un punto de Cúcuta, así que con 900 ms se perdía el barrio la mayoría de
+      // las veces y el pasajero veía "Barrio o sector: no lo pude identificar" (prueba real
+      // del usuario ese día). Corre en paralelo con Mapbox, así que solo alarga la respuesta
+      // cuando Nominatim está lento -- y el barrio es lo que el conductor necesita para
+      // ubicar la zona (caso Luis Felipe, mismo día).
+      2500
     );
+    if (!r.ok) {
+      // 429/403 = límite de uso de Nominatim; se registra para poder distinguirlo de "no hay barrio".
+      console.error('[Geo] fetchNeighborhood (Nominatim) HTTP', r.status);
+      return undefined;
+    }
     const j = await r.json();
     const addr = j?.address as Record<string, string> | undefined;
     // OSM etiqueta el barrio con distintos tags según qué tan bien mapeada
     // esté la zona -- se prueban los 3 más comunes en ciudades colombianas,
-    // del más específico al más general.
-    return addr?.neighbourhood || addr?.suburb || addr?.quarter || undefined;
+    // del más específico al más general. Si no hay ninguno, la comuna
+    // ("Comuna 6 - Norte", tag city_district) al menos dice el sector de la ciudad.
+    return addr?.neighbourhood || addr?.suburb || addr?.quarter || addr?.city_district || undefined;
   } catch (e) {
     console.error('[Geo] fetchNeighborhood (Nominatim) error:', e);
     return undefined;
@@ -934,7 +946,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
         // Para este punto ya pasó tiempo de sobra (todo lo de arriba: fetch a
         // Mapbox + parsear) -- normalmente neighborhoodPromise ya está resuelta
         // y este await es instantáneo; si no, espera como mucho lo que le
-        // quede de su propio timeout de 900ms.
+        // quede de su propio timeout (2500 ms desde 2026-10-03, ver fetchNeighborhood).
         const barrio = await neighborhoodPromise;
         // Sin la palabra "barrio" repetida -- se lee como cualquier persona
         // diría su propia dirección: "calle, zona, ciudad", sin etiquetas
