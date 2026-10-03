@@ -13,6 +13,12 @@
 
 ## Pendiente de subir
 
+_Nada por ahora._
+
+---
+
+## Subido el 2026-10-03, tarde (código automático + Venezuela, web + supabase)
+
 ### Código de verificación: llega SOLO al WhatsApp del número (2026-10-03)
 - **Por qué**: medido en 7 días, ~17 entraron escribiéndole al bot, pero se quedaban por fuera los de
   número oculto (…9199 recibió el mismo aviso 6 veces), los que escriben desde otro WhatsApp (…3603,
