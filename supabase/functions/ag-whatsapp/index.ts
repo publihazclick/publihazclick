@@ -953,7 +953,31 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
-async function forwardGeocode(text: string, biasLat?: number, biasLng?: number): Promise<{ lat: number; lng: number; address: string } | null> {
+/**
+ * Dirección ESCRITA por el pasajero -> coordenadas + barrio de ese punto.
+ *
+ * Caso real 2026-10-03 (lo probó el usuario): escribió "torres de santa ines" y el resumen
+ * mostró solo eso, sin barrio. Con una dirección escrita se muestra el texto literal del
+ * pasajero (ver awaiting_origin: lo que él escribe es lo que reconoce), y el barrio solo se
+ * buscaba en el camino del GPS (reverseGeocode). Ahora también se busca acá, con el mismo
+ * fetchNeighborhood, y conBarrio() lo agrega al texto. Sirve doble: el conductor ubica la
+ * zona, y el pasajero ve en qué barrio quedó el punto que encontró Google -- si dice otro
+ * barrio, se da cuenta de que la búsqueda se equivocó ANTES de pedir.
+ */
+async function forwardGeocode(text: string, biasLat?: number, biasLng?: number): Promise<{ lat: number; lng: number; address: string; barrio?: string } | null> {
+  const geo = await forwardGeocodeSinBarrio(text, biasLat, biasLng);
+  if (!geo) return null;
+  return { ...geo, barrio: await fetchNeighborhood(geo.lat, geo.lng) };
+}
+
+/** "torres de santa ines" + barrio "Santa Inés" -> sin cambio; con otro barrio -> "torres de santa ines, <barrio>". */
+function conBarrio(literal: string, geo: { barrio?: string } | null | undefined): string {
+  const b = geo?.barrio?.trim();
+  if (!b || normalizarTexto(literal).includes(normalizarTexto(b))) return literal;
+  return `${literal}, ${b}`;
+}
+
+async function forwardGeocodeSinBarrio(text: string, biasLat?: number, biasLng?: number): Promise<{ lat: number; lng: number; address: string } | null> {
   // Google Places (Text Search) como fuente principal -- la misma API key que
   // ya usa el buscador de la app (ver memoria buscador_google_places), con
   // Maps JavaScript API + Places API habilitadas. Entiende direcciones
@@ -2064,7 +2088,7 @@ async function originDirectNext(
   if (pendingDest) {
     const geo = await forwardGeocode(pendingDest, lat, lng);
     if (geo && isInColombia(geo.lat, geo.lng)) {
-      await presentTripSummary(phone, pendingDest, geo.lat, geo.lng, s);
+      await presentTripSummary(phone, conBarrio(pendingDest, geo), geo.lat, geo.lng, s);
       return;
     }
     await upsertSession(phone, { pending_dest_text: null });
@@ -2461,7 +2485,7 @@ async function aplicarCambioDestino(phone: string, session: Record<string, unkno
   if (route.distKm < 0.3) return false;
 
   const { data: trip } = await db().from('ag_trip_requests')
-    .update({ dest_name: lugar, dest_lat: geo.lat, dest_lng: geo.lng, distance_km: route.distKm, updated_at: new Date().toISOString() })
+    .update({ dest_name: conBarrio(lugar, geo), dest_lat: geo.lat, dest_lng: geo.lng, distance_km: route.distKm, updated_at: new Date().toISOString() })
     .eq('id', tripId).in('status', ['searching', 'accepted'])
     .select('driver_id, status').maybeSingle();
   if (!trip) return false;
@@ -3706,7 +3730,7 @@ async function handleConversation(
       // siguen usándose para el mapa/ruta, pero el texto que confirma el
       // pasajero es exactamente el suyo (reportado 2026-08-12: la dirección
       // devuelta salía "un poco diferente" a la escrita).
-      lat = geo.lat; lng = geo.lng; addr = textoDir;
+      lat = geo.lat; lng = geo.lng; addr = conBarrio(textoDir, geo);
     } else {
       await sendText(phone, `Por favor envía tu ubicación (📎 → Ubicación) o escribe la dirección completa (calle, barrio y ciudad).`);
       return;
@@ -3860,7 +3884,7 @@ async function handleConversation(
           // pendingDest ya es literal lo que escribió/dijo el pasajero (la
           // frase de destino extraída del mensaje original) -- mismo criterio
           // que en awaiting_origin/awaiting_dest, no usar geo.address.
-          await presentDestConfirm(phone, pendingDest, geo.lat, geo.lng, session);
+          await presentDestConfirm(phone, conBarrio(pendingDest, geo), geo.lat, geo.lng, session);
           return;
         }
         await upsertSession(phone, { pending_dest_text: null });
@@ -3918,7 +3942,7 @@ async function handleConversation(
       if (geo && isInColombia(geo.lat, geo.lng)) {
         // Igual que en el otro camino de arriba: literal lo que escribió el
         // pasajero, no geo.address.
-        await presentDestConfirm(phone, pendingDest, geo.lat, geo.lng, session);
+        await presentDestConfirm(phone, conBarrio(pendingDest, geo), geo.lat, geo.lng, session);
         return;
       }
       await upsertSession(phone, { pending_dest_text: null });
@@ -3968,7 +3992,7 @@ async function handleConversation(
       }
       // Mismo criterio que en awaiting_origin: literal lo escrito por el
       // pasajero, no el formatted_address de Google.
-      lat = geo.lat; lng = geo.lng; addr = text.trim();
+      lat = geo.lat; lng = geo.lng; addr = conBarrio(text.trim(), geo);
     } else {
       await sendText(phone, `Escribe la dirección de destino o envía la ubicación con el clip 📎.`);
       return;
@@ -4011,7 +4035,7 @@ async function handleConversation(
     if (text.length > 4) {
       const geo = await forwardGeocode(text, session.origin_lat as number, session.origin_lng as number);
       if (geo && isInColombia(geo.lat, geo.lng)) {
-        await presentTripSummary(phone, text.trim(), geo.lat, geo.lng, session);
+        await presentTripSummary(phone, conBarrio(text.trim(), geo), geo.lat, geo.lng, session);
         return;
       }
     }
