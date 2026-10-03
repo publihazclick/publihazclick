@@ -2125,7 +2125,14 @@ function esRecogidaRecienEscrita(session: Record<string, unknown>): boolean {
  * "7.92, -72.49") cuando no.
  */
 function recogidaSinBarrio(addr: string): boolean {
-  return addr.split(',').map(s => s.trim()).filter(Boolean).length < 3;
+  const partes = addr.split(',').map(s => s.trim()).filter(Boolean);
+  if (partes.length < 3) return true;
+  // Calle SIN número de casa ("Avenida 2, La Playa, Cúcuta") también es imprecisa: en
+  // Cúcuta hay una Avenida 2 que atraviesa media ciudad. Caso real 2026-10-03, prueba del
+  // usuario: "hay miles de avenida 2, es muy difícil esa ubicación". Mapbox, en muchas
+  // zonas de Cúcuta, solo tiene el trazado de la calle y no la numeración. Con número
+  // ("Calle 1B 2-15", "Av. 2 #32-37") se sigue sin preguntar.
+  return !/\d+\s*[A-Za-z]{0,2}\s*(#|-|n[°ºo]\.?)\s*\d+/i.test(partes[0]);
 }
 
 /**
