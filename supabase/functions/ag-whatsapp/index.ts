@@ -829,6 +829,22 @@ function expandStreetType(segment: string): string {
 // así que si Nominatim tarda o falla el pasajero de todos modos recibe su
 // dirección a tiempo, solo sin el barrio.
 async function fetchNeighborhood(lat: number, lng: number): Promise<string | undefined> {
+  // PRIMERO nuestra propia tabla (migración 301, barrios y conjuntos de OSM guardados en
+  // PostGIS). Nominatim desde Supabase fallaba al instante (prueba real 2026-10-03: el bot
+  // dijo "no lo pude identificar" en La Ínsula, que Nominatim sí conoce desde un PC). Si la
+  // RPC falla o no encuentra nada, se cae a Nominatim como antes.
+  try {
+    const { data, error } = await db().rpc('ag_barrio_en', { p_lat: lat, p_lng: lng });
+    if (error) throw error;
+    const fila = (Array.isArray(data) ? data[0] : data) as { barrio?: string | null; conjunto?: string | null } | null;
+    const barrio = fila?.barrio?.trim();
+    const conjunto = fila?.conjunto?.trim();
+    // "Conjunto Cerrado Manet, La Insula": el conjunto ubica la puerta, el barrio la zona.
+    const partes = [conjunto, barrio].filter((s): s is string => !!s);
+    if (partes.length) return partes.join(', ');
+  } catch (e) {
+    console.error('[Geo] ag_barrio_en (tabla de barrios) error:', e);
+  }
   try {
     const r = await fetchWithTimeout(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&accept-language=es`,
