@@ -2191,6 +2191,39 @@ function lugarElegidoDe(msgType: string, text: string): string | null {
   return t.length >= 2 ? t.slice(0, 80) : null;
 }
 
+/** Botones del mensaje del rango (ver seguirConRecogida) y de sus recordatorios. */
+const BOTONES_RECOGIDA = [
+  { id: 'mejorar_dir', title: 'Mejorar dirección' },
+  { id: 'barrio_ok', title: '✅ Continuar' },
+];
+
+/**
+ * ¿Lo que escribió trae tipo de vía o "#"? Entonces es una dirección completa. Un número suelto
+ * NO basta: "La Ínsula, casa 2-15" es barrio + casa, y debe sumarse a la calle del mapa.
+ */
+function esDireccionCompleta(t: string): boolean {
+  return /\b(calle|cll?|carrera|cra|kra|kr|avenida|av|diagonal|dg|transversal|tv|manzana|mz|autopista|anillo vial)\b\.?/i.test(t)
+    || /#\s*\d/.test(t);
+}
+
+/**
+ * Dirección mejorada por el pasajero sobre la del mapa.
+ * - Escribió la dirección COMPLETA ("Calle 3 #4-15, casa 2"): reemplaza la calle del mapa, que
+ *   suele ser la imprecisa; se conservan el barrio del mapa (si él no lo puso) y la ciudad.
+ *   El punto GPS no se toca: el mapa del conductor sigue llevando a las coordenadas reales.
+ * - Escribió solo barrio/sector/casa ("La Ínsula, casa 2-15"): se agrega a la del mapa
+ *   (combineWithBarrioHint), como antes.
+ */
+function direccionMejorada(addrMapa: string, escrita: string): string {
+  if (!esDireccionCompleta(escrita)) return combineWithBarrioHint(addrMapa, escrita);
+  if (/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(addrMapa.trim())) return escrita;
+  const p = addrMapa.split(',').map(s => s.trim()).filter(Boolean);
+  const ciudad = p.length >= 2 ? p[p.length - 1] : null;
+  const zonas = p.slice(1, -1).filter(z => !normalizarTexto(escrita).includes(normalizarTexto(z)));
+  const yaTraeCiudad = ciudad ? normalizarTexto(escrita).includes(normalizarTexto(ciudad)) : true;
+  return [escrita, ...zonas, ...(yaTraeCiudad || !ciudad ? [] : [ciudad])].join(', ');
+}
+
 /**
  * Punto único para seguir después de tener la recogida, en el flujo rápido y en el clásico.
  * Si vino del GPS, no trae barrio y el pasajero no lo escribió antes, se le pregunta primero.
@@ -2245,19 +2278,20 @@ async function seguirConRecogida(
     // Las coordenadas crudas de respaldo ("7.92600, -72.49633") no se muestran: no le dicen
     // nada a nadie.
     const esCoordenada = /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(addr.trim());
-    // Botón [✅ Así está bien] (2026-10-03): el texto dice "Si prefieres…", o sea opcional, pero
-    // antes no había cómo saltarse el paso y un "ok" o "sí" quedaba guardado como barrio y le
-    // llegaba al conductor ("Avenida 2 1a-60, ok, La Insula"). Se muestra siempre, aunque el
-    // mapa no haya dado barrio, para que nadie quede atascado.
+    // Botones (2026-10-03, pedido del usuario): [Mejorar dirección] -> el bot le pide la
+    // dirección COMPLETA y la escribe; [✅ Continuar] -> sigue con la del mapa. El segundo es
+    // obligatorio: el texto es opcional ("Si prefieres…") y sin él no había cómo seguir -- un
+    // "ok" quedaba guardado como barrio y le llegaba al conductor ("Avenida 2 1a-60, ok, La
+    // Insula"). Escribir directo, sin tocar nada, también sirve (ver awaiting_barrio_recogida).
+    // "Mejorar dirección" va sin emoji: el título de un botón tiene tope de 20 caracteres.
     await sendButtons(phone,
       // "aproximado" y no "a 50 metros" (decisión del usuario 2026-10-03): WhatsApp no manda
       // la precisión del GPS, y un número fijo haría que quien quedó a 200 m no corrija.
       `📍 ¡Listo, ya tengo un rango *aproximado* de ${forName ? 'su' : 'tu'} ubicación!\n\n` +
       (esCoordenada ? '' : `El mapa ${forName ? 'lo' : 'te'} ubica en:\n${lineasUbicacion(addr)}\n\n`) +
-      `Si prefieres darnos la ubicación más precisa para el conductor, escríbeme *¿En qué barrio o sector ${who}?* ` +
-      `y el número de vivienda si lo hay.\n\n` +
-      `_(ej: "La Ínsula, casa 2-15") -- así el conductor sabe exactamente a dónde ir._`,
-      [{ id: 'barrio_ok', title: '✅ Así está bien' }],
+      `Si prefieres darnos la ubicación más precisa para el conductor, toca *Mejorar dirección* ` +
+      `y escríbeme ${forName ? 'su' : 'tu'} dirección completa. Si así está bien, toca *Continuar*.`,
+      BOTONES_RECOGIDA,
     );
     return;
   }
@@ -2416,7 +2450,7 @@ async function manejarProgramado(phone: string, session: Record<string, unknown>
   }
   // La ubicación ya está; solo falta el barrio (ver seguirConRecogida).
   if (state === 'awaiting_barrio_recogida') {
-    await sendText(phone, `${anotado}\n\n📍 *¿En qué barrio o sector estás?*`);
+    await sendButtons(phone, `${anotado}\n\n📍 ¿Te recojo donde te ubicó el mapa? Toca *Continuar*, o *Mejorar dirección* para escribirla completa.`, BOTONES_RECOGIDA);
     return;
   }
   await sendLocationRequest(phone, `${anotado}\n\n📍 ¿Dónde te recojo? Toca el botón o escríbeme la dirección.`);
@@ -3820,7 +3854,7 @@ async function handleConversation(
     // Mandó otra ubicación: es una recogida nueva, se procesa desde cero.
     if (msgType === 'location' && msgLat != null && msgLng != null) {
       if (!isInColombia(msgLat, msgLng)) {
-        await sendText(phone, `📍 Esa ubicación no parece estar en Colombia.\n\n*¿En qué barrio o sector estás?*`);
+        await sendText(phone, `📍 Esa ubicación no parece estar en Colombia. Comparte tu ubicación actual o escríbeme tu dirección completa.`);
         return;
       }
       const nueva = precomputedAddr ?? await reverseGeocode(msgLat, msgLng);
@@ -3835,14 +3869,25 @@ async function handleConversation(
     }
     const rapido = session.is_for_self !== false && !isDeliveryService(session.service_type as string);
     if (rapido && msgType === 'text' && esParaOtraPersona(text)) { await presentLiabilityAck(phone); return; }
-    if (msgType === 'text' && preguntaPrecio(text)) {
-      await sendText(phone, `Te digo el precio apenas me digas el barrio 🙌\n\n*¿En qué barrio o sector estás?*`);
+    const forName = travelerLabel(session);
+    const pedirDireccion = () => sendText(phone,
+      `✏️ Escríbeme ${forName ? `la dirección completa de *${forName}*` : 'tu dirección completa'}: calle o avenida con número, ` +
+      `barrio y número de casa o apartamento.\n\n` +
+      `_(ej: "Avenida 2 #1A-60, La Ínsula, casa 5")_ -- así el conductor llega justo a la puerta.`);
+    // [Mejorar dirección] (o lo escribe): se le pide la dirección completa y se queda en este
+    // mismo paso; lo siguiente que escriba se toma como su dirección.
+    const nConf = normalizarTexto(text).replace(/[.!¡,👍✅🙏✏️]+/gu, ' ').replace(/\s+/g, ' ').trim();
+    if (msgBtnId === 'mejorar_dir' || /^(mejorar( la)? direccion|mejorar|editar|corregir|cambiar( la)? direccion)$/.test(nConf)) {
+      await pedirDireccion();
       return;
     }
-    // [✅ Así está bien] o un "sí / ok / listo" escrito: sigue con la dirección del mapa tal
+    if (msgType === 'text' && preguntaPrecio(text)) {
+      await sendButtons(phone, `Te digo el precio apenas confirmes dónde te recojo 🙌`, BOTONES_RECOGIDA);
+      return;
+    }
+    // [✅ Continuar] o un "sí / ok / listo" escrito: sigue con la dirección del mapa tal
     // cual. Antes estas respuestas se guardaban como si fueran el barrio.
-    const nConf = normalizarTexto(text).replace(/[.!¡,👍✅🙏]+/gu, ' ').replace(/\s+/g, ' ').trim();
-    const confirma = msgBtnId === 'barrio_ok' || isYes(text) ||
+    const confirma = msgBtnId === 'barrio_ok' || /^continuar$/.test(nConf) || isYes(text) ||
       /^(si|ok|okay|listo|correcto|exacto|perfecto|dale|de una|confirmo|confirmar|asi|asi esta bien|esta bien|si asi esta bien|si esta bien|ahi|ahi es|ahi estoy|ese es|esa es)$/.test(nConf) ||
       // Con cortesía: "sí señor", "ok gracias", "sí claro", "listo por favor".
       /^(si|ok|okay|listo|dale|claro|bueno) (senor|senora|gracias|claro|por favor|correcto|perfecto|asi es|de una|listo|esta bien)$/.test(nConf);
@@ -3851,17 +3896,19 @@ async function handleConversation(
       await seguirConRecogida(phone, oAddr, oLat, oLng, { ...session, recogida_confirmada: true }, false);
       return;
     }
-    const barrio = text.trim().replace(/^(barrio|sector)\s+/i, '').trim();
-    if (msgType !== 'text' || barrio.length < 2) {
-      await sendButtons(phone, `Escríbeme el barrio o sector y el número de vivienda si lo hay (ej: "La Ínsula, casa 2-15"), o toca *Así está bien* para seguir con la ubicación del mapa.`,
-        [{ id: 'barrio_ok', title: '✅ Así está bien' }]);
+    const escrita = text.trim().replace(/^(barrio|sector)\s+/i, '').trim().slice(0, 140);
+    if (msgType !== 'text' || escrita.length < 2) {
+      await sendButtons(phone,
+        `Toca *Mejorar dirección* para escribirme ${forName ? 'su' : 'tu'} dirección completa, o *Continuar* para seguir con la ubicación del mapa.`,
+        BOTONES_RECOGIDA);
       return;
     }
-    const addrConBarrio = combineWithBarrioHint(oAddr, barrio.slice(0, 100));
-    await upsertSession(phone, { origin_barrio_hint: barrio.slice(0, 100), origin_address: addrConBarrio });
+    // Su dirección (completa o solo barrio/casa) sobre la del mapa; el punto GPS no cambia.
+    const addrNueva = direccionMejorada(oAddr, escrita);
+    await upsertSession(phone, { origin_barrio_hint: escrita, origin_address: addrNueva });
     // Con origin_barrio_hint puesto, seguirConRecogida ya no vuelve a preguntar.
-    await seguirConRecogida(phone, addrConBarrio, oLat, oLng,
-      { ...session, origin_barrio_hint: barrio.slice(0, 100), origin_address: addrConBarrio }, false);
+    await seguirConRecogida(phone, addrNueva, oLat, oLng,
+      { ...session, origin_barrio_hint: escrita, origin_address: addrNueva }, false);
     return;
   }
 
