@@ -126,16 +126,41 @@ Deno.serve(async (req) => {
 
     console.log(`ag-epayco-webhook OK — ref: ${x_ref_payco}, state: ${x_transaction_state}, cod: ${x_cod_response}`);
 
-    if (x_cod_response !== '1') {
-      return ok(`state_${x_transaction_state}_ignored`);
-    }
-
     if (x_extra3 !== 'ag_wallet' || !x_extra1) {
       console.warn('ag-epayco-webhook: extra3/extra1 inesperados', { x_extra3, x_extra1 });
       return ok('unhandled_extra3_ignored');
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+    // Guardar SIEMPRE lo que dijo ePayco (2026-10-04). Antes, un pago rechazado o fallido se
+    // ignoraba sin dejar rastro: desde el 29-ago hubo 25 intentos de recarga sin aprobar y todos
+    // quedaron "pending" sin ningún motivo -- imposible saber si el banco rechazó, si el conductor
+    // abandonó o si ePayco ni siquiera avisó. Ahora queda el estado, el motivo y el medio de pago.
+    // Códigos x_cod_response: 1 aceptada, 2 rechazada, 3 pendiente, 4 fallida, 6 reversada,
+    // 9 expirada, 10 abandonada, 11 cancelada.
+    const estadoPorCodigo: Record<string, string> = { '2': 'rejected', '4': 'failed', '6': 'failed', '9': 'failed', '10': 'failed', '11': 'failed' };
+    await supabase.from('ag_wallet_payments')
+      .update({
+        epayco_ref:     x_ref_payco || null,
+        epayco_cod:     x_cod_response || null,
+        epayco_estado:  x_transaction_state || null,
+        epayco_motivo:  (p['x_response_reason_text'] || p['x_response'] || '').slice(0, 300) || null,
+        epayco_medio:   (p['x_franchise'] || p['x_bank_name'] || '').slice(0, 60) || null,
+        epayco_at:      new Date().toISOString(),
+        ...(estadoPorCodigo[x_cod_response] ? { status: estadoPorCodigo[x_cod_response] } : {}),
+      })
+      .eq('id', x_extra1)
+      .neq('status', 'approved');   // nunca pisar una recarga ya acreditada
+
+    if (x_cod_response !== '1') {
+      return ok(`state_${x_transaction_state}_saved`);
+    }
+
+    // ag_approve_wallet_payment solo acredita pagos en 'pending'. Si ePayco avisó primero un
+    // rechazo y después la aprobó (reintento del banco), se devuelve a pending para no perderla.
+    await supabase.from('ag_wallet_payments').update({ status: 'pending' })
+      .eq('id', x_extra1).in('status', ['rejected', 'failed']);
 
     const { error: approveErr } = await supabase.rpc('ag_approve_wallet_payment', {
       p_payment_id: x_extra1,
