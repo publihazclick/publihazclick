@@ -35,6 +35,14 @@
   - **Actualización dentro de la app** (Google Play In-App Updates, modo inmediato): al abrir, si Play Store tiene
     una versión más nueva, sale la pantalla de Google que la instala. Nunca con un viaje en curso; máx 1 vez/10 min.
     AAB final 9,07 MB (`com.google.android.play:app-update:2.1.0`).
+  - **Aviso normal** (`aviso=1`, canal "movi_avisos", sin pantalla completa) para recordar al conductor que se conecte.
+- **Conductor desconectado → recordatorio (YA desplegado: migración 304, `ag-send-push` v39, `ag-whatsapp` v256)**: al
+  quedar desconectado porque la app dejó de dar señal (limpieza de 10 min) y a diario 6:30 a.m. / 4:30 p.m. a los
+  desconectados que usaron la app en 14 días: push "aviso" (lo muestra la APK 1.4.32+) + WhatsApp a quien tiene
+  ventana. Nada de 10 p.m. a 5:30 a.m., máx 1 cada 5 h, nunca a quien está en línea o en viaje, "NO MÁS" lo apaga.
+  Al abrir la app el conductor queda en línea solo. Probado: tareas creadas, limpieza OK, horario nocturno → 0,
+  vista previa 6:30 → 42 conductores (30 con push). Los avisos de WhatsApp ahora enlazan a Play Store ("Abrir"):
+  el enlace web abría el navegador porque la app no tiene App Links.
 - **App (WEB, falta push)**: tarjeta "Recibe las solicitudes al instante" (solo con APK 1.4.32+; con la vieja no
   aparece) y `ag_report_device_status` (migración 303). `ngc` OK.
 

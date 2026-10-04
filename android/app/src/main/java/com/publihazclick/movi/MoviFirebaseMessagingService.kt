@@ -65,6 +65,21 @@ class MoviFirebaseMessagingService : MessagingService() {
             return
         }
 
+        // Aviso NORMAL (2026-10-03): recordatorios al conductor desconectado ("quedaste desconectado,
+        // toca para volver a recibir viajes"). Antes no habia como mostrar una notificacion comun con
+        // la app cerrada: solo existian la de solicitud y la urgente, las dos de PANTALLA COMPLETA,
+        // demasiado invasivas para un recordatorio. Ver ag_recordar_conectarse (migracion 304).
+        if (data["aviso"] == "1") {
+            val title = data["title"] ?: "Movi"
+            val body = data["body"] ?: ""
+            val url = data["url"]?.let {
+                if (it.startsWith("http")) it else "https://www.publihazclick.com$it"
+            } ?: "https://www.publihazclick.com/anda-gana"
+            val notifId = (data["tag"]?.takeIf { it.isNotEmpty() } ?: "movi-aviso").hashCode()
+            showAvisoNotification(notifId, title, body, url)
+            return
+        }
+
         // Pedido explicito del usuario 2026-07-31: que al PASAJERO tambien le suene/vibre el
         // celular a pantalla completa (igual que al conductor) cuando el conductor llega al
         // punto de recogida. ag-send-push YA mandaba este push con urgent=1 desde advanceStage()
@@ -124,6 +139,42 @@ class MoviFirebaseMessagingService : MessagingService() {
             .build()
 
         getSystemService(NotificationManager::class.java).notify(notifId, notification)
+    }
+
+    /**
+     * Notificacion comun (sin pantalla completa) para avisos al conductor -- ver el bloque "aviso"
+     * en onMessageReceived. Canal propio "movi_avisos" con importancia ALTA (aparece arriba de la
+     * pantalla) pero sin el sonido de solicitud: no debe confundirse con un viaje entrante.
+     * Tocarla abre Movi, y al abrir la app el conductor queda en linea solo (_initDriverHome).
+     */
+    private fun showAvisoNotification(notifId: Int, title: String, body: String, url: String) {
+        val channelId = "movi_avisos"
+        val manager = getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager.getNotificationChannel(channelId) == null) {
+            val canal = android.app.NotificationChannel(channelId, "Avisos de Movi", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Recordatorios para conectarte y recibir viajes"
+            }
+            manager.createNotificationChannel(canal)
+        }
+        val tapIntent = Intent(this, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            data = Uri.parse(url)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val tapPendingIntent = PendingIntent.getActivity(
+            this, notifId, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setColor(Color.parseColor("#245BDB"))
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(tapPendingIntent)
+            .build()
+        manager.notify(notifId, notification)
     }
 
     /**

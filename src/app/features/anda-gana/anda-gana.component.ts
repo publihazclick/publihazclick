@@ -17996,6 +17996,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       });
 
       PP.addListener('pushNotificationReceived', (n: any) => {
+        // Recordatorio para conectarse (aviso=1, migración 304) o cancelación de una solicitud:
+        // no son una solicitud nueva -- sin esto sonaría la alerta de "nuevo viaje" por un aviso.
+        // Con la app abierta el conductor ya quedó en línea al abrirla; no hay nada que hacer.
+        if (n?.data?.aviso === '1' || n?.data?.cancel_tag) return;
         // Sonido/vibración inmediatos con lo que ya viene en el push (no esperar la consulta);
         // el modal real se muestra con los datos completos apenas llegan (trip_id agregado al
         // payload 2026-07-30 -- ver ag-send-push). Este listener solo dispara con la app en

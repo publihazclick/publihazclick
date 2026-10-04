@@ -206,6 +206,9 @@ Deno.serve(async (req) => {
     if (body?.dist != null) data.dist = String(body.dist);
     if (body?.origin != null) data.origin = String(body.origin);
     if (body?.dest != null) data.dest = String(body.dest);
+    // Aviso NORMAL (2026-10-03, migración 304): recordatorio al conductor desconectado. La APK
+    // 1.4.32+ lo muestra como notificación común aunque la app esté cerrada (sin pantalla completa).
+    if (body?.aviso) data.aviso = '1';
 
     let sent = 0;
     // Resultado real por conductor (auth_user_id), para el informe de visibilidad.

@@ -5239,6 +5239,10 @@ async function presentIdleOrPendingRating(phone: string, idleAction: () => Promi
 //  - "NO MÁS" lo apaga (ag_wa_support_sessions.alertas_viaje_off, migración 302), sin tocar el push
 // ════════════════════════════════════════════════════════════════════════════
 const MARCA_ALERTA_VIAJE = '🚗 *Nueva solicitud de viaje';
+// Desde Play Store se toca "Abrir" y se entra a la app (los enlaces web abren el navegador).
+const ENLACE_ABRIR_MOVI = 'https://play.google.com/store/apps/details?id=com.publihazclick.movi';
+const MARCA_DESCONECTADO = '📴 Quedaste desconectado de Movi';
+const MARCA_TE_CONECTAS = '🚗 ¿Te conectas hoy?';
 
 async function alertaSolicitudConductores(tripId: string, simular = false): Promise<{ enviados: number; candidatos: number; destino?: string[] }> {
   const sb = db();
@@ -5286,7 +5290,8 @@ async function alertaSolicitudConductores(tripId: string, simular = false): Prom
   const yaAvisados = new Set<string>();
   for (const r of (recientes ?? []) as Array<{ wa_phone: string; body: string }>) {
     cuenta.set(r.wa_phone, (cuenta.get(r.wa_phone) ?? 0) + 1);
-    if (r.body.includes(tripId)) yaAvisados.add(r.wa_phone);
+    // El mensaje lleva los primeros 8 caracteres del id ("solicitud 265e13d0"), no el id entero.
+    if (r.body.includes(tripId.slice(0, 8))) yaAvisados.add(r.wa_phone);
   }
   const destino = tels.filter(t => conVentana.has(t) && !sinAlertas.has(t) && !enViaje.has(porTel.get(t)!)
     && !yaAvisados.has(t) && (cuenta.get(t) ?? 0) < 12);
@@ -5304,7 +5309,11 @@ async function alertaSolicitudConductores(tripId: string, simular = false): Prom
     `📍 ${trip.origin_name ?? 'Recogida'}\n` +
     `🏁 ${trip.dest_name ?? 'Destino'}\n` +
     `📏 ${km} km\n\n` +
-    `Ábrela en la app Movi para ofertar 👉 https://www.publihazclick.com/anda-gana?trip_request_id=${tripId}\n\n` +
+    // Play Store y no publihazclick.com: la app no atiende enlaces web (no hay App Links), así que
+    // ese enlace abría el NAVEGADOR. Desde Play Store el conductor toca "Abrir" y entra a la app,
+    // donde la solicitud ya le aparece en la lista. El "id" corto sirve para no repetir el aviso.
+    `Ábrela en la app Movi para ofertar 👉 ${ENLACE_ABRIR_MOVI}\n` +
+    `_(solicitud ${tripId.slice(0, 8)})_\n\n` +
     `_Te llega por aquí porque nos escribiste hoy. Si no quieres estos avisos, responde *NO MÁS*._`;
   const res = await Promise.all(destino.map(t => sendSupportText(t, texto, 'sistema')));
   return { enviados: res.filter(r => r.ok).length, candidatos: destino.length };
@@ -5319,16 +5328,50 @@ async function manejarBajaAlertasViaje(phone: string, msgText: string): Promise<
   const t = normalizarTexto(msgText).replace(/[.!¡¿?]/g, '').trim();
   if (!/^(no mas|no mas avisos|no quiero (mas )?avisos|parar|stop|no mas solicitudes|ya no mas)$/.test(t)) return false;
   const wa = normWaPhone(phone);
-  const { data: aviso } = await db().from('ag_wa_message_log').select('id')
-    .eq('wa_phone', wa).eq('direction', 'out').like('body', `${MARCA_ALERTA_VIAJE}%`)
-    .gte('created_at', new Date(Date.now() - 24 * 3600e3).toISOString()).limit(1).maybeSingle();
-  if (!aviso) return false;
+  // Se revisa en código y no con un filtro .or() de PostgREST: los textos llevan emojis, espacios y
+  // un "*" (que en ese filtro es comodín), y armar la consulta con ellos es frágil.
+  const { data: salientes } = await db().from('ag_wa_message_log').select('body')
+    .eq('wa_phone', wa).eq('direction', 'out')
+    .gte('created_at', new Date(Date.now() - 24 * 3600e3).toISOString())
+    .order('created_at', { ascending: false }).limit(100);
+  const marcas = [MARCA_ALERTA_VIAJE, MARCA_DESCONECTADO, MARCA_TE_CONECTAS];
+  const huboAviso = (salientes ?? []).some((r: { body: string }) => marcas.some(m => (r.body ?? '').startsWith(m)));
+  if (!huboAviso) return false;
   await db().from('ag_wa_support_sessions').upsert(
     { wa_phone: wa, alertas_viaje_off: true, alertas_viaje_off_at: new Date().toISOString() },
     { onConflict: 'wa_phone' },
   );
-  await sendSupportText(phone, 'Listo 👍 Ya no te mando las solicitudes por aquí. Te siguen llegando en la app Movi como notificación.', 'bot');
+  await sendSupportText(phone, 'Listo 👍 Ya no te mando avisos de viajes por aquí. Te siguen llegando en la app Movi como notificación.', 'bot');
   return true;
+}
+
+/**
+ * Recordatorio por WhatsApp al conductor desconectado (migración 304, ag_recordar_conectarse).
+ * Solo a quien tiene la ventana de 24 h abierta en el número de conductores (gratis) y no dijo
+ * "NO MÁS". El push del mismo recordatorio lo manda la base por ag-send-push.
+ */
+async function recordatorioConectarse(motivo: string, telefonos: string[]): Promise<number> {
+  const tels = [...new Set(telefonos.map(normWaPhone).filter(t => /^\d{11,15}$/.test(t)))];
+  if (!tels.length) return 0;
+  const desde = new Date(Date.now() - 23.5 * 3600e3).toISOString();
+  const [{ data: entrantes }, { data: apagados }] = await Promise.all([
+    db().from('ag_wa_message_log').select('wa_phone').eq('role', 'conductor').eq('direction', 'in')
+      .gte('created_at', desde).in('wa_phone', tels),
+    db().from('ag_wa_support_sessions').select('wa_phone').eq('alertas_viaje_off', true).in('wa_phone', tels),
+  ]);
+  const conVentana = new Set((entrantes ?? []).map((r: { wa_phone: string }) => r.wa_phone));
+  const sinAvisos = new Set((apagados ?? []).map((r: { wa_phone: string }) => r.wa_phone));
+  const destino = tels.filter(t => conVentana.has(t) && !sinAvisos.has(t));
+  if (!destino.length) return 0;
+  const texto = motivo === 'desconexion'
+    ? `${MARCA_DESCONECTADO} (la app se cerró en tu celular), así que ya no te llegan las solicitudes.\n\n` +
+      `Abre Movi y quedas en línea de una 👉 ${ENLACE_ABRIR_MOVI}\n\n` +
+      `_Si no quieres estos avisos, responde *NO MÁS*._`
+    : `${MARCA_TE_CONECTAS} Hay pasajeros pidiendo viajes en Movi.\n\n` +
+      `Abre la app y quedas en línea de una 👉 ${ENLACE_ABRIR_MOVI}\n\n` +
+      `_Si no quieres estos avisos, responde *NO MÁS*._`;
+  const res = await Promise.all(destino.map(t => sendSupportText(t, texto, 'sistema')));
+  return res.filter(r => r.ok).length;
 }
 
 async function handleInternalEvent(payload: Record<string, unknown>) {
@@ -8214,6 +8257,15 @@ serve(async (req) => {
     const r = await alertaSolicitudConductores(String(body.trip_id ?? ''), body.simular === true)
       .catch(e => { console.error('[WA] alertaSolicitudConductores:', e); return { enviados: 0, candidatos: 0 }; });
     return new Response(JSON.stringify(r), { headers: { 'Content-Type': 'application/json' } });
+  }
+
+  // Recordatorio al conductor desconectado (lo llama ag_recordar_conectarse, migración 304).
+  if (body._internal_event === 'recordatorio_conectarse') {
+    if (!(await esLlamadaDeServicio())) return noAutorizado();
+    const tels = Array.isArray(body.telefonos) ? (body.telefonos as unknown[]).map(String) : [];
+    const n = await recordatorioConectarse(String(body.motivo ?? 'diario'), tels)
+      .catch(e => { console.error('[WA] recordatorioConectarse:', e); return 0; });
+    return new Response(JSON.stringify({ enviados: n }), { headers: { 'Content-Type': 'application/json' } });
   }
 
   if (body._internal_event === 'admin_estado_pago_waba') {
