@@ -179,13 +179,16 @@ Deno.serve(async (req) => {
       const cancelTag = String(body.cancel_tag);
       const fcmSubs = (subs as any[]).filter((s) => s.provider === 'fcm' && s.fcm_token);
       let sent = 0;
-      for (const s of fcmSubs) {
-        const result = await sendFcm(s.fcm_token, '', '', { cancel_tag: cancelTag });
-        if (result === 'ok') {
-          sent++;
-        } else if (result === 'unregistered') {
-          supabase.from('ag_push_subs').delete().eq('id', s.id).then(() => {});
-        }
+      // En paralelo, igual que el envío normal (ver abajo): la notificación vieja desaparece de
+      // todos los celulares a la vez.
+      await getFcmAccessToken();
+      for (let i = 0; i < fcmSubs.length; i += 25) {
+        const tanda = fcmSubs.slice(i, i + 25);
+        const resultados = await Promise.all(tanda.map((s) => sendFcm(s.fcm_token, '', '', { cancel_tag: cancelTag })));
+        tanda.forEach((s, k) => {
+          if (resultados[k] === 'ok') sent++;
+          else if (resultados[k] === 'unregistered') supabase.from('ag_push_subs').delete().eq('id', s.id).then(() => {});
+        });
       }
       return json({ ok: true, sent, channels: { fcm: fcmSubs.length, webpush: 0 }, ms: Date.now() - t0, inicio: new Date(t0).toISOString() });
     }
@@ -210,19 +213,30 @@ Deno.serve(async (req) => {
     const rechazados = new Set<string>();
 
     // ── FCM nativos ──
+    // EN PARALELO (2026-10-03). Antes iban uno por uno: medido, 18 conductores tardaban ~2,4 s
+    // (~140 ms cada uno), así que el último de la lista recibía la solicitud hasta 2,4 s después
+    // que el primero. Ahora salen todos a la vez, en tandas de 25 para no saturar a Google. El
+    // token de Google se pide UNA vez antes (si cada envío lo pidiera en paralelo con la caché
+    // vacía, saldrían N pedidos de token a la vez).
     const fcmSubs = subs.filter((s: any) => s.provider === 'fcm' && s.fcm_token);
-    for (const s of fcmSubs as any[]) {
-      const result = await sendFcm(s.fcm_token, title, text, data);
-      if (result === 'ok') {
-        sent++;
-        aceptados.add(s.user_id);
-        supabase.from('ag_push_subs').update({ last_used_at: new Date().toISOString() }).eq('id', s.id).then(() => {});
-      } else {
-        rechazados.add(s.user_id);
-        if (result === 'unregistered') {
-          supabase.from('ag_push_subs').delete().eq('id', s.id).then(() => {});
+    await getFcmAccessToken();
+    const TANDA = 25;
+    for (let i = 0; i < fcmSubs.length; i += TANDA) {
+      const tanda = (fcmSubs as any[]).slice(i, i + TANDA);
+      const resultados = await Promise.all(tanda.map((s) => sendFcm(s.fcm_token, title, text, data)));
+      tanda.forEach((s, k) => {
+        const result = resultados[k];
+        if (result === 'ok') {
+          sent++;
+          aceptados.add(s.user_id);
+          supabase.from('ag_push_subs').update({ last_used_at: new Date().toISOString() }).eq('id', s.id).then(() => {});
+        } else {
+          rechazados.add(s.user_id);
+          if (result === 'unregistered') {
+            supabase.from('ag_push_subs').delete().eq('id', s.id).then(() => {});
+          }
         }
-      }
+      });
     }
 
     // ── Web Push ──
