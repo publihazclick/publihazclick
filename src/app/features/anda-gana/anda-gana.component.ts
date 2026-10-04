@@ -4636,7 +4636,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
             <!-- Contacto rápido -->
             <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)">
               <p class="text-white font-black text-sm">Contactar soporte</p>
-              <a href="https://wa.me/573181800264" target="_blank" rel="noopener"
+              <a href="https://wa.me/573166302106" target="_blank" rel="noopener"
                 class="flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all active:scale-[0.98]"
                 style="background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.25)">
                 <span class="material-symbols-outlined text-green-400" style="font-size:20px">chat</span>
@@ -7017,7 +7017,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
           @if (!loadingSection() && driverSection() === 'support') {
             <div class="flex flex-col gap-4">
               <!-- Contacto directo -->
-              <a href="https://wa.me/573181800264" target="_blank"
+              <a href="https://wa.me/573009645697" target="_blank"
                 class="w-full py-4 rounded-2xl flex items-center justify-center gap-3"
                 style="background:linear-gradient(135deg,rgba(37,211,102,0.1),rgba(18,140,126,0.07));border:1px solid rgba(37,211,102,0.3)">
                 <span class="material-symbols-outlined text-emerald-600" style="font-size:24px">chat</span>
@@ -15807,7 +15807,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async openDriverSection(action: string) {
     this.driverMenuOpen.set(false);
     if (!action) return;
-    if (action === 'whatsapp_support') { window.open('https://wa.me/573134453649', '_blank'); return; }
+    // Soporte del menú de CONDUCTOR -> WhatsApp de conductores (pedido del usuario 2026-10-04: antes iba al celular personal del admin).
+    if (action === 'whatsapp_support') { window.open('https://wa.me/' + this._waConductores, '_blank'); return; }
     if (action === 'terms') { window.open('/anda-gana/terminos', '_blank'); return; }
     if (action === 'privacy') { window.open('/anda-gana/privacidad', '_blank'); return; }
     if (action === 'wallet-panel') { this.walletPanelOpen.set(true); return; }
@@ -21676,7 +21677,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   openPassengerSection(action: string) {
     this.agMenuOpen.set(false);
-    if (action === 'whatsapp_support') { window.open('https://wa.me/573134453649', '_blank'); return; }
+    // Soporte del menú de PASAJERO -> WhatsApp de pasajeros (pedido del usuario 2026-10-04: antes iba al celular personal del admin).
+    if (action === 'whatsapp_support') { window.open('https://wa.me/' + this._waPasajeros, '_blank'); return; }
     if (action === 'terms') { window.open('/anda-gana/terminos', '_blank'); return; }
     if (action === 'privacy') { window.open('/anda-gana/privacidad', '_blank'); return; }
     if (action.startsWith('service:')) {
