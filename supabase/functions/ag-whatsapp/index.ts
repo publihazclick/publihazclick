@@ -8692,6 +8692,10 @@ serve(async (req) => {
         const name        = (contactName?.name as string) ?? 'Usuario';
 
         let msgText = '';
+        // Cómo se ve en el registro un mensaje que no es texto ("[foto]", "[reacción 👍]"...), y si
+        // llegó algo que no sabemos leer (para no responderle como si hubiera mandado un archivo).
+        let etiquetaLog = '';
+        let sinContenido = false;
         let msgLat: number | undefined;
         let msgLng: number | undefined;
         // ID del boton pulsado (solo en mensajes interactivos). Ver mas abajo por que importa.
@@ -8723,6 +8727,38 @@ serve(async (req) => {
           msgBtnId = ((interactive?.button_reply as Record<string, unknown>)?.id as string)
             ?? ((interactive?.list_reply as Record<string, unknown>)?.id as string)
             ?? undefined;
+          // Interactivo que NO es botón ni lista (2026-10-04). Llegaba vacío y el bot contestaba
+          // "Recibí tu archivo": pasó como PRIMER mensaje de conductores nuevos (sin nada nuestro
+          // antes), así que viene de afuera (p. ej. un anuncio). Si es un formulario (nfm_reply)
+          // se leen sus respuestas; si no, se guarda el tipo y un trozo del contenido para saber
+          // qué es, y se le responde como a un saludo en vez de hablarle de archivos.
+          if (!msgText && !msgBtnId) {
+            const sub = String(interactive?.type ?? 'desconocido');
+            const nfm = interactive?.nfm_reply as Record<string, unknown> | undefined;
+            let respuestas = '';
+            try {
+              const rj = nfm?.response_json ? JSON.parse(String(nfm.response_json)) as Record<string, unknown> : null;
+              if (rj) respuestas = Object.entries(rj).filter(([k]) => k !== 'flow_token').map(([k, v]) => `${k}: ${String(v)}`).join(' · ');
+            } catch { /* no era JSON */ }
+            if (respuestas) {
+              msgText = respuestas;
+              etiquetaLog = `[formulario] ${respuestas}`;
+            } else {
+              etiquetaLog = `[interactivo:${sub}] ${JSON.stringify(interactive ?? {}).slice(0, 300)}`;
+              sinContenido = true;
+            }
+          }
+        } else if (['image', 'video', 'document', 'sticker'].includes(msgType)) {
+          // Foto / video / documento / sticker: el texto que viene con el archivo (caption) se
+          // leía como vacío. Ahora se usa como mensaje normal, y el registro dice qué llegó.
+          const media = msg[msgType] as Record<string, unknown> | undefined;
+          msgText = (media?.caption as string) ?? '';
+          const nombres: Record<string, string> = { image: 'foto', video: 'video', document: 'documento', sticker: 'sticker' };
+          etiquetaLog = `[${nombres[msgType]}${media?.filename ? `: ${String(media.filename)}` : ''}]${msgText ? ` ${msgText}` : ''}`;
+        } else if (msgType === 'reaction') {
+          // Reacción con emoji a un mensaje nuestro (👍, ❤️): no es una pregunta ni un archivo.
+          const emoji = ((msg.reaction as Record<string, unknown>)?.emoji as string) ?? '';
+          etiquetaLog = `[reacción ${emoji || '(quitada)'}]`;
         } else if (msgType === 'button') {
           // Botón de respuesta rápida de una PLANTILLA (2026-10-04, ayuda de recarga). Llega como
           // type 'button' -- distinto de los botones interactivos -- y antes se quedaba sin texto.
@@ -8764,7 +8800,7 @@ serve(async (req) => {
             .then(({ error }: { error: unknown }) => { if (error) console.error('[WA] origen:', error); });
         }
 
-        logWaMessage(fromPhone, isSupportNumber ? 'conductor' : 'pasajero', 'in', msgText, msgType);
+        logWaMessage(fromPhone, isSupportNumber ? 'conductor' : 'pasajero', 'in', etiquetaLog || msgText, msgType);
 
         // Aviso al admin si esta persona está iniciando conversación. Fire-and-forget
         // a propósito: no puede agregarle ni un milisegundo a la respuesta que espera
@@ -8775,9 +8811,15 @@ serve(async (req) => {
             fromPhone,
             isSupportNumber ? 'conductor' : 'pasajero',
             name,
-            msgType === 'text' ? msgText : `[${msgType}]`,
+            etiquetaLog || (msgType === 'text' ? msgText : `[${msgType}]`),
           ).catch(() => {});
         }
+
+        // Una reacción con emoji no necesita respuesta (antes recibía "Recibí tu archivo").
+        if (msgType === 'reaction') return new Response('ok', { status: 200 });
+        // Algo que no sabemos leer y sin texto (p. ej. el interactivo que llega de un anuncio): se
+        // atiende como un saludo -- el conductor recibe el menú / embudo, nunca "Recibí tu archivo".
+        if (sinContenido && !msgText.trim()) msgText = 'hola';
 
         // El admin enseñándole una respuesta al bot (migración 271). Va antes que todo
         // lo demás, pero solo se activa si de verdad hay una pregunta pendiente y él no
