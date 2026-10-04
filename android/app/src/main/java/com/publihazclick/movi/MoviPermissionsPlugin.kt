@@ -1,6 +1,9 @@
 package com.publihazclick.movi
 
 import android.Manifest
+import android.content.ComponentName
+import android.os.Build
+import androidx.core.app.NotificationManagerCompat
 import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
@@ -79,6 +82,123 @@ class MoviPermissionsPlugin : Plugin() {
         val result = JSObject()
         result.put("alreadyIgnoring", pm.isIgnoringBatteryOptimizations(context.packageName))
         call.resolve(result)
+    }
+
+    /**
+     * Estado del celular para la tarjeta "Recibe las solicitudes al instante" y para el informe
+     * (ag_report_device_status, migracion 303) -- 2026-10-03. Solo LEE, nunca abre nada.
+     * autostartBrand: la marca si es de las que matan apps en segundo plano y tienen pantalla de
+     * "inicio automatico" (null si no), para que la app ofrezca el boton solo donde sirve.
+     */
+    @PluginMethod
+    fun getDeviceStatus(call: PluginCall) {
+        val result = JSObject()
+        try {
+            val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager
+            result.put("manufacturer", Build.MANUFACTURER ?: "")
+            result.put("brand", Build.BRAND ?: "")
+            result.put("model", Build.MODEL ?: "")
+            result.put("sdk", Build.VERSION.SDK_INT)
+            result.put("batteryExempt", pm.isIgnoringBatteryOptimizations(context.packageName))
+            result.put("notificationsOn", NotificationManagerCompat.from(context).areNotificationsEnabled())
+            val version = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
+            } catch (e: Exception) { "" }
+            result.put("appVersion", version)
+            result.put("autostartBrand", marcaConAutostart())
+        } catch (e: Exception) {
+            // Nunca rechazar: la app sigue funcionando sin estos datos.
+        }
+        call.resolve(result)
+    }
+
+    /**
+     * Abre la pantalla de "inicio automatico" / "apps protegidas" del fabricante (2026-10-03). Esas
+     * marcas (Xiaomi, Huawei, Oppo, Vivo...) matan las apps en segundo plano y retienen sus
+     * notificaciones aunque la optimizacion de bateria de Android este desactivada: es la causa
+     * mas probable de que a un conductor con la app cerrada no le llegue la solicitud.
+     *
+     * Las pantallas son internas de cada fabricante y cambian entre versiones, asi que se prueban
+     * varias en orden y cada intento va en try/catch (ActivityNotFoundException si no existe,
+     * SecurityException si existe pero no esta exportada). Si ninguna abre, se cae a los ajustes
+     * generales de la app (siempre existen). No se usa resolveActivity(): desde Android 11 no ve
+     * paquetes de otros fabricantes sin declararlos en <queries>, y daria falsos "no existe".
+     */
+    @PluginMethod
+    fun openAutostartSettings(call: PluginCall) {
+        val result = JSObject()
+        for (cn in candidatosAutostart()) {
+            try {
+                val intent = Intent().apply {
+                    component = cn
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                activity.startActivity(intent)
+                result.put("opened", "autostart")
+                result.put("component", cn.flattenToShortString())
+                call.resolve(result)
+                return
+            } catch (e: Exception) {
+                // siguiente candidato
+            }
+        }
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:" + context.packageName)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            activity.startActivity(intent)
+            result.put("opened", "app_details")
+            call.resolve(result)
+        } catch (e: Exception) {
+            call.reject("No se pudo abrir Ajustes: " + e.message)
+        }
+    }
+
+    private fun marcaConAutostart(): String? {
+        val m = ((Build.MANUFACTURER ?: "") + " " + (Build.BRAND ?: "")).lowercase()
+        return listOf("xiaomi", "redmi", "poco", "huawei", "honor", "oppo", "realme", "oneplus",
+            "vivo", "iqoo", "samsung", "asus", "infinix", "tecno", "itel", "motorola")
+            .firstOrNull { m.contains(it) }
+    }
+
+    private fun candidatosAutostart(): List<ComponentName> {
+        val m = ((Build.MANUFACTURER ?: "") + " " + (Build.BRAND ?: "")).lowercase()
+        val c = mutableListOf<ComponentName>()
+        fun add(p: String, a: String) = c.add(ComponentName(p, a))
+        when {
+            listOf("xiaomi", "redmi", "poco").any { m.contains(it) } -> {
+                add("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
+                add("com.miui.securitycenter", "com.miui.powercenter.PowerSettings")
+            }
+            m.contains("honor") -> {
+                add("com.hihonor.systemmanager", "com.hihonor.systemmanager.startupmgr.ui.StartupNormalAppListActivity")
+                add("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")
+            }
+            m.contains("huawei") -> {
+                add("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")
+                add("com.huawei.systemmanager", "com.huawei.systemmanager.optimize.process.ProtectActivity")
+            }
+            listOf("oppo", "realme", "oneplus").any { m.contains(it) } -> {
+                add("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")
+                add("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity")
+                add("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity")
+                add("com.oneplus.security", "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity")
+            }
+            listOf("vivo", "iqoo").any { m.contains(it) } -> {
+                add("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")
+                add("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity")
+                add("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager")
+            }
+            m.contains("samsung") -> {
+                add("com.samsung.android.lool", "com.samsung.android.sm.battery.ui.BatteryActivity")
+                add("com.samsung.android.sm", "com.samsung.android.sm.battery.ui.BatteryActivity")
+            }
+            m.contains("asus") -> add("com.asus.mobilemanager", "com.asus.mobilemanager.entry.FunctionActivity")
+            listOf("infinix", "tecno", "itel").any { m.contains(it) } ->
+                add("com.transsion.phonemaster", "com.cyin.himgr.autostart.AutoStartActivity")
+        }
+        return c
     }
 
     /**

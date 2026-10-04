@@ -2698,6 +2698,17 @@ export class AndaGanaService {
     return row ?? null;
   }
 
+  /** Estado del celular del conductor (APK 1.4.32+, migración 303): marca, modelo, Android, batería
+   *  sin restricción y notificaciones. Para saber a quién le retiene Android los avisos y por qué. */
+  async reportDeviceStatus(s: { manufacturer?: string; model?: string; sdk?: number; batteryExempt?: boolean; notificationsOn?: boolean; appVersion?: string }): Promise<void> {
+    const { error } = await this.supabase.rpc('ag_report_device_status', {
+      p_manufacturer: s.manufacturer ?? null, p_model: s.model ?? null, p_sdk: s.sdk ?? null,
+      p_battery_exempt: s.batteryExempt ?? null, p_notifications_on: s.notificationsOn ?? null,
+      p_app_version: s.appVersion ?? null,
+    });
+    if (error) throw error;
+  }
+
   async logMetricEvent(eventType: 'offer_seen' | 'offer_made' | 'trip_cancelled_self', tripId?: string): Promise<void> {
     await this.supabase.rpc('ag_log_metric_event', { p_event_type: eventType, p_trip_id: tripId ?? null });
   }

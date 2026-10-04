@@ -60,6 +60,8 @@ class MoviFirebaseMessagingService : MessagingService() {
             val title = data["title"] ?: "🚗 Nueva solicitud de viaje"
             val body = data["body"] ?: "Toca para ver los detalles"
             showFullScreenTripNotification(tripId, title, body, data["price"], data["dist"], data["origin"], data["dest"])
+            // DESPUES de mostrarla (no la demora): confirmar al servidor que llego.
+            reportarEntrega(tripId)
             return
         }
 
@@ -122,6 +124,51 @@ class MoviFirebaseMessagingService : MessagingService() {
             .build()
 
         getSystemService(NotificationManager::class.java).notify(notifId, notification)
+    }
+
+    /**
+     * Confirmacion de entrega (2026-10-03, migracion 303). Medido ese dia: de 579 avisos en 30 dias,
+     * 386 nunca se vieron, y no habia forma de saber si Android NO lo entrego o si llego y nadie lo
+     * miro. Esto le dice al servidor "me llego a esta hora" apenas Android entrega el push, aunque la
+     * app este cerrada (ag_trip_push_log.delivered_at).
+     *
+     * - Sincrona a proposito: onMessageReceived ya corre en un hilo de trabajo de Firebase (no el
+     *   principal) y Android puede matar el proceso apenas este metodo termina; un hilo aparte
+     *   podria quedar cortado. La notificacion YA se mostro antes de llamar esto, asi que la espera
+     *   no le demora nada al conductor. Tiempos acotados (2 s token + 4 s conexion + 4 s respuesta =
+     *   10 s como maximo), por debajo del limite que Android le da a este servicio.
+     * - Sin sesion (el servicio nativo no la tiene): se identifica con el token FCM del celular, y
+     *   ag_push_recibido solo marca si ese token existe en ag_push_subs.
+     * - Jamas puede tumbar el servicio: todo va dentro de try/catch(Throwable).
+     */
+    private fun reportarEntrega(tripId: String) {
+        try {
+            if (!Regex("^[0-9a-fA-F-]{36}$").matches(tripId)) return
+            val token = try {
+                com.google.android.gms.tasks.Tasks.await(
+                    com.google.firebase.messaging.FirebaseMessaging.getInstance().token,
+                    2, java.util.concurrent.TimeUnit.SECONDS
+                )
+            } catch (e: Exception) { null } ?: return
+            val url = java.net.URL("${MoviBackend.SUPABASE_URL}/rest/v1/rpc/ag_push_recibido")
+            val con = url.openConnection() as java.net.HttpURLConnection
+            try {
+                con.requestMethod = "POST"
+                con.connectTimeout = 4000
+                con.readTimeout = 4000
+                con.doOutput = true
+                con.setRequestProperty("apikey", MoviBackend.ANON_KEY)
+                con.setRequestProperty("Authorization", "Bearer ${MoviBackend.ANON_KEY}")
+                con.setRequestProperty("Content-Type", "application/json")
+                val body = org.json.JSONObject().put("p_trip_id", tripId).put("p_fcm_token", token).toString()
+                con.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+                con.responseCode   // fuerza el envio; el resultado no cambia nada para el conductor
+            } finally {
+                con.disconnect()
+            }
+        } catch (t: Throwable) {
+            // Solo medicion: nunca debe afectar el aviso.
+        }
     }
 
     private fun showFullScreenTripNotification(

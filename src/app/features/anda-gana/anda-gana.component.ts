@@ -5362,6 +5362,46 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
         </div>
       }
 
+      <!-- "Recibe las solicitudes al instante" (2026-10-03, APK 1.4.32+): lo que le falta a ESTE
+           celular para que Android no retenga los avisos con la app cerrada. Se va sola cuando ya
+           está todo. Ver _cargarEstadoCelular. -->
+      @if (mostrarTarjetaInstantaneo()) {
+        <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:#EFF6FF;border:1px solid #93C5FD">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:22px;color:#245BDB">bolt</span>
+            <div class="flex-1 min-w-0">
+              <p class="font-black text-sm" style="color:#0f172a">Recibe las solicitudes al instante</p>
+              <p class="text-slate-600 text-xs">Tu celular puede estar demorando los avisos de viaje. Activa esto para que te lleguen aunque tengas Movi cerrada:</p>
+            </div>
+          </div>
+          @if (!estadoCelular()!.notificationsOn) {
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-red-500" style="font-size:18px">notifications_off</span>
+              <p class="flex-1 text-xs font-bold" style="color:#0f172a">Notificaciones de Movi</p>
+              <button (click)="openNotificationSettings()" class="px-3 py-1.5 rounded-lg text-xs font-black text-white" style="background:#245BDB">Activar</button>
+            </div>
+          }
+          @if (!estadoCelular()!.batteryExempt) {
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-orange-500" style="font-size:18px">battery_alert</span>
+              <p class="flex-1 text-xs font-bold" style="color:#0f172a">Batería sin restricciones para Movi</p>
+              <button (click)="activarBateriaInstantaneo()" class="px-3 py-1.5 rounded-lg text-xs font-black text-white" style="background:#245BDB">Activar</button>
+            </div>
+          }
+          @if (estadoCelular()!.autostartBrand && !autostartHecho()) {
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-orange-500" style="font-size:18px">restart_alt</span>
+                <p class="flex-1 text-xs font-bold" style="color:#0f172a">Inicio automático / segundo plano ({{ marcaBonita(estadoCelular()!.autostartBrand) }})</p>
+                <button (click)="abrirAutostartInstantaneo()" class="px-3 py-1.5 rounded-lg text-xs font-black text-white" style="background:#245BDB">Abrir</button>
+              </div>
+              <p class="text-slate-500" style="font-size:11px;line-height:1.4">En la pantalla que se abre, busca <b>Movi</b> y actívala (o elige "Sin restricciones"). Luego vuelve aquí.</p>
+              <button (click)="marcarAutostartHecho()" class="self-start text-xs font-bold" style="color:#245BDB;background:none;border:none;padding:0;cursor:pointer">Ya lo activé ✓</button>
+            </div>
+          }
+        </div>
+      }
+
       <!-- Documentos vencidos o por vencer en los próximos 5 días (migración 193) -->
       @if (driverDocAlerts().length > 0) {
         <div class="rounded-2xl p-4 flex items-center gap-3"
@@ -12400,6 +12440,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this._pararSeguimiento('full');
     this._pararSeguimiento('qr');
+    if (this._estadoCelularHandler) { document.removeEventListener('visibilitychange', this._estadoCelularHandler); this._estadoCelularHandler = null; }
     try { const el = document.getElementById('movi-nav-audio') as HTMLAudioElement; if (el) { el.pause(); el.src = ''; } } catch {}
     this._destroyMap();
     this._stopWaiting();
@@ -17401,6 +17442,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._registerNativePush().catch(() => {});
     setTimeout(() => this._autoRegisterPush(), 500);
     this._requestBatteryOptimizationExemption();
+    // Estado del celular para la tarjeta "Recibe las solicitudes al instante" (APK 1.4.32+).
+    this._cargarEstadoCelular().catch(() => {});
   }
 
   /** Pedido explicito del usuario 2026-08-03: "a veces llega la notificacion de una solicitud
@@ -17419,6 +17462,69 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!cap?.isNativePlatform?.() || !MP) return;
     localStorage.setItem('movi-battery-opt-asked', '1');
     MP.requestIgnoreBatteryOptimizations().catch(() => {});
+  }
+
+  // ── "Recibe las solicitudes al instante" (2026-10-03, APK 1.4.32+) ─────────────────────
+  // Medido ese día: de 579 avisos de solicitud en 30 días, 386 nunca se vieron; el servidor los
+  // saca en <0,5 s, pero Android y los fabricantes (Xiaomi, Huawei, Oppo...) los retienen si la app
+  // está cerrada. Antes el permiso de batería se pedía UNA sola vez en la vida (si el conductor lo
+  // cerraba, nunca más) y nadie sabía quién lo tenía. Ahora la tarjeta muestra lo que le falta a
+  // ESTE celular y se va sola cuando ya está todo; el estado se reporta al servidor
+  // (ag_report_device_status, migración 303). Con una APK vieja (sin getDeviceStatus) no se muestra.
+  estadoCelular = signal<{ batteryExempt: boolean; notificationsOn: boolean; autostartBrand: string | null } | null>(null);
+  autostartHecho = signal(false);
+  readonly mostrarTarjetaInstantaneo = computed(() => {
+    const s = this.estadoCelular();
+    return !!s && (!s.notificationsOn || !s.batteryExempt || (!!s.autostartBrand && !this.autostartHecho()));
+  });
+  private _estadoCelularHandler: (() => void) | null = null;
+  private _ultimoEstadoReportado = '';
+
+  async _cargarEstadoCelular(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const cap = (window as any)?.Capacitor;
+    const MP = cap?.Plugins?.MoviPermissions;
+    if (!cap?.isNativePlatform?.() || typeof MP?.getDeviceStatus !== 'function') return;
+    try { this.autostartHecho.set(localStorage.getItem('movi-autostart-ok') === '1'); } catch {}
+    const s: any = await MP.getDeviceStatus().catch(() => null);
+    if (!s || typeof s.batteryExempt !== 'boolean') return;   // APK vieja o fallo: no se muestra nada
+    this.estadoCelular.set({ batteryExempt: s.batteryExempt, notificationsOn: !!s.notificationsOn, autostartBrand: s.autostartBrand ?? null });
+    this.cdr.markForCheck();
+    const clave = JSON.stringify([s.manufacturer, s.model, s.sdk, s.batteryExempt, s.notificationsOn, s.appVersion]);
+    if (clave !== this._ultimoEstadoReportado) {
+      this._ultimoEstadoReportado = clave;
+      this.agService.reportDeviceStatus(s).catch(() => {});
+    }
+    // Al volver de Ajustes, releer: así la tarjeta se actualiza sola apenas activó algo.
+    if (!this._estadoCelularHandler) {
+      this._estadoCelularHandler = () => { if (!document.hidden) this._cargarEstadoCelular().catch(() => {}); };
+      document.addEventListener('visibilitychange', this._estadoCelularHandler);
+    }
+  }
+
+  activarBateriaInstantaneo(): void {
+    const MP = (window as any)?.Capacitor?.Plugins?.MoviPermissions;
+    if (!MP?.requestIgnoreBatteryOptimizations) return;
+    MP.requestIgnoreBatteryOptimizations().catch(() => {}).finally(() => this._cargarEstadoCelular().catch(() => {}));
+  }
+
+  abrirAutostartInstantaneo(): void {
+    const MP = (window as any)?.Capacitor?.Plugins?.MoviPermissions;
+    if (typeof MP?.openAutostartSettings !== 'function') return;
+    MP.openAutostartSettings().catch(() => {});
+  }
+
+  /** No hay forma de leer si el conductor activó el inicio automático (es un ajuste del
+   * fabricante, no de Android), así que se le pregunta y se recuerda en este celular. */
+  marcarAutostartHecho(): void {
+    try { localStorage.setItem('movi-autostart-ok', '1'); } catch {}
+    this.autostartHecho.set(true);
+    this.cdr.markForCheck();
+  }
+
+  /** "Xiaomi" en vez de "xiaomi" para el texto de la tarjeta. */
+  marcaBonita(m: string | null | undefined): string {
+    return m ? m.charAt(0).toUpperCase() + m.slice(1) : '';
   }
 
   /** Atajo de un toque a Ajustes → Notificaciones de Movi -- para cuando el permiso ya quedo
