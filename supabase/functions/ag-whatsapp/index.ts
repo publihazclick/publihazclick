@@ -5409,8 +5409,8 @@ const BOTONES_RESULTADO_RECARGA = [
 /**
  * Lo que el conductor necesita saber de SU saldo antes de pelear con la recarga (2026-10-04, caso
  * real José …528: intentó recargar 3 veces y ni siquiera lo necesitaba). Mismas reglas que acepta la
- * app (anda-gana.component.ts, validación de saldo al aceptar): 'quick' sin viajes -> la primera
- * carrera es gratis; 'approved'/'pending' -> mínimo $20.000 para aceptar (la recarga mínima es $10.000).
+ * app (submitDriverOffer) y la base (ag_on_offer_accepted): sin viajes -> la primera carrera es
+ * gratis; desde el segundo viaje -> basta la comisión de ese viaje en el saldo (sin mínimo fijo).
  */
 async function notaSaldoConductor(tel: string): Promise<string> {
   try {
@@ -5418,12 +5418,12 @@ async function notaSaldoConductor(tel: string): Promise<string> {
     if (!u?.id) return '';
     const { data: d } = await db().from('ag_drivers').select('status, wallet_balance, metric_trips_completed').eq('ag_user_id', u.id).maybeSingle();
     if (!d) return '';
-    if (d.status === 'quick' && !(Number(d.metric_trips_completed) > 0)) {
-      return `💡 *Dato importante:* como vas en registro rápido, tu *primera carrera no necesita saldo*. Ponte en línea y acepta un viaje sin recargar. Desde el segundo viaje sí necesitas saldo para la comisión.\n\n`;
+    // Regla de saldo del 2026-10-04 (igual para todos los estados): primer viaje gratis; desde el
+    // segundo, alcanza con tener en el saldo la comisión de ese viaje (12% del precio).
+    if (!(Number(d.metric_trips_completed) > 0)) {
+      return `💡 *Dato importante:* tu *primera carrera no necesita saldo*. Ponte en línea y acepta un viaje sin recargar. Desde el segundo viaje sí necesitas saldo para la comisión.\n\n`;
     }
-    if ((d.status === 'approved' || d.status === 'pending') && Number(d.wallet_balance ?? 0) < 20000) {
-      return `💡 *Dato importante:* para aceptar viajes necesitas mínimo *$20.000* en tu saldo (hoy tienes $${Number(d.wallet_balance ?? 0).toLocaleString('es-CO')}).\n\n`;
-    }
+    return `💡 *Dato importante:* para aceptar un viaje solo necesitas tener en tu saldo la *comisión de ese viaje* (12% del precio; por ejemplo $1.200 en un viaje de $10.000). Hoy tienes $${Number(d.wallet_balance ?? 0).toLocaleString('es-CO')}.\n\n`;
   } catch (e) { console.error('[WA] notaSaldoConductor:', e); }
   return '';
 }

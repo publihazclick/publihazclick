@@ -20050,24 +20050,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // sigue las mismas reglas de saldo/comisión que uno 'approved' (ver banner de estado en el
     // home, ~línea 5528, y ag_notify_drivers_on_trip_request/ag_find_nearest_drivers en la BD,
     // que también se actualizaron para notificar y emparejar a conductores 'pending').
-    // Validar saldo para conductores aprobados (first trip es gratis para 'quick')
+    // Regla de saldo (pedido del usuario 2026-10-04), IGUAL para todos los estados (quick, pending,
+    // approved) y la misma que aplica la base al aceptar (trigger ag_on_offer_accepted y
+    // cc_accept_offer): el PRIMER viaje es gratis; desde el segundo, alcanza con tener en el saldo
+    // la comisión de ESE viaje. Antes un 'approved'/'pending' necesitaba mínimo $20.000 fijos (y ni
+    // el primer viaje le salía gratis), aunque la recarga mínima es $10.000: quien recargaba $10.000
+    // seguía bloqueado. Las solicitudes las siguen viendo todos; esto solo se revisa al aceptar.
     const completedTrips = (driver as any)?.metric_trips_completed ?? 0;
     const commission = this.requiredCommission(this.driverOfferPrice());
-    if (status === 'approved' || status === 'pending') {
-      if (this.driverWalletBalance() < 20000) {
-        alert('Necesitas mínimo $20.000 en tu billetera para aceptar viajes.');
-        return;
-      }
-      if (this.driverCommissionPct() > 0 && this.driverWalletBalance() < commission) {
-        alert(`Saldo insuficiente. Necesitas al menos ${this.formatCOP(commission)} para cubrir la comisión.`);
-        return;
-      }
-    } else if (status === 'quick' && completedTrips >= 1) {
-      // Desde el 2do viaje el conductor quick también paga comisión
-      if (this.driverWalletBalance() < commission) {
-        alert(`Saldo insuficiente. Necesitas al menos ${this.formatCOP(commission)} para cubrir la comisión de este viaje.`);
-        return;
-      }
+    if (completedTrips >= 1 && commission > 0 && this.driverWalletBalance() < commission) {
+      const falta = commission - Math.max(0, this.driverWalletBalance());
+      alert(
+        `Saldo insuficiente para este viaje.\n\n` +
+        `La comisión es ${this.formatCOP(commission)} y tienes ${this.formatCOP(Math.max(0, this.driverWalletBalance()))} (te faltan ${this.formatCOP(falta)}).\n\n` +
+        `Recarga desde ${this.formatCOP(10000)} en tu Saldo y vuelve a intentarlo.`,
+      );
+      // Dejarle abierto el panel de recarga para que lo haga de una vez.
+      this.walletPanelOpen.set(true);
+      return;
     }
 
     // Techo de la contraoferta (ver maxOfferFor). Se valida acá para poder decirle al
