@@ -6863,6 +6863,64 @@ async function searchWebAnswer(originalQuestion: string, searchQuery: string): P
  * Best-effort de punta a punta: si algo falla acá, el conductor o pasajero igual
  * recibe su respuesta normal. Nunca debe tumbar la conversación.
  */
+// ─── Número OCULTO en WhatsApp (migración 309, 2026-10-04) ──────────────────────────────────────
+// Pedido del usuario: que todo aviso a su WhatsApp traiga el celular de la persona. Quien activa el
+// "nombre de usuario" de WhatsApp llega con un BSUID ("CO.1749…") y Meta NO da su número: la única
+// forma de tenerlo es pedírselo. Se le pide una vez cada 24 h hasta que lo dé (después de responderle
+// lo que preguntó, nunca antes), se guarda en ag_wa_celular_oculto y se le avisa al admin.
+
+/** Lo que se muestra en los avisos: el número, el que dio por el chat, o "número oculto" dicho claro. */
+async function telefonoParaAdmin(phone: string): Promise<string> {
+  if (!isBsuid(phone)) return toE164(phone);
+  const { data } = await db().from('ag_wa_celular_oculto').select('celular').eq('bsuid', phone).maybeSingle();
+  return data?.celular
+    ? `${data.celular} (lo dio por el chat; su WhatsApp tiene el número oculto)`
+    : `número oculto en WhatsApp (${phone}) — ya le pedí su celular`;
+}
+
+/** "300 123 4567", "+57 300…", "57300…", Venezuela "+58 412…" -> E.164; null si no es solo un celular. */
+function celularEscrito(texto: string): string | null {
+  const t = texto.trim();
+  if (!/^[\s+\d().-]{10,22}$/.test(t)) return null;
+  const d = t.replace(/\D/g, '');
+  if (/^3\d{9}$/.test(d)) return `+57${d}`;
+  if (/^573\d{9}$/.test(d)) return `+${d}`;
+  if (/^584(1[246]|2[246])\d{7}$/.test(d)) return `+${d}`;
+  return null;
+}
+
+async function capturarCelularOculto(fromPhone: string, msgText: string, isSupportNumber: boolean, waName: string): Promise<boolean> {
+  if (!isBsuid(fromPhone)) return false;
+  const celular = celularEscrito(msgText);
+  if (!celular) return false;
+  // Solo si se lo pedimos (así un número suelto, p. ej. el de otra persona, no se toma por el suyo).
+  const { data: fila } = await db().from('ag_wa_celular_oculto').select('pedido_at').eq('bsuid', fromPhone).maybeSingle();
+  if (!fila?.pedido_at) return false;
+  await db().from('ag_wa_celular_oculto').update({ celular, dado_at: new Date().toISOString() }).eq('bsuid', fromPhone);
+  const texto = `¡Gracias! 🙌 Guardé tu número ${celular.replace(/^\+57/, '')}. Si hace falta te llamamos ahí.`;
+  if (isSupportNumber) await sendSupportText(fromPhone, texto); else await sendText(fromPhone, texto);
+  const nombre = (await lookupRealFirstName(fromPhone)) || cleanDisplayName(waName) || 'Sin nombre';
+  const detalle = `${nombre} (${isSupportNumber ? 'chat de CONDUCTORES' : 'chat de PASAJEROS'}) tiene el número oculto en WhatsApp ` +
+    `(${fromPhone}) y nos dio su celular: ${celular}. Llámalo o escríbele: wa.me/${celular.replace('+', '')}`;
+  await sendAdminAlert(SUPPORT_PHONE, '📱 Celular de un usuario con número oculto', detalle);
+  await db().from('ag_admin_notifications').insert({ type: 'admin_info', title: '📱 Celular de un usuario con número oculto', body: detalle });
+  return true;
+}
+
+async function pedirCelularSiOculto(fromPhone: string, isSupportNumber: boolean): Promise<void> {
+  try {
+    if (!isBsuid(fromPhone)) return;
+    const { data: fila } = await db().from('ag_wa_celular_oculto').select('celular, pedido_at').eq('bsuid', fromPhone).maybeSingle();
+    if (fila?.celular) return;
+    if (fila?.pedido_at && Date.now() - new Date(fila.pedido_at as string).getTime() < 24 * 3600e3) return;
+    await db().from('ag_wa_celular_oculto').upsert({ bsuid: fromPhone, pedido_at: new Date().toISOString() }, { onConflict: 'bsuid' });
+    const texto = `📱 Una cosa más: tu WhatsApp tiene el número *oculto* y no lo podemos ver. ` +
+      `Escríbeme tu número de celular (ej: 300 123 4567) para poder llamarte si hace falta` +
+      `${isSupportNumber ? '' : ' (por ejemplo, el conductor cuando llegue por ti)'}.`;
+    if (isSupportNumber) await sendSupportText(fromPhone, texto, 'sistema'); else await sendText(fromPhone, texto, 'sistema');
+  } catch (e) { console.error('[WA] pedirCelularSiOculto:', e); }
+}
+
 async function notifyAdminNewConversation(
   phone: string,
   role: 'conductor' | 'pasajero',
@@ -6880,7 +6938,7 @@ async function notifyAdminNewConversation(
     const c = (info ?? {}) as Record<string, unknown>;
 
     const nombre = (c.nombre as string) || cleanDisplayName(waProfileName) || 'Sin nombre registrado';
-    const partes: string[] = [nombre, phone];
+    const partes: string[] = [nombre, await telefonoParaAdmin(phone)];
 
     if (c.encontrado) {
       if (c.es_conductor) {
@@ -8731,6 +8789,11 @@ serve(async (req) => {
           }
         }
 
+        // Número oculto: si ya le pedimos el celular y lo escribe, se guarda y se le avisa al admin.
+        if (msgType === 'text' && await capturarCelularOculto(fromPhone, msgText, isSupportNumber, name)) {
+          return new Response('ok', { status: 200 });
+        }
+
         // Pedido de codigo de verificacion por WhatsApp -- corre ANTES del bot normal
         // (viajes o soporte) y corta el procesamiento si consumio el mensaje. Si el mensaje
         // no tiene nada que ver con un codigo devuelve false, y todo sigue igual que antes.
@@ -8756,6 +8819,9 @@ serve(async (req) => {
         } else {
           await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession, precomputedRoute, msgBtnId);
         }
+
+        // DESPUÉS de su respuesta normal (para no interrumpir): pedirle el celular si lo tiene oculto.
+        await pedirCelularSiOculto(fromPhone, isSupportNumber);
 
         // Fire-and-forget: no debe agregar latencia a la respuesta real que
         // ya se le mandó al pasajero.
