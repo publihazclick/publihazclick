@@ -13,7 +13,19 @@
 
 ## Pendiente de subir
 
-_Nada por ahora._
+### Solicitudes de viaje: envío push en paralelo + aviso por WhatsApp a conductores con ventana abierta (2026-10-03)
+- **Por qué**: el usuario vio que la solicitud tarda en llegar a los conductores. Medido: el servidor la saca en
+  <0,5 s (cola de pg_net 0,2-0,4 s) pero Android entrega el push tarde o nunca con la app cerrada (de 579 avisos
+  en 30 días, 386 nunca se vieron; mediana 15 s cuando sí). El tiempo real de la app abierta SÍ funciona
+  (probado: 0,14-0,30 s desde el cambio en la base).
+- **Servidor (YA desplegado)**: `ag-send-push` v38 manda los push en paralelo (18 conductores: 2,4 s → 0,28 s).
+  `ag-whatsapp` + migración **302**: cada solicitud también sale por WhatsApp (texto libre, gratis) a los
+  conductores que escribieron al número de conductores en las últimas 23,5 h, con las mismas reglas del push;
+  nunca el mismo viaje dos veces, máx 12 por conductor al día, nada a quien va en viaje, "NO MÁS" lo apaga
+  (sin tocar el push). Probado: simulación → 2 candidatos; viaje cancelado → 0; sin llave → 401.
+- **App (WEB, falta push)**: el `offer_seen` del tiempo real ahora guarda el id del viaje (para medir). `ngc` OK.
+- **Siguiente (APK)**: servicio permanente mientras está en línea, permiso de batería, guía de inicio
+  automático por marca y confirmación de entrega del push desde el celular.
 
 ---
 

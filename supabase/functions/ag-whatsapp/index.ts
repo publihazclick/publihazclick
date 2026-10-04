@@ -5221,6 +5221,116 @@ async function presentIdleOrPendingRating(phone: string, idleAction: () => Promi
 }
 
 // ─── Manejar eventos internos (DB triggers) ───────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// SOLICITUDES DE VIAJE TAMBIÉN POR WHATSAPP A CONDUCTORES CON VENTANA ABIERTA (2026-10-03)
+//
+// Medido ese día: el push sale del servidor en <0,5 s, pero Android lo entrega tarde o nunca a
+// quien tiene la app cerrada o el celular en reposo (2 de cada 3 avisos de 30 días no se vieron;
+// mediana de 15 s cuando sí). WhatsApp casi nunca se duerme. Decisión del usuario: mandar cada
+// solicitud ADEMÁS por WhatsApp, pero SOLO a los conductores que le escribieron al número de
+// conductores en las últimas 24 h -- dentro de esa ventana el texto libre es gratis y no hay
+// plantilla que pueda clasificarse como marketing.
+//
+// Cuidados, porque es el mismo número que atiende a los conductores y su calidad importa:
+//  - mismas reglas del push (vehículo, estado, notify_new_requests) -- ag_notify_drivers_on_trip_request
+//  - ventana de 23,5 h (margen sobre las 24 h de Meta)
+//  - nunca el mismo viaje dos veces al mismo conductor; máximo 12 avisos por conductor en 24 h
+//  - nada a quien ya tiene un viaje aceptado en curso; se re-verifica que siga en 'searching'
+//  - "NO MÁS" lo apaga (ag_wa_support_sessions.alertas_viaje_off, migración 302), sin tocar el push
+// ════════════════════════════════════════════════════════════════════════════
+const MARCA_ALERTA_VIAJE = '🚗 *Nueva solicitud de viaje';
+
+async function alertaSolicitudConductores(tripId: string, simular = false): Promise<{ enviados: number; candidatos: number; destino?: string[] }> {
+  const sb = db();
+  const { data: trip } = await sb.from('ag_trip_requests')
+    .select('id, status, vehicle_type, origin_name, dest_name, offered_price, distance_km')
+    .eq('id', tripId).maybeSingle();
+  // simular: para probar la selección con un viaje viejo sin escribirle a nadie.
+  if (!trip || (trip.status !== 'searching' && !simular)) return { enviados: 0, candidatos: 0 };
+
+  const vt = trip.vehicle_type as string;
+  const paraTodos = ['domicilio', 'fletes', 'ciudad'].includes(vt);
+  const { data: conductores } = await sb.from('ag_drivers')
+    .select('id, vehicle_type, notify_new_requests, status, ag_users!inner(phone)')
+    .in('status', ['approved', 'quick', 'pending']);
+  const elegibles = (conductores ?? []).filter((d: Record<string, unknown>) => {
+    const tipo = d.vehicle_type === 'moto' ? 'moto' : 'carro';
+    return (paraTodos || tipo === vt) && d.notify_new_requests !== false;
+  }) as unknown as Array<{ id: string; ag_users: { phone: string } | Array<{ phone: string }> }>;
+  if (!elegibles.length) return { enviados: 0, candidatos: 0 };
+
+  const porTel = new Map<string, string>();   // wa_phone (sin '+') -> driver_id
+  for (const d of elegibles) {
+    // ag_users llega como objeto (relación muchos-a-uno), pero se acepta también arreglo por si acaso.
+    const u = Array.isArray(d.ag_users) ? d.ag_users[0] : d.ag_users;
+    const tel = normWaPhone(u?.phone ?? '');
+    if (/^\d{11,15}$/.test(tel)) porTel.set(tel, d.id);
+  }
+  const tels = [...porTel.keys()];
+  if (!tels.length) return { enviados: 0, candidatos: 0 };
+
+  // Ventana: último mensaje DEL conductor al número de conductores en las últimas 23,5 h.
+  const desde = new Date(Date.now() - 23.5 * 3600e3).toISOString();
+  const [{ data: entrantes }, { data: apagados }, { data: ocupados }, { data: recientes }] = await Promise.all([
+    sb.from('ag_wa_message_log').select('wa_phone').eq('role', 'conductor').eq('direction', 'in')
+      .gte('created_at', desde).in('wa_phone', tels),
+    sb.from('ag_wa_support_sessions').select('wa_phone').eq('alertas_viaje_off', true).in('wa_phone', tels),
+    sb.from('ag_trip_requests').select('driver_id').eq('status', 'accepted').in('driver_id', [...porTel.values()]),
+    sb.from('ag_wa_message_log').select('wa_phone, body').eq('role', 'conductor').eq('direction', 'out')
+      .like('body', `${MARCA_ALERTA_VIAJE}%`).gte('created_at', new Date(Date.now() - 24 * 3600e3).toISOString()).in('wa_phone', tels),
+  ]);
+  const conVentana = new Set((entrantes ?? []).map((r: { wa_phone: string }) => r.wa_phone));
+  const sinAlertas = new Set((apagados ?? []).map((r: { wa_phone: string }) => r.wa_phone));
+  const enViaje = new Set((ocupados ?? []).map((r: { driver_id: string }) => r.driver_id));
+  const cuenta = new Map<string, number>();
+  const yaAvisados = new Set<string>();
+  for (const r of (recientes ?? []) as Array<{ wa_phone: string; body: string }>) {
+    cuenta.set(r.wa_phone, (cuenta.get(r.wa_phone) ?? 0) + 1);
+    if (r.body.includes(tripId)) yaAvisados.add(r.wa_phone);
+  }
+  const destino = tels.filter(t => conVentana.has(t) && !sinAlertas.has(t) && !enViaje.has(porTel.get(t)!)
+    && !yaAvisados.has(t) && (cuenta.get(t) ?? 0) < 12);
+  if (simular) return { enviados: 0, candidatos: destino.length, destino: destino.map(t => t.slice(-4)) };
+  if (!destino.length) return { enviados: 0, candidatos: 0 };
+
+  // Última verificación justo antes de mandar: si alguien ya la tomó, no se avisa a nadie.
+  const { data: sigue } = await sb.from('ag_trip_requests').select('status').eq('id', tripId).maybeSingle();
+  if (sigue?.status !== 'searching') return { enviados: 0, candidatos: destino.length };
+
+  const precio = '$' + Number(trip.offered_price ?? 0).toLocaleString('es-CO');
+  const km = Number(trip.distance_km ?? 0).toFixed(1).replace('.', ',');
+  const texto =
+    `${MARCA_ALERTA_VIAJE} · ${precio}*\n\n` +
+    `📍 ${trip.origin_name ?? 'Recogida'}\n` +
+    `🏁 ${trip.dest_name ?? 'Destino'}\n` +
+    `📏 ${km} km\n\n` +
+    `Ábrela en la app Movi para ofertar 👉 https://www.publihazclick.com/anda-gana?trip_request_id=${tripId}\n\n` +
+    `_Te llega por aquí porque nos escribiste hoy. Si no quieres estos avisos, responde *NO MÁS*._`;
+  const res = await Promise.all(destino.map(t => sendSupportText(t, texto, 'sistema')));
+  return { enviados: res.filter(r => r.ok).length, candidatos: destino.length };
+}
+
+/**
+ * "NO MÁS" a un aviso de solicitud por WhatsApp: apaga SOLO esos avisos (el push sigue igual).
+ * Solo se toma así si en las últimas 24 h le mandamos un aviso de solicitud: "no más" en otra
+ * conversación sigue al bot normal.
+ */
+async function manejarBajaAlertasViaje(phone: string, msgText: string): Promise<boolean> {
+  const t = normalizarTexto(msgText).replace(/[.!¡¿?]/g, '').trim();
+  if (!/^(no mas|no mas avisos|no quiero (mas )?avisos|parar|stop|no mas solicitudes|ya no mas)$/.test(t)) return false;
+  const wa = normWaPhone(phone);
+  const { data: aviso } = await db().from('ag_wa_message_log').select('id')
+    .eq('wa_phone', wa).eq('direction', 'out').like('body', `${MARCA_ALERTA_VIAJE}%`)
+    .gte('created_at', new Date(Date.now() - 24 * 3600e3).toISOString()).limit(1).maybeSingle();
+  if (!aviso) return false;
+  await db().from('ag_wa_support_sessions').upsert(
+    { wa_phone: wa, alertas_viaje_off: true, alertas_viaje_off_at: new Date().toISOString() },
+    { onConflict: 'wa_phone' },
+  );
+  await sendSupportText(phone, 'Listo 👍 Ya no te mando las solicitudes por aquí. Te siguen llegando en la app Movi como notificación.', 'bot');
+  return true;
+}
+
 async function handleInternalEvent(payload: Record<string, unknown>) {
   const event   = payload._internal_event as string;
   const phone   = payload.wa_phone as string;
@@ -8096,6 +8206,16 @@ serve(async (req) => {
     return new Response(JSON.stringify({ enviado: true, categoria: tpl.category, total: telefonos.length, ok: resultados.filter(x => x.ok).length, resultados }), { headers: { 'Content-Type': 'application/json' } });
   }
 
+  // Solicitud nueva -> aviso por WhatsApp a conductores con ventana abierta (lo llama el trigger
+  // ag_notify_drivers_on_trip_request, migración 302). Solo con la llave de servicio: sin eso,
+  // cualquiera podría hacer que le escribiéramos a los conductores.
+  if (body._internal_event === 'alerta_solicitud_conductores') {
+    if (!(await esLlamadaDeServicio())) return noAutorizado();
+    const r = await alertaSolicitudConductores(String(body.trip_id ?? ''), body.simular === true)
+      .catch(e => { console.error('[WA] alertaSolicitudConductores:', e); return { enviados: 0, candidatos: 0 }; });
+    return new Response(JSON.stringify(r), { headers: { 'Content-Type': 'application/json' } });
+  }
+
   if (body._internal_event === 'admin_estado_pago_waba') {
     if (!(await esLlamadaDeServicio())) return noAutorizado();
     const g = (path: string) => fetch(`https://graph.facebook.com/v22.0/${path}`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } })
@@ -8357,6 +8477,11 @@ serve(async (req) => {
         // (viajes o soporte) y corta el procesamiento si consumio el mensaje. Si el mensaje
         // no tiene nada que ver con un codigo devuelve false, y todo sigue igual que antes.
         if (await handleOtpCodeRequest(fromPhone, msgText, isSupportNumber)) {
+          return new Response('ok', { status: 200 });
+        }
+
+        // "NO MÁS" a los avisos de solicitudes por WhatsApp (ver alertaSolicitudConductores).
+        if (isSupportNumber && msgType === 'text' && await manejarBajaAlertasViaje(fromPhone, msgText)) {
           return new Response('ok', { status: 200 });
         }
 

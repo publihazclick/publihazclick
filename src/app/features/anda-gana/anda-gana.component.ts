@@ -19548,7 +19548,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       (req) => {
         this.driverRequests.update(list => {
           if (list.some(r => r.id === req.id)) return list;
-          this.agService.logMetricEvent('offer_seen').catch(() => {});
+          // Con el id del viaje (2026-10-03): así se mide cuánto tarda el tiempo real en entregar cada
+          // solicitud (ag_driver_metric_events.trip_id). Sin él solo se sabía que 'vio algo'.
+          this.agService.logMetricEvent('offer_seen', req.id).catch(() => {});
           this._notifyNewTrip(req);
           const updated = [...list, req];
           this._saveRequestsToCache(updated);
