@@ -9,7 +9,7 @@
 -- ag_recordar_conectarse(motivo, driver_ids):
 --   'desconexion' -> lo llama ag_cleanup_stale_online_drivers con los que acaba de pasar a
 --                    desconectados porque la app dejó de dar señal (30 min).
---   'diario'      -> cron 6:30 a.m. y 4:30 p.m. (Colombia) para los desconectados que usaron la
+--   'diario'      -> cron (horario actual en la 305) para los desconectados que usaron la
 --                    app en los últimos 14 días.
 -- Manda un push de tipo "aviso" (notificación común, sin pantalla completa; la muestra la APK
 -- 1.4.32+ aunque la app esté cerrada) y un WhatsApp gratis a los que tienen la ventana de 24 h.

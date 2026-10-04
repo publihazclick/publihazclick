@@ -43,6 +43,9 @@
   Al abrir la app el conductor queda en línea solo. Probado: tareas creadas, limpieza OK, horario nocturno → 0,
   vista previa 6:30 → 42 conductores (30 con push). Los avisos de WhatsApp ahora enlazan a Play Store ("Abrir"):
   el enlace web abría el navegador porque la app no tiene App Links.
+- **Recordatorio diario en horas pico (YA desplegado: migración 305)**: pasa de 6:30 a.m. / 4:30 p.m. a
+  11:30 a.m., 5:30 p.m. y 8:30 p.m. (30 min antes de los picos según la demanda de 60 días); el mínimo entre
+  avisos al mismo conductor baja de 5 h a 2 h 30 min. Verificado: las 3 tareas activas y la función con 2h30.
 - **App (WEB, falta push)**: tarjeta "Recibe las solicitudes al instante" (solo con APK 1.4.32+; con la vieja no
   aparece) y `ag_report_device_status` (migración 303). `ngc` OK.
 
