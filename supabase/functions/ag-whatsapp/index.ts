@@ -5406,13 +5406,36 @@ const BOTONES_RESULTADO_RECARGA = [
   { id: 'rec_sigue', title: '❌ Sigue sin funcionar' },
 ];
 
+/**
+ * Lo que el conductor necesita saber de SU saldo antes de pelear con la recarga (2026-10-04, caso
+ * real José …528: intentó recargar 3 veces y ni siquiera lo necesitaba). Mismas reglas que acepta la
+ * app (anda-gana.component.ts, validación de saldo al aceptar): 'quick' sin viajes -> la primera
+ * carrera es gratis; 'approved'/'pending' -> mínimo $20.000 para aceptar (la recarga mínima es $10.000).
+ */
+async function notaSaldoConductor(tel: string): Promise<string> {
+  try {
+    const { data: u } = await db().from('ag_users').select('id').eq('phone', toE164(tel)).maybeSingle();
+    if (!u?.id) return '';
+    const { data: d } = await db().from('ag_drivers').select('status, wallet_balance, metric_trips_completed').eq('ag_user_id', u.id).maybeSingle();
+    if (!d) return '';
+    if (d.status === 'quick' && !(Number(d.metric_trips_completed) > 0)) {
+      return `💡 *Dato importante:* como vas en registro rápido, tu *primera carrera no necesita saldo*. Ponte en línea y acepta un viaje sin recargar. Desde el segundo viaje sí necesitas saldo para la comisión.\n\n`;
+    }
+    if ((d.status === 'approved' || d.status === 'pending') && Number(d.wallet_balance ?? 0) < 20000) {
+      return `💡 *Dato importante:* para aceptar viajes necesitas mínimo *$20.000* en tu saldo (hoy tienes $${Number(d.wallet_balance ?? 0).toLocaleString('es-CO')}).\n\n`;
+    }
+  } catch (e) { console.error('[WA] notaSaldoConductor:', e); }
+  return '';
+}
+
 async function enviarListaAyudaRecarga(tel: string, nombre: string | null, intro?: string): Promise<WaResult> {
   const saludo = intro ?? `${nombre ? `Hola ${nombre}, v` : 'V'}imos que tu recarga de saldo en Movi no se completó y queremos ayudarte a terminarla.`;
+  const nota = await notaSaldoConductor(tel);
   return sendSupportGraph({
     to: tel, type: 'interactive',
     interactive: {
       type: 'list',
-      body: { text: `${saludo}\n\n¿En qué paso tuviste problema?` },
+      body: { text: `${saludo}\n\n${nota}¿En qué paso tuviste problema?` },
       action: {
         button: 'Elegir paso',
         sections: [{ title: 'Recarga de saldo', rows: Object.entries(PASOS_RECARGA).map(([id, p]) => ({ id, title: p.titulo.slice(0, 24), description: p.desc.slice(0, 72) })) }],
@@ -8406,7 +8429,11 @@ serve(async (req) => {
     }
     const resultados: Array<{ tel: string; ok: boolean; error?: string }> = [];
     for (const tel of telefonos) {
-      const r = await sendGraph({ to: tel, type: 'template', template: { name: nombre, language: { code: tpl.language } } });
+      // como:'conductor' -> sale por el número de CONDUCTORES, para que la respuesta le llegue a
+      // ese bot (p. ej. la ayuda de recarga). Sin eso, por el de pasajeros como siempre.
+      const r = body.como === 'conductor'
+        ? await sendSupportGraph({ to: tel, type: 'template', template: { name: nombre, language: { code: tpl.language } } }, 'sistema')
+        : await sendGraph({ to: tel, type: 'template', template: { name: nombre, language: { code: tpl.language } } });
       resultados.push({ tel: tel.slice(-4), ok: r.ok, error: r.ok ? undefined : (r.body ?? '').slice(0, 160) });
       await new Promise(res => setTimeout(res, 250));   // sin ráfagas hacia Meta
     }
