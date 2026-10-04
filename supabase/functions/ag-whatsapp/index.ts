@@ -5374,6 +5374,157 @@ async function recordatorioConectarse(motivo: string, telefonos: string[]): Prom
   return res.filter(r => r.ok).length;
 }
 
+// ─── Ayuda automática a quien no logra recargar saldo (pedido del usuario 2026-10-04) ──────────
+// "Una automatización que le escriba de manera automática a una persona que queda rechazada la
+// recarga para saber en qué paso se están quedando o en qué paso tienen dificultad". Contexto: desde
+// el 29-ago ninguna recarga se aprobaba (25 intentos) y no sabíamos por qué.
+//
+// Cómo arranca: el cron movi-alertar-recargas-fallidas (migración 306/307) llama el evento interno
+// 'ayuda_recarga' cuando un intento lleva 20 min sin aprobarse. Por el número de CONDUCTORES:
+//   - con la ventana de 24 h abierta -> la lista de opciones directo (gratis);
+//   - sin ventana -> la plantilla UTILITY PLANTILLA_AYUDA_RECARGA (un botón que abre la lista).
+// Cada opción tiene su respuesta concreta; la elección queda en ag_wallet_payments.ayuda_paso y se le
+// avisa al admin. "Me cobraron y no veo el saldo", "Otro problema" y "Sigue sin funcionar" pasan a un
+// asesor (el bot se calla para no pisarlo). Los ids rec_* son estables; el texto se puede cambiar.
+const PLANTILLA_AYUDA_RECARGA = 'movi_recarga_no_completada';
+const BOTON_PLANTILLA_AYUDA_RECARGA = 'Contarte qué pasó';
+
+const PASOS_RECARGA: Record<string, { titulo: string; desc: string }> = {
+  rec_p_no_abre:  { titulo: 'No abrió el pago',          desc: 'Toqué pagar y no se abrió la página de ePayco' },
+  rec_p_banco:    { titulo: 'El banco o Nequi rechazó',  desc: 'Llegué a pagar y me salió rechazado' },
+  rec_p_medio:    { titulo: 'No sé cómo pagar',          desc: 'No sé qué medio elegir o cómo hacerlo' },
+  rec_p_comision: { titulo: 'No entiendo el cobro',      desc: 'Me cobra más de lo que me llega' },
+  rec_p_cobrado:  { titulo: 'Pagué y no veo saldo',      desc: 'Me descontaron la plata pero no me llegó' },
+  rec_p_otro:     { titulo: 'Otro problema',             desc: 'Prefiero contarlo o que me escriba alguien' },
+};
+
+const BOTONES_RESULTADO_RECARGA = [
+  { id: 'rec_ok', title: '✅ Ya pude recargar' },
+  { id: 'rec_sigue', title: '❌ Sigue sin funcionar' },
+];
+
+async function enviarListaAyudaRecarga(tel: string, nombre: string | null, intro?: string): Promise<WaResult> {
+  const saludo = intro ?? `${nombre ? `Hola ${nombre}, v` : 'V'}imos que tu recarga de saldo en Movi no se completó y queremos ayudarte a terminarla.`;
+  return sendSupportGraph({
+    to: tel, type: 'interactive',
+    interactive: {
+      type: 'list',
+      body: { text: `${saludo}\n\n¿En qué paso tuviste problema?` },
+      action: {
+        button: 'Elegir paso',
+        sections: [{ title: 'Recarga de saldo', rows: Object.entries(PASOS_RECARGA).map(([id, p]) => ({ id, title: p.titulo.slice(0, 24), description: p.desc.slice(0, 72) })) }],
+      },
+    },
+  }, 'sistema');
+}
+
+/** Guarda lo que eligió en su último intento sin aprobar y le avisa al admin. */
+async function registrarPasoRecarga(tel: string, paso: string, etiqueta: string): Promise<void> {
+  try {
+    const { data: u } = await db().from('ag_users').select('id, full_name, phone').eq('phone', toE164(tel)).maybeSingle();
+    let detalle = `${u?.full_name ?? 'Conductor'} (${toE164(tel)}) respondió: "${etiqueta}".`;
+    if (u?.id) {
+      const { data: d } = await db().from('ag_drivers').select('id').eq('ag_user_id', u.id).maybeSingle();
+      if (d?.id) {
+        const { data: pago } = await db().from('ag_wallet_payments')
+          .select('id, amount, epayco_estado, epayco_motivo, epayco_medio')
+          .eq('driver_id', d.id).neq('status', 'approved')
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (pago?.id) {
+          await db().from('ag_wallet_payments').update({ ayuda_paso: paso, ayuda_at: new Date().toISOString() }).eq('id', pago.id);
+          detalle += ` Recarga de $${Number(pago.amount).toLocaleString('es-CO')}. ePayco: ${pago.epayco_estado ?? 'sin respuesta'}` +
+            `${pago.epayco_motivo ? ` (${pago.epayco_motivo})` : ''}${pago.epayco_medio ? `, medio ${pago.epayco_medio}` : ''}.`;
+        }
+      }
+    }
+    detalle += ` Escríbele: wa.me/${normWaPhone(toE164(tel))}`;
+    await sendAdminAlert(SUPPORT_PHONE, '💳 Respuesta sobre recarga', detalle);
+    await db().from('ag_admin_notifications').insert({ type: 'admin_info', title: '💳 Respuesta sobre recarga', body: detalle });
+  } catch (e) { console.error('[WA] registrarPasoRecarga:', e); }
+}
+
+/** Atiende los botones de la ayuda de recarga. Devuelve true si el mensaje era de este flujo. */
+async function manejarAyudaRecarga(tel: string, msgText: string, btnId?: string): Promise<boolean> {
+  const id = btnId ?? (msgText.trim() === BOTON_PLANTILLA_AYUDA_RECARGA ? 'rec_inicio' : '');
+  if (!id.startsWith('rec_')) return false;
+
+  if (id === 'rec_inicio') {
+    await enviarListaAyudaRecarga(tel, null, 'Gracias por responder 🙌');
+    return true;
+  }
+
+  if (id === 'rec_ok') {
+    await registrarPasoRecarga(tel, 'resuelto', 'Ya pude recargar');
+    await sendSupportText(tel, `¡Excelente! 🙌 Gracias por contarnos. Si vuelves a tener problemas con una recarga, escríbenos por aquí y te ayudamos.`);
+    return true;
+  }
+
+  if (id === 'rec_sigue' || id === 'rec_p_otro' || id === 'rec_p_cobrado') {
+    const etiqueta = id === 'rec_sigue' ? 'Sigue sin funcionar' : PASOS_RECARGA[id].titulo;
+    await registrarPasoRecarga(tel, id === 'rec_sigue' ? 'sigue_sin_funcionar' : id.replace('rec_p_', ''), etiqueta);
+    const texto = id === 'rec_p_cobrado'
+      ? `Tranquilo, lo revisamos 🙏 Envíanos por aquí una *captura del comprobante* del pago (o el número de referencia de ePayco) y un asesor te acredita el saldo apenas lo confirme.`
+      : `Cuéntanos con tus palabras qué pasó o envíanos una *captura de pantalla* del error. Ya le avisamos a un asesor y te escribe por aquí 🙏`;
+    await sendSupportText(tel, texto);
+    // Que el bot no le responda encima al asesor (mismo mecanismo que el resto de escaladas).
+    await upsertSupportSession(tel, { escalated: true, escalated_at: new Date().toISOString() });
+    return true;
+  }
+
+  const respuestas: Record<string, string> = {
+    rec_p_no_abre:
+      `Prueba así 👇\n\n` +
+      `1. Actualiza Movi en Play Store a la última versión.\n` +
+      `2. Revisa que tengas buena señal o Wi-Fi.\n` +
+      `3. En la app toca tu *Saldo* → *Recargar*, elige el monto y el medio de pago, y toca pagar.\n` +
+      `4. Se abre la página de *ePayco*: no cierres la app mientras pagas.\n\n` +
+      `¿Pudiste recargar?`,
+    rec_p_banco:
+      `Ese rechazo casi siempre lo pone el banco, no Movi. Revisa según tu medio de pago 👇\n\n` +
+      `• *PSE*: necesitas tener activa la banca por internet y cupo para pagos en línea.\n` +
+      `• *Nequi*: después de elegirlo te llega una notificación en la app de Nequi; tienes pocos minutos para aceptarla.\n` +
+      `• *Tarjeta*: tiene que estar habilitada para compras por internet.\n\n` +
+      `Si un medio no te deja, prueba con otro (por ejemplo Nequi en vez de PSE). ¿Pudiste recargar?`,
+    rec_p_medio:
+      `Así se recarga 👇\n\n` +
+      `1. En la app toca tu *Saldo* → *Recargar*.\n` +
+      `2. Elige el monto (mínimo $10.000).\n` +
+      `3. Elige *PSE / Nequi* o *Tarjeta* y toca pagar.\n` +
+      `4. En la página de *ePayco* eliges tu banco o Nequi y confirmas.\n\n` +
+      `El saldo aparece apenas el pago se aprueba. ¿Pudiste recargar?`,
+    rec_p_comision:
+      `Cuando recargas, la pasarela de pago (ePayco) y el banco cobran una comisión por el pago. Por eso pagas un poco más de lo que llega a tu saldo: por ejemplo, para recargar *$10.000* pagas *$12.380*.\n\n` +
+      `Esa diferencia no es para Movi, y la app te la muestra antes de pagar. ¿Pudiste recargar?`,
+  };
+  const texto = respuestas[id];
+  if (!texto) return false;
+  await registrarPasoRecarga(tel, id.replace('rec_p_', ''), PASOS_RECARGA[id].titulo);
+  await sendSupportButtons(tel, texto, BOTONES_RESULTADO_RECARGA, 'bot');
+  return true;
+}
+
+/** Primer mensaje de la ayuda (lo dispara el cron). Gratis con ventana; si no, plantilla UTILITY. */
+async function iniciarAyudaRecarga(tel: string): Promise<{ ok: boolean; via: string }> {
+  const t = normWaPhone(toE164(tel));
+  if (!/^\d{11,15}$/.test(t)) return { ok: false, via: 'telefono_invalido' };
+  const desde = new Date(Date.now() - 23.5 * 3600e3).toISOString();
+  const { data: entrante } = await db().from('ag_wa_message_log').select('id')
+    .eq('wa_phone', t).eq('role', 'conductor').eq('direction', 'in').gte('created_at', desde).limit(1).maybeSingle();
+  const nombre = await lookupRealFirstName(t);
+  if (entrante) {
+    const r = await enviarListaAyudaRecarga(t, nombre);
+    return { ok: r.ok, via: 'lista' };
+  }
+  // Fuera de la ventana: solo si la plantilla está aprobada como UTILITY (nunca sale como publicidad).
+  const info = await fetch(`https://graph.facebook.com/v22.0/${WABA_ID}/message_templates?name=${PLANTILLA_AYUDA_RECARGA}&fields=status,category,language`, {
+    headers: { Authorization: `Bearer ${WA_TOKEN}` },
+  }).then(r => r.json()).catch(() => ({})) as { data?: Array<{ status: string; category: string; language: string }> };
+  const tpl = info?.data?.[0];
+  if (!tpl || tpl.status !== 'APPROVED' || tpl.category !== 'UTILITY') return { ok: false, via: 'plantilla_no_aprobada' };
+  const r = await sendSupportGraph({ to: t, type: 'template', template: { name: PLANTILLA_AYUDA_RECARGA, language: { code: tpl.language } } }, 'sistema');
+  return { ok: r.ok, via: 'plantilla' };
+}
+
 async function handleInternalEvent(payload: Record<string, unknown>) {
   const event   = payload._internal_event as string;
   const phone   = payload.wa_phone as string;
@@ -8215,6 +8366,10 @@ serve(async (req) => {
       if (Array.isArray(ya?.data) && ya.data.length) return new Response(JSON.stringify({ ya_existia: true, ...ya }), { headers: { 'Content-Type': 'application/json' } });
       const comps: unknown[] = [{ type: 'BODY', text: String(body.cuerpo ?? '') }];
       if (body.pie) comps.push({ type: 'FOOTER', text: String(body.pie) });
+      // Botones de respuesta rápida (hasta 3), p. ej. la ayuda de recarga.
+      if (Array.isArray(body.botones) && body.botones.length) {
+        comps.push({ type: 'BUTTONS', buttons: (body.botones as unknown[]).slice(0, 3).map(t => ({ type: 'QUICK_REPLY', text: String(t).slice(0, 25) })) });
+      }
       const r = await fetch(`https://graph.facebook.com/v22.0/${WABA_ID}/message_templates`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
@@ -8266,6 +8421,14 @@ serve(async (req) => {
     const n = await recordatorioConectarse(String(body.motivo ?? 'diario'), tels)
       .catch(e => { console.error('[WA] recordatorioConectarse:', e); return 0; });
     return new Response(JSON.stringify({ enviados: n }), { headers: { 'Content-Type': 'application/json' } });
+  }
+
+  // Recarga de saldo sin completar -> preguntarle al conductor en qué paso se quedó (migración 307).
+  if (body._internal_event === 'ayuda_recarga') {
+    if (!(await esLlamadaDeServicio())) return noAutorizado();
+    const r = await iniciarAyudaRecarga(String(body.telefono ?? ''))
+      .catch(e => { console.error('[WA] iniciarAyudaRecarga:', e); return { ok: false, via: 'error' }; });
+    return new Response(JSON.stringify(r), { headers: { 'Content-Type': 'application/json' } });
   }
 
   if (body._internal_event === 'admin_estado_pago_waba') {
@@ -8466,6 +8629,13 @@ serve(async (req) => {
           msgBtnId = ((interactive?.button_reply as Record<string, unknown>)?.id as string)
             ?? ((interactive?.list_reply as Record<string, unknown>)?.id as string)
             ?? undefined;
+        } else if (msgType === 'button') {
+          // Botón de respuesta rápida de una PLANTILLA (2026-10-04, ayuda de recarga). Llega como
+          // type 'button' -- distinto de los botones interactivos -- y antes se quedaba sin texto.
+          const btn = msg.button as Record<string, unknown>;
+          msgText = (btn?.text as string) ?? '';
+          const payload = (btn?.payload as string) ?? '';
+          msgBtnId = payload && payload !== msgText ? payload : undefined;
         } else if (msgType === 'audio') {
           // Nota de voz: transcribir con Whisper y tratarla como si fuera texto
           // normal -- así funciona en cualquier punto de la conversación sin
@@ -8534,6 +8704,11 @@ serve(async (req) => {
 
         // "NO MÁS" a los avisos de solicitudes por WhatsApp (ver alertaSolicitudConductores).
         if (isSupportNumber && msgType === 'text' && await manejarBajaAlertasViaje(fromPhone, msgText)) {
+          return new Response('ok', { status: 200 });
+        }
+
+        // Ayuda a quien no logra recargar saldo: solo reacciona a sus botones (ids rec_*).
+        if (isSupportNumber && await manejarAyudaRecarga(fromPhone, msgText, msgBtnId)) {
           return new Response('ok', { status: 200 });
         }
 
