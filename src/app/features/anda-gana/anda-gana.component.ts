@@ -5577,6 +5577,26 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
           </div>
         </div>
       }
+      <!-- Volvió de ePayco y el saldo no cambió (2026-10-04): que sea él quien nos escriba. -->
+      @if (rechargeNoReflejada()) {
+        <div class="w-full flex flex-col gap-2 px-4 py-3 rounded-2xl"
+          style="background:#FFFBEB;border:1px solid #FCD34D">
+          <div class="flex items-start gap-2">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:20px;color:#D97706">help</span>
+            <div class="flex-1">
+              <p style="color:#92400E;font-size:13px;font-weight:800;margin:0">¿Tu recarga no se reflejó?</p>
+              <p style="color:#B45309;font-size:12px;margin:2px 0 0">A veces tarda unos minutos. Si no aparece o tuviste un problema al pagar, escríbenos y te ayudamos.</p>
+            </div>
+            <button (click)="rechargeNoReflejada.set(false)" aria-label="Cerrar"
+              class="material-symbols-outlined flex-shrink-0" style="font-size:18px;color:#B45309;background:none;border:none">close</button>
+          </div>
+          <a [href]="ayudaRecargaWhatsAppUrl" target="_blank" rel="noopener"
+            class="w-full py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
+            style="background:#25D366;color:#fff;text-decoration:none">
+            <span class="material-symbols-outlined" style="font-size:18px">chat</span> Escríbenos por WhatsApp
+          </a>
+        </div>
+      }
       <!-- ══ Tarjeta Wallet (saldo de recarga) — siempre visible, toggle panel ══ -->
       <button (click)="walletPanelOpen.set(!walletPanelOpen())"
         class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
@@ -5680,11 +5700,18 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
                 <p style="color:#fca5a5;font-size:13px;font-weight:900;margin:0">Error al iniciar el pago</p>
               </div>
               <p style="color:#fca5a5;font-size:12px;margin:0;word-break:break-all">{{ rechargeError() }}</p>
-              <button (click)="rechargeError.set(null)"
-                class="mt-1 self-start px-3 py-1 rounded-lg text-xs font-bold"
-                style="background:rgba(239,68,68,0.25);color:#fca5a5;border:1px solid rgba(239,68,68,0.4)">
-                Cerrar
-              </button>
+              <div class="flex gap-2 mt-1">
+                <a [href]="ayudaRecargaWhatsAppUrl" target="_blank" rel="noopener"
+                  class="px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1"
+                  style="background:#25D366;color:#fff;text-decoration:none">
+                  <span class="material-symbols-outlined" style="font-size:14px">chat</span> Pedir ayuda por WhatsApp
+                </a>
+                <button (click)="rechargeError.set(null)"
+                  class="px-3 py-1 rounded-lg text-xs font-bold"
+                  style="background:rgba(239,68,68,0.25);color:#fca5a5;border:1px solid rgba(239,68,68,0.4)">
+                  Cerrar
+                </button>
+              </div>
             </div>
           }
           <button (click)="startWalletRecharge()"
@@ -5699,6 +5726,11 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
             }
           </button>
           <p class="text-slate-400 text-[10px] text-center">Mínimo {{ formatCOP(10000) }} · Pago seguro con ePayco</p>
+          <a [href]="ayudaRecargaWhatsAppUrl" target="_blank" rel="noopener"
+            class="text-center text-xs font-bold flex items-center justify-center gap-1"
+            style="color:#16a34a;text-decoration:none">
+            <span class="material-symbols-outlined" style="font-size:15px">chat</span> ¿No pudiste recargar? Escríbenos por WhatsApp
+          </a>
         </div>
       }
 
@@ -10768,6 +10800,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   rechargeLoading    = signal(false);
   rechargeError      = signal<string | null>(null);
   walletPaymentResult = signal<'processing' | 'ok' | null>(null);
+  // Ayuda con la recarga (pedido del usuario 2026-10-04): que el conductor que no pudo recargar sea
+  // quien nos escriba al WhatsApp de CONDUCTORES (300 964 5697), no nosotros a él. Así se abre la
+  // ventana de 24 h y todo lo que le responde el bot es gratis. El texto ya escrito lo reconoce
+  // ag-whatsapp (manejarAyudaRecarga) y le responde con la lista de "¿en qué paso tuviste problema?".
+  readonly ayudaRecargaWhatsAppUrl = `https://wa.me/573009645697?text=${encodeURIComponent('Hola, no pude recargar mi saldo en Movi')}`;
+  // Volvió de ePayco y el saldo no subió: se le muestra el aviso con el botón de WhatsApp.
+  rechargeNoReflejada = signal(false);
   panicActivated     = signal(false);
   panicSending       = signal(false);
   panicContactsNotified = signal(0);
@@ -12198,9 +12237,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const freshBalance = balance ?? mine.wallet_balance ?? 0;
         if (preBalance >= 0 && freshBalance > preBalance) {
           this.walletPaymentResult.set('ok');
+          this.rechargeNoReflejada.set(false);
           setTimeout(() => { this.walletPaymentResult.set(null); this.cdr.markForCheck(); }, 6000);
         } else {
           this.walletPaymentResult.set(null);
+          // Volvió de ePayco y el saldo no cambió (rechazo, abandono o pago aún sin confirmar).
+          if (preBalance >= 0) this.rechargeNoReflejada.set(true);
         }
       }
       this.cdr.markForCheck();

@@ -5388,6 +5388,9 @@ async function recordatorioConectarse(motivo: string, telefonos: string[]): Prom
 // asesor (el bot se calla para no pisarlo). Los ids rec_* son estables; el texto se puede cambiar.
 const PLANTILLA_AYUDA_RECARGA = 'movi_recarga_no_completada';
 const BOTON_PLANTILLA_AYUDA_RECARGA = 'Contarte qué pasó';
+// "no pude recargar", "no puedo recargar el saldo", "no me deja recargar", "problema con la recarga".
+// Corto a propósito (máx. 120 caracteres): un mensaje largo es una pregunta que debe ver el asesor/IA.
+const ESCRIBIO_NO_PUDO_RECARGAR = /^(?=.{0,120}$).*\b(no\s+(pude|puedo|logr[eéo]|me\s+deja|me\s+dej[oó])\s+(hacer\s+(la\s+)?)?recarg|problema\w*\s+(con|para|en)\s+(la\s+|mi\s+)?recarg)/i;
 
 const PASOS_RECARGA: Record<string, { titulo: string; desc: string }> = {
   rec_p_no_abre:  { titulo: 'No abrió el pago',          desc: 'Toqué pagar y no se abrió la página de ePayco' },
@@ -5445,6 +5448,13 @@ async function registrarPasoRecarga(tel: string, paso: string, etiqueta: string)
 
 /** Atiende los botones de la ayuda de recarga. Devuelve true si el mensaje era de este flujo. */
 async function manejarAyudaRecarga(tel: string, msgText: string, btnId?: string): Promise<boolean> {
+  // El conductor nos escribe desde el botón "¿No pudiste recargar?" de la app (mensaje ya escrito
+  // "Hola, no pude recargar mi saldo en Movi") o con sus palabras parecidas: lista de una vez.
+  if (!btnId && ESCRIBIO_NO_PUDO_RECARGAR.test(msgText)) {
+    await registrarPasoRecarga(tel, 'escribio', 'Nos escribió: no pudo recargar');
+    await enviarListaAyudaRecarga(tel, await lookupRealFirstName(tel), 'Claro que sí, te ayudamos con la recarga 🙌');
+    return true;
+  }
   const id = btnId ?? (msgText.trim() === BOTON_PLANTILLA_AYUDA_RECARGA ? 'rec_inicio' : '');
   if (!id.startsWith('rec_')) return false;
 
@@ -5510,19 +5520,18 @@ async function iniciarAyudaRecarga(tel: string): Promise<{ ok: boolean; via: str
   const desde = new Date(Date.now() - 23.5 * 3600e3).toISOString();
   const { data: entrante } = await db().from('ag_wa_message_log').select('id')
     .eq('wa_phone', t).eq('role', 'conductor').eq('direction', 'in').gte('created_at', desde).limit(1).maybeSingle();
-  const nombre = await lookupRealFirstName(t);
-  if (entrante) {
-    const r = await enviarListaAyudaRecarga(t, nombre);
-    return { ok: r.ok, via: 'lista' };
-  }
-  // Fuera de la ventana: solo si la plantilla está aprobada como UTILITY (nunca sale como publicidad).
-  const info = await fetch(`https://graph.facebook.com/v22.0/${WABA_ID}/message_templates?name=${PLANTILLA_AYUDA_RECARGA}&fields=status,category,language`, {
-    headers: { Authorization: `Bearer ${WA_TOKEN}` },
-  }).then(r => r.json()).catch(() => ({})) as { data?: Array<{ status: string; category: string; language: string }> };
-  const tpl = info?.data?.[0];
-  if (!tpl || tpl.status !== 'APPROVED' || tpl.category !== 'UTILITY') return { ok: false, via: 'plantilla_no_aprobada' };
-  const r = await sendSupportGraph({ to: t, type: 'template', template: { name: PLANTILLA_AYUDA_RECARGA, language: { code: tpl.language } } }, 'sistema');
-  return { ok: r.ok, via: 'plantilla' };
+  // Decisión del usuario (2026-10-04): lo principal es que el conductor nos escriba desde el botón de
+  // la app. Esto es solo el RESPALDO: se le escribe únicamente si tiene la ventana de 24 h abierta
+  // (gratis); sin ventana no se le manda nada (la plantilla PLANTILLA_AYUDA_RECARGA queda sin usar).
+  if (!entrante) return { ok: false, via: 'sin_ventana' };
+  // Si ya nos escribió por el botón (o ya le llegó la lista) en las últimas 3 h, no repetir.
+  const { data: yaLista } = await db().from('ag_wa_message_log').select('id')
+    .eq('wa_phone', t).eq('role', 'conductor').eq('direction', 'out')
+    .ilike('body', '%En qué paso tuviste problema%')
+    .gte('created_at', new Date(Date.now() - 3 * 3600e3).toISOString()).limit(1).maybeSingle();
+  if (yaLista) return { ok: false, via: 'ya_atendido' };
+  const r = await enviarListaAyudaRecarga(t, await lookupRealFirstName(t));
+  return { ok: r.ok, via: 'lista' };
 }
 
 async function handleInternalEvent(payload: Record<string, unknown>) {
