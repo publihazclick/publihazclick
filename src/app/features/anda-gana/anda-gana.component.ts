@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, ChangeDetectorRef, signal, computed
 import { FormsModule } from '@angular/forms';
 import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe, LowerCasePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
-import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } from './anda-gana.service';
+import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod, REQ_VISIBLE_MS } from './anda-gana.service';
 import { AgPhoneAuthService, FUERA_DE_COBERTURA } from './ag-phone-auth.service';
 import { distMeters } from './geo.utils';
 import { BOARDING_TARGET_STAGE, isStageReached } from './trip-stage.utils';
@@ -19566,10 +19566,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       const raw = localStorage.getItem(this._REQUESTS_CACHE_KEY);
       if (!raw) return [];
       const { ts, reqs } = JSON.parse(raw) as { ts: number; reqs: AgTripRequest[] };
-      if (Date.now() - ts > 240000) return [];
+      if (Date.now() - ts > REQ_VISIBLE_MS) return [];
       const now = Date.now();
       return reqs.filter(r =>
-        now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= 240000 &&
+        now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= REQ_VISIBLE_MS &&
         !this._cancelledRequestIds.has(r.id)
       );
     } catch { return []; }
@@ -19657,7 +19657,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         const kept = current.filter(r =>
           !serverIds.has(r.id) &&
           !this._cancelledRequestIds.has(r.id) &&
-          now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= 240000
+          now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= REQ_VISIBLE_MS
         );
         const merged = this._sortDriverRequests([...reqs, ...kept]);
         this._saveRequestsToCache(merged);
@@ -19686,11 +19686,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         const now = Date.now();
         this.driverRequests.update(current => {
           const serverIds = new Set(reqs.map((r: AgTripRequest) => r.id));
-          // Mantener solicitudes locales que: no llegaron del servidor, no están canceladas, < 4 min
+          // Mantener solicitudes locales que: no llegaron del servidor, no están canceladas, < REQ_VISIBLE_MS
           const kept = current.filter(r =>
             !serverIds.has(r.id) &&
             !this._cancelledRequestIds.has(r.id) &&
-            now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= 240000
+            now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= REQ_VISIBLE_MS
           );
           // Orden: primero las más cercanas al conductor; sin GPS, más antigua primero (llevan
           // más tiempo esperando → mayor prioridad). Ver _sortDriverRequests.
@@ -19720,15 +19720,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.cdr.markForCheck();
       });
     }, 1500);
-    // Timer 1s: actualiza reloj para el botón de color y expira solicitudes > 4 min
+    // Timer 1s: actualiza reloj para el botón de color y expira solicitudes > REQ_VISIBLE_MS
     if (this._reqTimerInterval) clearInterval(this._reqTimerInterval);
     this._reqTimerInterval = setInterval(() => {
       const now = Date.now();
       this.reqNowMs.set(now);
       this.cdr.markForCheck();
-      const hasExpired = this.driverRequests().some(r => now - new Date(r.driver_visible_since ?? r.created_at).getTime() > 240000);
+      const hasExpired = this.driverRequests().some(r => now - new Date(r.driver_visible_since ?? r.created_at).getTime() > REQ_VISIBLE_MS);
       if (hasExpired) {
-        this.driverRequests.update(list => list.filter(r => now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= 240000));
+        this.driverRequests.update(list => list.filter(r => now - new Date(r.driver_visible_since ?? r.created_at).getTime() <= REQ_VISIBLE_MS));
         this.cdr.markForCheck();
       }
     }, 1000);
@@ -19979,6 +19979,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
   reqRemainingStr(req: AgTripRequest): string {
     const ms = this.reqRemainingMs(req);
+    // Pasados los 4 min de la cuenta regresiva la solicitud SIGUE en la lista mientras esté en
+    // 'searching' (ver REQ_VISIBLE_MS): en vez de un 0:00 que parece vencido, decir la verdad.
+    if (ms === 0) return 'Sigue esperando';
     const m = Math.floor(ms / 60000);
     const s = Math.floor((ms % 60000) / 1000);
     return `${m}:${s.toString().padStart(2, '0')}`;

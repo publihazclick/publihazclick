@@ -95,6 +95,14 @@ export interface AgTripOffer {
 
 export type AgPaymentMethod = 'efectivo' | 'nequi' | 'daviplata' | 'bancolombia' | 'tarjeta';
 
+/** Cuánto tiempo sigue en la lista del conductor una solicitud en 'searching', contado desde
+ * driver_visible_since. Antes eran 4 minutos y eso escondía solicitudes VIVAS: el reenvío
+ * automático pasa una sola vez (minuto 4) y el bot de WhatsApp la deja abierta ~16-20 min, así que
+ * casi toda su vida estaba abierta pero invisible (caso real 2026-10-04, viaje 4d4b5c61). Lo que la
+ * saca de la lista es que deje de estar en 'searching' (chequeo cada 1,5 s + tiempo real); este tope
+ * solo protege contra solicitudes fantasma que nadie cerró. */
+export const REQ_VISIBLE_MS = 30 * 60_000;
+
 export interface AgTripRequest {
   id: string;
   passenger_user_id: string;
@@ -1185,12 +1193,12 @@ export class AndaGanaService {
   // ── Trip offers — driver ──────────────────────────────────────
   /** Solicitudes de viaje en estado "searching" compatibles con el tipo de vehículo */
   async getSearchingRequests(vehicleType?: string, lat?: number, lng?: number, maxKm = 50): Promise<AgTripRequest[]> {
-    // Solo solicitudes visibles en los últimos 4 minutos (240 segundos). driver_visible_since, NO
+    // Solo solicitudes visibles en los últimos REQ_VISIBLE_MS (30 min; antes 4). driver_visible_since, NO
     // created_at -- una solicitud reenviada por "Seguir buscando"/"Subir oferta" (migración 241)
     // reinicia este reloj para que vuelva a aparecer en la lista del conductor (bug real
     // reportado 2026-08-30: el push llegaba pero la solicitud nunca aparecía en la app porque
     // este filtro seguía comparando contra el created_at original, ya vencido).
-    const cutoff = new Date(Date.now() - 240000).toISOString();
+    const cutoff = new Date(Date.now() - REQ_VISIBLE_MS).toISOString();
     let query = this.supabase
       .from('ag_trip_requests')
       .select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level)')
