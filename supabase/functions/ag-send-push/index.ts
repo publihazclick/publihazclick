@@ -156,6 +156,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
+  // Medición (2026-10-03, análisis de la demora del aviso a conductores): cada respuesta dice
+  // cuántos ms tardó en total.
+  const t0 = Date.now();
   try {
     const body = await req.json();
     const userIds: string[] = Array.isArray(body?.user_ids) ? body.user_ids : (body?.user_id ? [body.user_id] : []);
@@ -184,7 +187,7 @@ Deno.serve(async (req) => {
           supabase.from('ag_push_subs').delete().eq('id', s.id).then(() => {});
         }
       }
-      return json({ ok: true, sent, channels: { fcm: fcmSubs.length, webpush: 0 } });
+      return json({ ok: true, sent, channels: { fcm: fcmSubs.length, webpush: 0 }, ms: Date.now() - t0, inicio: new Date(t0).toISOString() });
     }
 
     const title = body?.title ?? 'Movi';
@@ -247,7 +250,7 @@ Deno.serve(async (req) => {
     for (const id of aceptados) rechazados.delete(id);
     if (body?.trip_id) await registrarEntregaPush(supabase, String(body.trip_id), aceptados, rechazados);
 
-    return json({ ok: true, sent, channels: { fcm: fcmSubs.length, webpush: wpSubs.length }, debug: _lastFcmDebug });
+    return json({ ok: true, sent, channels: { fcm: fcmSubs.length, webpush: wpSubs.length }, debug: _lastFcmDebug, ms: Date.now() - t0 });
   } catch (err) {
     return json({ error: 'Error interno', detail: String(err) }, 500);
   }
