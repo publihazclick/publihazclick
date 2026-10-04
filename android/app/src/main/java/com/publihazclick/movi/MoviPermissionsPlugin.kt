@@ -38,6 +38,11 @@ import com.getcapacitor.annotation.PermissionCallback
 )
 class MoviPermissionsPlugin : Plugin() {
 
+    companion object {
+        // Codigo de la pantalla de actualizacion de Google Play (startImmediateUpdateIfAvailable).
+        private const val REQUEST_CODE_ACTUALIZAR = 4711
+    }
+
     @PluginMethod
     fun requestCombined(call: PluginCall) {
         requestPermissionForAliases(arrayOf("location", "notifications"), call, "combinedResult")
@@ -152,6 +157,64 @@ class MoviPermissionsPlugin : Plugin() {
             call.resolve(result)
         } catch (e: Exception) {
             call.reject("No se pudo abrir Ajustes: " + e.message)
+        }
+    }
+
+    /**
+     * Actualizacion dentro de la app de Google Play, modo INMEDIATO (pedido del usuario 2026-10-03:
+     * "cuando abran, que los haga instalar la nueva version"). Si Play Store ya tiene una version mas
+     * nueva publicada, se abre la pantalla oficial de Google que la descarga e instala y reinicia
+     * Movi sola. Si una actualizacion iniciada antes quedo a medias, se retoma.
+     *
+     * - La app web decide CUANDO llamarlo: nunca en medio de un viaje (ver _ofrecerActualizacionPlay).
+     * - Solo funciona si Movi se instalo desde Play Store; si vino de un APK suelto, Play responde
+     *   error y simplemente no pasa nada (se resuelve con started=false, jamas se rechaza).
+     * - Si la persona cancela la pantalla de Google, sigue usando la version que tiene; la app
+     *   vuelve a ofrecerlo mas tarde.
+     */
+    @PluginMethod
+    fun startImmediateUpdateIfAvailable(call: PluginCall) {
+        val result = JSObject()
+        try {
+            val manager = com.google.android.play.core.appupdate.AppUpdateManagerFactory.create(context)
+            manager.appUpdateInfo
+                .addOnSuccessListener { info ->
+                    result.put("availability", info.updateAvailability())
+                    result.put("availableVersionCode", info.availableVersionCode())
+                    val aMedias = info.updateAvailability() ==
+                        com.google.android.play.core.install.model.UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS
+                    val hayNueva = info.updateAvailability() ==
+                        com.google.android.play.core.install.model.UpdateAvailability.UPDATE_AVAILABLE &&
+                        info.isUpdateTypeAllowed(com.google.android.play.core.install.model.AppUpdateType.IMMEDIATE)
+                    if (aMedias || hayNueva) {
+                        try {
+                            manager.startUpdateFlowForResult(
+                                info,
+                                activity,
+                                com.google.android.play.core.appupdate.AppUpdateOptions
+                                    .newBuilder(com.google.android.play.core.install.model.AppUpdateType.IMMEDIATE)
+                                    .build(),
+                                REQUEST_CODE_ACTUALIZAR
+                            )
+                            result.put("started", true)
+                        } catch (e: Exception) {
+                            result.put("started", false)
+                            result.put("error", e.message ?: "")
+                        }
+                    } else {
+                        result.put("started", false)
+                    }
+                    call.resolve(result)
+                }
+                .addOnFailureListener { e ->
+                    result.put("started", false)
+                    result.put("error", e.message ?: "")
+                    call.resolve(result)
+                }
+        } catch (e: Exception) {
+            result.put("started", false)
+            result.put("error", e.message ?: "")
+            call.resolve(result)
         }
     }
 

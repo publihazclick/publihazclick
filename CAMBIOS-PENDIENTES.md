@@ -25,13 +25,16 @@
   (sin tocar el push). Probado: simulación → 2 candidatos; viaje cancelado → 0; sin llave → 401.
 - **App (WEB, falta push)**: el `offer_seen` del tiempo real ahora guarda el id del viaje (para medir). `ngc` OK.
 - **APK 1.4.32 (código 39) — LISTA para Play Store** (`android/app/build/outputs/bundle/release/app-release.aab`,
-  9,05 MB, +2,6 KB vs 1.4.31). Lo que trae:
+  9,07 MB). Lo que trae:
   - **Confirmación de entrega**: `MoviFirebaseMessagingService.reportarEntrega` → `ag_push_recibido` (migración
     **303**, YA aplicada) marca `ag_trip_push_log.delivered_at` aunque la app esté cerrada. Sincrona tras mostrar la
     notificación, máx 10 s, try/catch(Throwable).
   - `MoviPermissionsPlugin.getDeviceStatus` (marca, modelo, Android, batería, notificaciones) y
     `openAutostartSettings` (pantalla de inicio automático por marca, con respaldo a ajustes de la app).
   - Ya existían y se aprovechan: permiso de batería (antes se pedía UNA vez en la vida) y servicio "En línea".
+  - **Actualización dentro de la app** (Google Play In-App Updates, modo inmediato): al abrir, si Play Store tiene
+    una versión más nueva, sale la pantalla de Google que la instala. Nunca con un viaje en curso; máx 1 vez/10 min.
+    AAB final 9,07 MB (`com.google.android.play:app-update:2.1.0`).
 - **App (WEB, falta push)**: tarjeta "Recibe las solicitudes al instante" (solo con APK 1.4.32+; con la vieja no
   aparece) y `ag_report_device_status` (migración 303). `ngc` OK.
 

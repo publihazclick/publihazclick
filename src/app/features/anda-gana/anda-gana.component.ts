@@ -11951,6 +11951,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       // Pedido explicito del usuario 2026-09-01: avisar (o bloquear) cuando la app nativa
       // instalada quedó vieja -- ver _checkAppVersion(). No bloquea el arranque, corre aparte.
       this._checkAppVersion().catch(() => {});
+      // Actualización dentro de la app de Google Play (APK 1.4.32+), sin interrumpir viajes.
+      this._programarActualizacionPlay();
     }
 
     // Link corto y personalizado (?r=<código>, ej. "carlos4821") desde 2026-08-22 -- pedido
@@ -12441,6 +12443,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._pararSeguimiento('full');
     this._pararSeguimiento('qr');
     if (this._estadoCelularHandler) { document.removeEventListener('visibilitychange', this._estadoCelularHandler); this._estadoCelularHandler = null; }
+    if (this._actualizarPlayHandler) { document.removeEventListener('visibilitychange', this._actualizarPlayHandler); this._actualizarPlayHandler = null; }
     try { const el = document.getElementById('movi-nav-audio') as HTMLAudioElement; if (el) { el.pause(); el.src = ''; } } catch {}
     this._destroyMap();
     this._stopWaiting();
@@ -17424,6 +17427,40 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   openPlayStoreUpdate(): void {
     window.open('https://play.google.com/store/apps/details?id=com.publihazclick.movi', '_blank');
+  }
+
+  // ── Actualización dentro de la app de Google Play (pedido del usuario 2026-10-03, APK 1.4.32+) ──
+  // "Cuando abran, que los haga instalar la nueva versión": si Play Store ya tiene una versión más
+  // nueva, sale la pantalla oficial de Google que la instala y reinicia Movi. Lo decide Play Store,
+  // no depende de ag_config. Cuidados:
+  //  - NUNCA con un viaje en curso (conductor con viaje activo o pasajero con solicitud/viaje): una
+  //    pantalla de actualización en plena ruta es peor que no actualizar.
+  //  - Como máximo una vez cada 10 min (al abrir o al volver a la app), para que si alguien la
+  //    cancela no le salga en cada cambio de pantalla.
+  //  - Con una APK sin el método (vieja) o instalada fuera de Play Store, no pasa nada.
+  private _ultimoIntentoActualizarPlay = 0;
+  private _actualizarPlayHandler: (() => void) | null = null;
+
+  private async _ofrecerActualizacionPlay(): Promise<void> {
+    try {
+      const MP = (window as any)?.Capacitor?.Plugins?.MoviPermissions;
+      if (!(window as any)?.Capacitor?.isNativePlatform?.() || typeof MP?.startImmediateUpdateIfAvailable !== 'function') return;
+      if (this.driverActiveTrips().length > 0 || this.currentTripRequestId()) return;
+      const ahora = Date.now();
+      if (ahora - this._ultimoIntentoActualizarPlay < 10 * 60e3) return;
+      this._ultimoIntentoActualizarPlay = ahora;
+      await MP.startImmediateUpdateIfAvailable();
+    } catch {}
+  }
+
+  private _programarActualizacionPlay(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    // 10 s después de abrir: da tiempo a que carguen los viajes activos (para no interrumpir uno).
+    setTimeout(() => this._ofrecerActualizacionPlay().catch(() => {}), 10000);
+    if (!this._actualizarPlayHandler) {
+      this._actualizarPlayHandler = () => { if (!document.hidden) this._ofrecerActualizacionPlay().catch(() => {}); };
+      document.addEventListener('visibilitychange', this._actualizarPlayHandler);
+    }
   }
 
   dismissUpdateBanner(): void {
