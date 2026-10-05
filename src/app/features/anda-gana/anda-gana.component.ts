@@ -5634,6 +5634,34 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
       <!-- Panel de recarga inline (se abre debajo de la tarjeta) -->
       @if (walletPanelOpen()) {
         <div style="background:#FFFFFF;border:1.5px solid rgba(34,211,238,0.25);border-top:none;border-radius:0 0 18px 18px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-top:-2px">
+          <!-- Recarga por Nequi, sin comisión (2026-10-04): va primero porque es la que sí funciona. -->
+          <div class="rounded-2xl p-3 flex flex-col gap-2" style="background:#F0FDF4;border:1.5px solid #86EFAC">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined" style="font-size:20px;color:#16a34a;font-variation-settings:'FILL' 1">savings</span>
+              <p class="text-slate-900 text-sm font-black" style="margin:0">Recarga por Nequi · sin comisión</p>
+            </div>
+            <p class="text-slate-600 text-xs leading-snug" style="margin:0">
+              1. Envía el valor que quieras recargar (mínimo {{ formatCOP(10000) }}) a este Nequi:
+            </p>
+            <div class="flex items-center gap-2">
+              <span class="flex-1 text-slate-900 font-black tracking-wide" style="font-size:18px">313 445 3649</span>
+              <button (click)="copiarNequi()"
+                class="px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 active:scale-95"
+                style="background:#16a34a;color:#fff">
+                <span class="material-symbols-outlined" style="font-size:14px">{{ nequiCopiado() ? 'check' : 'content_copy' }}</span>
+                {{ nequiCopiado() ? 'Copiado' : 'Copiar' }}
+              </button>
+            </div>
+            <p class="text-slate-600 text-xs leading-snug" style="margin:0">
+              2. Mándanos la captura del comprobante por WhatsApp. Te cargamos el saldo completo, sin descuentos, en pocos minutos.
+            </p>
+            <a [href]="nequiComprobanteUrl()" target="_blank" rel="noopener"
+              class="w-full py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+              style="background:#25D366;color:#fff;text-decoration:none">
+              <span class="material-symbols-outlined" style="font-size:16px">chat</span> Enviar comprobante por WhatsApp
+            </a>
+          </div>
+          <p class="text-slate-500 text-[11px] font-bold text-center" style="margin:0">— o paga con PSE / tarjeta (con comisión de la pasarela) —</p>
           <!-- Montos rápidos -->
           <div class="grid grid-cols-3 gap-2">
             @for (amt of rechargePresets; track amt) {
@@ -10805,6 +10833,23 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ventana de 24 h y todo lo que le responde el bot es gratis. El texto ya escrito lo reconoce
   // ag-whatsapp (manejarAyudaRecarga) y le responde con la lista de "¿en qué paso tuviste problema?".
   readonly ayudaRecargaWhatsAppUrl = `https://wa.me/573009645697?text=${encodeURIComponent('Hola, no pude recargar mi saldo en Movi')}`;
+  // Recarga por Nequi directo, sin comisión (decisión del usuario 2026-10-04). Desde el 28-ago ninguna
+  // recarga por ePayco se completó (no terminan PSE / OTP o cancelan al ver $12.380 por $10.000).
+  // Por ahora es MANUAL: el conductor paga al Nequi, manda la captura al WhatsApp de conductores y el
+  // admin le carga el saldo desde el panel ("Cargar saldo"). La versión automática (bot lee la captura,
+  // admin aprueba con "SI") quedó pendiente de la migración 312.
+  readonly nequiRecargaNumero = '3134453649';
+  nequiCopiado = signal(false);
+  copiarNequi(): void {
+    const hecho = () => { this.nequiCopiado.set(true); this.cdr.markForCheck(); setTimeout(() => { this.nequiCopiado.set(false); this.cdr.markForCheck(); }, 2500); };
+    try {
+      if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(this.nequiRecargaNumero).then(hecho).catch(() => {}); return; }
+    } catch { /* sin portapapeles: el número igual se ve en pantalla */ }
+  }
+  nequiComprobanteUrl(): string {
+    const monto = this.rechargeAmount() >= 10000 ? ` de ${this.formatCOP(this.rechargeAmount())}` : '';
+    return `https://wa.me/573009645697?text=${encodeURIComponent(`Hola, hice una recarga por Nequi${monto} para mi saldo de Movi. Te envío el comprobante 👇`)}`;
+  }
   // Volvió de ePayco y el saldo no subió: se le muestra el aviso con el botón de WhatsApp.
   rechargeNoReflejada = signal(false);
   panicActivated     = signal(false);
