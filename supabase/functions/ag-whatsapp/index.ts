@@ -8104,6 +8104,20 @@ async function leadPrimerPaso(phone: string, nombre: string | null, intro?: stri
  * puede quedar escondida.
  */
 async function leadYaDescargo(phone: string, lead: LeadRow | null): Promise<void> {
+  // Doble toque de "Ya la descargué" (caso real 2026-10-05, …0588, lo detectó el revisor en tiempo
+  // real): los dos llegaron en el mismo segundo, los dos leyeron paso 'pitch' y el bot mandó el paso
+  // dos veces. El primero "toma" el paso con un UPDATE condicional (atómico en la base); si otro ya lo
+  // tomó hace menos de 2 minutos, este no hace nada.
+  if (lead) {
+    const hace2 = new Date(Date.now() - 2 * 60e3).toISOString();
+    const { data: tomado, error } = await db().from('ag_driver_leads')
+      .update({ paso: 'descargo', ultimo_out_at: new Date().toISOString(), nudges_enviados: 0, updated_at: new Date().toISOString() })
+      .eq('wa_phone', phone)
+      .or(`paso.neq.descargo,ultimo_out_at.is.null,ultimo_out_at.lt."${hace2}"`)
+      .select('wa_phone');
+    if (error) console.error('[WA-Lead] leadYaDescargo claim:', error);
+    else if (!tomado || tomado.length === 0) return;
+  }
   const v = (lead?.vehiculo === 'moto' || lead?.vehiculo === 'carro') ? lead.vehiculo : null;
   const intro = `¡Eso es! 🙌 Aquí abajo te dejo el video de *cómo funciona y cómo hacer el registro* 🎥`;
 
