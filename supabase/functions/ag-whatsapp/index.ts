@@ -5435,6 +5435,64 @@ const PASOS_RECARGA_NEQUI =
   `1. En la app toca tu *Saldo* → *Recargar*.\n` +
   `2. Envía el valor que quieras recargar (mínimo $10.000) al *Nequi ${NEQUI_RECARGA}*.\n` +
   `3. Mándanos por aquí la *captura del comprobante* y te cargamos el saldo completo, sin comisión, en pocos minutos.`;
+// ─── Comprobante de recarga por Nequi (2026-10-04) ────────────────────────────
+// El botón "Enviar comprobante por WhatsApp" de la app manda: "Hola, hice una recarga por Nequi para mi
+// saldo de Movi. Te envío el comprobante 👇". Antes el bot veía "recarga" y contestaba CÓMO recargar + el
+// video de ePayco (que ya no existe), y a la foto del comprobante le decía "solo puedo leer texto; si son
+// documentos súbelos en la app". Ninguna de las dos cosas tenía sentido para alguien que ya pagó.
+// Ahora: al texto se le pide la captura; a la captura se le confirma el recibo, se avisa al admin para que
+// revise su Nequi y cargue el saldo desde el panel, y la conversación queda escalada (el bot no pisa al asesor).
+// Sin columnas nuevas: el "estado" se lee del propio registro de mensajes (marcas al inicio del texto).
+const MARCA_PIDE_COMPROBANTE = '🧾 ¡Gracias';
+const MARCA_COMPROBANTE_RECIBIDO = '🧾 ¡Recibí tu comprobante';
+const TEXTO_DICE_PAGO_NEQUI = /hice\s+(una|la)\s+recarga|te\s+env[ií]o\s+el\s+comprobante|comprobante\s+(de|del)\s+(pago|nequi|la\s+recarga)|ya\s+(pagu[eé]|transfer[ií]|consign[eé]|envi[eé]\s+la\s+plata)/i;
+
+async function manejarComprobanteNequi(phone: string, msgType: string, msgText: string): Promise<boolean> {
+  const esArchivo = msgType === 'image' || msgType === 'document';
+  const dicePago = TEXTO_DICE_PAGO_NEQUI.test(msgText);
+  if (!esArchivo && !dicePago) return false;
+
+  const wa = normWaPhone(phone);
+  const hace = (min: number) => new Date(Date.now() - min * 60e3).toISOString();
+  const { data: recientes } = await db().from('ag_wa_message_log').select('direction, body, created_at')
+    .eq('wa_phone', wa).eq('role', 'conductor').gte('created_at', hace(180))
+    .order('created_at', { ascending: false }).limit(40);
+  const filas = (recientes ?? []) as Array<{ direction: string; body: string | null; created_at: string }>;
+  const dijoQuePago = filas.some(r => r.direction === 'in' && TEXTO_DICE_PAGO_NEQUI.test(r.body ?? ''));
+  const lePedimos = filas.some(r => r.direction === 'out' && (r.body ?? '').startsWith(MARCA_PIDE_COMPROBANTE));
+
+  // Solo el texto ("hice una recarga por Nequi... te envío el comprobante"): pedir la captura.
+  if (!esArchivo) {
+    await sendSupportText(phone,
+      `${MARCA_PIDE_COMPROBANTE} por tu recarga! 🙌\n\n` +
+      `Envíame por aquí la *captura del comprobante* de Nequi (un pantallazo o foto). ` +
+      `Apenas llegue, un asesor verifica el pago y te carga el saldo completo en pocos minutos.`);
+    return true;
+  }
+
+  // Un archivo sin contexto de recarga (p. ej. una foto de documentos) sigue el camino de siempre.
+  if (!dicePago && !dijoQuePago && !lePedimos) return false;
+
+  // Varias fotos seguidas: un solo acuse y un solo aviso al admin cada 10 minutos.
+  const yaAcusado = filas.some(r => r.direction === 'out' && (r.body ?? '').startsWith(MARCA_COMPROBANTE_RECIBIDO)
+    && new Date(r.created_at).getTime() > Date.now() - 10 * 60e3);
+  if (yaAcusado) return true;
+
+  await sendSupportText(phone,
+    `${MARCA_COMPROBANTE_RECIBIDO}! ✅\n\n` +
+    `Ya lo estamos verificando y en pocos minutos te cargamos el saldo completo, sin descuentos. ` +
+    `Te avisamos por aquí apenas quede listo.`);
+
+  const nombre = (await lookupRealFirstName(phone)) ?? 'Un conductor';
+  await sendAdminAlert(SUPPORT_PHONE, '💸 Comprobante de recarga Nequi',
+    `${nombre} (+${wa}) mandó el comprobante de una recarga por Nequi al WhatsApp de conductores. ` +
+    `Revisa en tu Nequi que la plata llegó y cárgale el saldo en el panel de Movi con "Cargar saldo". ` +
+    `Luego respóndele por el chat de conductores en publihazclick.com/admin/anda-gana`);
+  // Queda en manos del asesor: el bot no le contesta encima mientras tanto.
+  await upsertSupportSession(phone, { escalated: true, escalated_at: new Date().toISOString() });
+  return true;
+}
+
 const PLANTILLA_AYUDA_RECARGA = 'movi_recarga_no_completada';
 const BOTON_PLANTILLA_AYUDA_RECARGA = 'Contarte qué pasó';
 // "no pude recargar", "no puedo recargar el saldo", "no me deja recargar", "problema con la recarga".
@@ -8885,6 +8943,11 @@ serve(async (req) => {
 
         // "NO MÁS" a los avisos de solicitudes por WhatsApp (ver alertaSolicitudConductores).
         if (isSupportNumber && msgType === 'text' && await manejarBajaAlertasViaje(fromPhone, msgText)) {
+          return new Response('ok', { status: 200 });
+        }
+
+        // Comprobante de recarga por Nequi (texto del botón de la app y/o la captura).
+        if (isSupportNumber && await manejarComprobanteNequi(fromPhone, msgType, msgText)) {
           return new Response('ok', { status: 200 });
         }
 
