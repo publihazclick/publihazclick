@@ -5661,104 +5661,10 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
               <span class="material-symbols-outlined" style="font-size:16px">chat</span> Enviar comprobante por WhatsApp
             </a>
           </div>
-          <p class="text-slate-500 text-[11px] font-bold text-center" style="margin:0">— o paga con PSE / tarjeta (con comisión de la pasarela) —</p>
-          <!-- Montos rápidos -->
-          <div class="grid grid-cols-3 gap-2">
-            @for (amt of rechargePresets; track amt) {
-              <button (click)="rechargeAmount.set(amt)"
-                class="py-2.5 rounded-xl text-xs font-black transition-all active:scale-95"
-                [style]="rechargeAmount() === amt
-                  ? 'background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff'
-                  : 'background:#F3F4F6;border:1px solid #E5E7EB;color:#374151'">
-                {{ formatAmt(amt) }}
-              </button>
-            }
-          </div>
-          <!-- Monto personalizado -->
-          <div class="flex items-center gap-2 rounded-xl px-3 py-2"
-            style="background:#F9FAFB;border:1px solid #E2E8F0">
-            <span class="text-slate-600 text-sm font-bold">$</span>
-            <input type="number" [(ngModel)]="rechargeCustom"
-              (input)="rechargeAmount.set(+rechargeCustom || 0)"
-              placeholder="Otro monto..."
-              class="flex-1 bg-transparent text-slate-900 text-sm outline-none placeholder-slate-400"/>
-            <span class="text-slate-500 text-xs">COP</span>
-          </div>
-
-          @if (rechargeAmount() >= 10000) {
-            <!-- Selector de método de pago -->
-            <div class="grid grid-cols-2 gap-2">
-              <button (click)="rechargeMethod.set('pse')"
-                class="py-2 rounded-xl text-xs font-black transition-all active:scale-95"
-                [style]="rechargeMethod() === 'pse'
-                  ? 'background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff'
-                  : 'background:#F3F4F6;border:1px solid #E5E7EB;color:#374151'">
-                PSE / Nequi
-              </button>
-              <button (click)="rechargeMethod.set('card')"
-                class="py-2 rounded-xl text-xs font-black transition-all active:scale-95"
-                [style]="rechargeMethod() === 'card'
-                  ? 'background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff'
-                  : 'background:#F3F4F6;border:1px solid #E5E7EB;color:#374151'">
-                Tarjeta
-              </button>
-            </div>
-
-            <!-- Desglose: cuánto paga vs. cuánto le llega a la billetera -->
-            <div class="rounded-xl p-3 flex flex-col gap-1" style="background:#F0F9FF;border:1px solid #BAE6FD">
-              <div class="flex items-center justify-between">
-                <span class="text-slate-600 text-xs">Vas a pagar</span>
-                <span class="text-slate-900 text-sm font-black">{{ formatCOP(rechargeTotalCop(rechargeAmount(), rechargeMethod())) }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-600 text-xs">A tu billetera llega</span>
-                <span class="font-black text-sm" style="color:#0891b2">{{ formatCOP(rechargeAmount()) }}</span>
-              </div>
-              <p class="text-slate-500 text-[10px] mt-1 leading-snug">
-                La diferencia ({{ formatCOP(rechargeFeeCop(rechargeAmount(), rechargeMethod())) }}) es comisión de la pasarela de pago e intermediarios bancarios, no de Movi.
-              </p>
-            </div>
-          }
-
-          @if (rechargeError()) {
-            <div class="w-full rounded-2xl p-4 flex flex-col gap-2"
-              style="background:linear-gradient(135deg,#450a0a,#7f1d1d);border:2px solid #ef4444">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:20px;color:#fca5a5;font-variation-settings:'FILL' 1">error</span>
-                <p style="color:#fca5a5;font-size:13px;font-weight:900;margin:0">Error al iniciar el pago</p>
-              </div>
-              <p style="color:#fca5a5;font-size:12px;margin:0;word-break:break-all">{{ rechargeError() }}</p>
-              <div class="flex gap-2 mt-1">
-                <a [href]="ayudaRecargaWhatsAppUrl" target="_blank" rel="noopener"
-                  class="px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1"
-                  style="background:#25D366;color:#fff;text-decoration:none">
-                  <span class="material-symbols-outlined" style="font-size:14px">chat</span> Pedir ayuda por WhatsApp
-                </a>
-                <button (click)="rechargeError.set(null)"
-                  class="px-3 py-1 rounded-lg text-xs font-bold"
-                  style="background:rgba(239,68,68,0.25);color:#fca5a5;border:1px solid rgba(239,68,68,0.4)">
-                  Cerrar
-                </button>
-              </div>
-            </div>
-          }
-          <button (click)="startWalletRecharge()"
-            [disabled]="rechargeAmount() < 10000 || rechargeLoading()"
-            class="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-all active:scale-[0.98]"
-            style="background:linear-gradient(135deg,#0f6fde,#1d4ed8);color:#fff">
-            @if (rechargeLoading()) {
-              <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Abriendo pago...
-            } @else {
-              <span class="material-symbols-outlined" style="font-size:16px">credit_card</span>
-              Pagar {{ rechargeAmount() >= 10000 ? formatCOP(rechargeTotalCop(rechargeAmount(), rechargeMethod())) : '' }}
-            }
-          </button>
-          <p class="text-slate-400 text-[10px] text-center">Mínimo {{ formatCOP(10000) }} · Pago seguro con ePayco</p>
-          <a [href]="ayudaRecargaWhatsAppUrl" target="_blank" rel="noopener"
-            class="text-center text-xs font-bold flex items-center justify-center gap-1"
-            style="color:#16a34a;text-decoration:none">
-            <span class="material-symbols-outlined" style="font-size:15px">chat</span> ¿No pudiste recargar? Escríbenos por WhatsApp
-          </a>
+          <!-- ePayco QUITADO del panel del conductor (pedido del usuario 2026-10-04: "dejemos solo Nequi
+               para no enredar el proceso"). Desde el 28-ago ninguna recarga por ePayco se completó. La
+               lógica (startWalletRecharge, ag-create-wallet-recharge, ag-epayco-webhook) sigue en el
+               código por si se quiere volver a mostrar; solo se quitó de la pantalla. -->
         </div>
       }
 
@@ -10847,8 +10753,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } catch { /* sin portapapeles: el número igual se ve en pantalla */ }
   }
   nequiComprobanteUrl(): string {
-    const monto = this.rechargeAmount() >= 10000 ? ` de ${this.formatCOP(this.rechargeAmount())}` : '';
-    return `https://wa.me/573009645697?text=${encodeURIComponent(`Hola, hice una recarga por Nequi${monto} para mi saldo de Movi. Te envío el comprobante 👇`)}`;
+    return `https://wa.me/573009645697?text=${encodeURIComponent('Hola, hice una recarga por Nequi para mi saldo de Movi. Te envío el comprobante 👇')}`;
   }
   // Volvió de ePayco y el saldo no subió: se le muestra el aviso con el botón de WhatsApp.
   rechargeNoReflejada = signal(false);
