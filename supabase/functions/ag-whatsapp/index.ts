@@ -263,6 +263,7 @@ async function sendText(to: string, text: string, sentBy: WaSentBy = 'bot', sent
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(10_000), // sin esto un Meta lento colgaba el bot (2026-10-05, ver postAMeta)
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
@@ -327,6 +328,7 @@ async function sendTemplate(to: string, templateName: string, langCode: string, 
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(10_000), // sin esto un Meta lento colgaba el bot (2026-10-05, ver postAMeta)
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         ...recipientField(to),
@@ -383,6 +385,7 @@ async function sendAdminTemplate(to: string, titulo: string, detalle: string, se
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(10_000), // sin esto un Meta lento colgaba el bot (2026-10-05, ver postAMeta)
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         ...recipientField(to),
@@ -477,15 +480,35 @@ function summarizeOutboundPayload(payload: Record<string, unknown>): { text: str
   return { text: `[${type}]`, type };
 }
 
+/**
+ * POST a la API de mensajes de Meta con tiempo límite (2026-10-05). Antes el fetch no tenía
+ * límite: en la auditoría de coherencia una petición se quedó colgada más de 60 s y la persona
+ * no recibió nada. Con 10 s de tope el bot no se queda esperando para siempre.
+ * Reintento: solo si la conexión falló ANTES de enviar (error de red). Si se agotó el tiempo
+ * NO se reintenta: Meta pudo haberlo entregado y el reintento le llegaría DOBLE a la persona.
+ */
+async function postAMeta(url: string, body: unknown): Promise<Response> {
+  const intento = () => fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
+  });
+  try {
+    return await intento();
+  } catch (e) {
+    const nombre = (e as { name?: string })?.name;
+    if (nombre === 'TimeoutError' || nombre === 'AbortError') throw e;
+    console.error('[WA] error de red enviando a Meta, reintento una vez:', e);
+    return await intento();
+  }
+}
+
 async function sendGraph(payload: Record<string, unknown>): Promise<WaResult> {
   try {
     const { to, ...rest } = payload;
     const fullBody = { messaging_product: 'whatsapp', ...(to ? recipientField(to as string) : {}), ...rest };
-    const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(fullBody),
-    });
+    const res = await postAMeta(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, fullBody);
     const bodyText = await res.text();
     if (!res.ok) console.error('[WA] sendGraph Meta API error:', res.status, bodyText, 'sent:', JSON.stringify(fullBody));
     if (to) {
@@ -495,6 +518,10 @@ async function sendGraph(payload: Record<string, unknown>): Promise<WaResult> {
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendGraph fetch error:', e);
+    if (payload.to) {
+      const summary = summarizeOutboundPayload(payload);
+      logWaMessage(payload.to as string, 'pasajero', 'out', summary.text, summary.type, 'bot', null, { ok: false, body: `sin respuesta de Meta: ${String(e)}` });
+    }
     return { ok: false, body: String(e) };
   }
 }
@@ -1629,6 +1656,7 @@ async function enviarNotaDeVozAWhatsApp(phone: string, mediaPath: string, driver
     const envio = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(10_000), // sin esto un Meta lento colgaba el bot (2026-10-05, ver postAMeta)
       body: JSON.stringify({ messaging_product: 'whatsapp', to: toE164(phone), type: 'audio', audio: { id: mediaId } }),
     });
     if (!envio.ok) { console.error('[WA] nota de voz: Meta rechazo el envio', envio.status, await envio.text()); return false; }
@@ -2116,6 +2144,77 @@ async function askOriginDirect(phone: string, svc: string, destText: string | nu
     `${cabeza}📍 *¿Dónde te recojo?* Toca el botón para compartir tu ubicación, o escríbeme la dirección.` +
     (destText && !cotizar ? `\n\nApenas la tenga te digo el precio, sin compromiso.` : '') +
     (cotizar ? '' : `\n\n_¿Es para otra persona? Escribe *otra persona*._`));
+}
+
+/**
+ * La ubicación llegó ANTES de elegir carro/moto (ver "UBICACIÓN ANTES DE ELEGIR SERVICIO" en
+ * handleConversation): al elegir, se arranca el pedido con esa recogida en vez de volver a
+ * pedirla. Devuelve false si no había recogida guardada (se sigue con askOriginDirect).
+ */
+async function usarRecogidaPrevia(
+  phone: string, session: Record<string, unknown>, svc: string, cotizar: boolean, destText: string | null,
+): Promise<boolean> {
+  if (session.pending_location_kind !== 'recogida_previa') return false;
+  const lat = session.origin_lat as number | null;
+  const lng = session.origin_lng as number | null;
+  const addr = session.origin_address as string | null;
+  if (lat == null || lng == null || !addr) return false;
+  const patch = {
+    state: 'awaiting_origin', service_type: svc, is_for_self: true, cotizar, precio_moto: null,
+    traveler_name: null, traveler_phone: null, origin_barrio_hint: null, pending_location_kind: null,
+    pending_dest_text: destText,
+  };
+  await upsertSession(phone, patch);
+  await seguirConRecogida(phone, addr, lat, lng, { ...session, ...patch }, false);
+  return true;
+}
+
+/**
+ * Repite la pregunta EXACTA del paso en que va el pedido (2026-10-05). Se usa cuando la
+ * persona escribe algo que no responde a ese paso (un saludo, por ejemplo): en vez de
+ * "sigo esperando tu respuesta anterior", se le vuelve a mostrar qué falta, con sus botones.
+ */
+async function recordarPasoPendiente(
+  phone: string, session: Record<string, unknown>, state: string, saludo: string,
+): Promise<void> {
+  const addr = session.origin_address as string | null;
+  const cancelar = `\n\n_Si prefieres empezar de cero, escribe *cancelar*._`;
+  const paquete = isDeliveryService(session.service_type as string);
+  const quien = travelerLabel(session);
+  switch (state) {
+    case 'awaiting_origin':
+      await sendLocationRequest(phone,
+        `${saludo}\n\n📍 *${paquete ? '¿Dónde recogemos el pedido?' : quien ? `¿Dónde recojo a ${quien}?` : '¿Dónde te recojo?'}* ` +
+        `Toca el botón para compartir ${paquete || quien ? 'la' : 'tu'} ubicación, o escríbeme la dirección.${cancelar}`);
+      return;
+    case 'awaiting_barrio_recogida':
+      if (addr) {
+        await sendButtons(phone,
+          `${saludo}\n\nEl mapa te ubica en:\n${lineasUbicacion(addr)}\n\n` +
+          `Toca *Continuar* si así está bien, o *Mejorar dirección* para escribirme tu dirección exacta.`,
+          BOTONES_RECOGIDA);
+        return;
+      }
+      break;
+    case 'awaiting_dest':
+      await sendText(phone,
+        `${saludo}\n\n${addr ? `📍 ${paquete ? 'Recogemos en' : 'Te recojo en'} *${addr}*\n\n` : ''}` +
+        `🏁 *${paquete ? '¿A dónde lo llevamos?' : '¿A dónde vas?'}* Escríbeme la dirección o comparte la ubicación.${cancelar}`);
+      return;
+    case 'awaiting_summary':
+      if (session.dest_name && session.dest_lat != null && session.dest_lng != null && session.origin_lat != null) {
+        await presentTripSummary(phone, session.dest_name as string, session.dest_lat as number,
+          session.dest_lng as number, session, undefined, saludo, true);
+        return;
+      }
+      break;
+    case 'matching':
+    case 'stale_search_confirm':
+      await sendText(phone,
+        `${saludo}\n\n🔎 Sigo buscando un conductor para tu viaje. Te aviso por aquí apenas uno acepte.${cancelar}`);
+      return;
+  }
+  await sendText(phone, `${saludo}\n\nMira mi último mensaje 👆 ahí está lo que me falta para seguir.${cancelar}`);
 }
 
 /** "Te envío la ubicación y te recuerdo la dirección también Urbanización Prados Norte Calle 21N..."
@@ -2887,7 +2986,36 @@ function isCancel(t: string): boolean {
 // "le digo que quiero un carro y me lo vuelve a preguntar". Un saludo a mitad
 // de flujo ya no cancela nada, solo recuerda en qué se quedó.
 function isGreeting(t: string): boolean {
-  return /^(menu|menú|inicio|start|hola|hi|hello|comenzar)$/i.test(t.trim());
+  // Ampliado 2026-10-05 (auditoría de coherencia): "buenas tardes" a mitad del pedido se leía
+  // como dirección ("No encontré esa dirección") o como "no te entendí".
+  const n = t.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  return /^(menu|inicio|start|hi|hello|hey|comenzar|saludos|holi|ola|hola+( (buen[oa]s?( (dias|tardes|noches))?|que tal|como (estas|esta|va)))?|buen[oa]s?( (dias|tardes|noches))?|buen dia|que tal|que mas)$/.test(n);
+}
+
+/**
+ * ¿Este texto NO puede ser una dirección? (2026-10-05, auditoría de coherencia con 82 casos).
+ * Antes, en "¿Dónde te recojo?" / "¿A dónde vas?", cualquier texto se tomaba como dirección:
+ * "gracias" quedaba como "📍 Te recojo en *gracias*" y "no entiendo" como destino con precio.
+ * aceptaSi: en el paso del mapa (awaiting_barrio_recogida) "ok"/"listo" SÍ significan
+ * "así está bien" y ese bloque los atiende; ahí no se interceptan.
+ */
+function noEsDireccion(t: string, aceptaSi = false): boolean {
+  const n = t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9n\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!n) return true;                 // sticker, emoji, "?", "..."
+  if (isGreeting(t)) return true;
+  if (/^(ok|okay|oki|okey|vale|si|listo|dale|bueno|bien|perfecto|de una|claro|correcto|esta bien|asi esta bien|continuar)$/.test(n)) return !aceptaSi;
+  return /^((muchas |mil )?gracias|no|nop|nada|ya|aja|m+|a+h*|ja(ja)+|que|como|ayuda|help|no entiendo|no entendi|no se|que hago|y ahora|como asi|espera|un momento|ahorita|ya voy|carro|moto|domicilio|cotizar( un viaje| precio)?)$/.test(n);
+}
+
+/** Primera línea de recordarPasoPendiente según lo que escribió la persona. */
+function introSegun(t: string): string {
+  const n = t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (isGreeting(t)) return `¡Hola de nuevo! 👋 Seguimos con tu pedido.`;
+  if (/gracias/.test(n)) return `¡Con gusto! 🙌 Para seguir con tu pedido me falta esto:`;
+  if (/no entiendo|no entendi|no se|que hago|y ahora|como asi|ayuda|help/.test(n)) return `Te ayudo 🙂 Solo me falta este dato para seguir:`;
+  return `Para seguir con tu pedido me falta esto 👇`;
 }
 
 // Humanización de saludos (2026-08-14, pedido explícito del usuario): un "buenos
@@ -3249,6 +3377,21 @@ async function handleConversation(
   let state = (session.state as string | null | undefined) ?? 'idle';
   const text  = msgText.trim();
 
+  // ── MISMA UBICACIÓN REPETIDA (2026-10-05) ────────────────────────────────────
+  // Es común mandar la ubicación dos veces (no vio llegar la respuesta, o la tocó dos veces).
+  // Antes cada una tenía su respuesta: dos mensajes iguales seguidos, y si la primera ya había
+  // llegado al resumen, la segunda le reiniciaba la recogida. Ahora, el mismo punto (< 30 m) en
+  // menos de 2 minutos se ignora, salvo que el paso actual esté pidiendo una ubicación
+  // (recogida o destino): ahí sí puede ser intencional y se procesa normal.
+  if (msgType === 'location' && msgLat != null && msgLng != null) {
+    const prev = session.ultima_ubicacion as { lat: number; lng: number; at: number } | null | undefined;
+    const repetida = !!prev && Date.now() - prev.at < 120_000 && haversineKm(prev.lat, prev.lng, msgLat, msgLng) < 0.03;
+    if (repetida && !['awaiting_origin', 'awaiting_dest'].includes(state)) return;
+    // Sin esperar: no le agrega tiempo a la respuesta.
+    upsertSession(phone, { ultima_ubicacion: { lat: msgLat, lng: msgLng, at: Date.now() } })
+      .catch(e => console.error('[WA] ultima_ubicacion:', e));
+  }
+
   // Si el pasajero está en el paso de "¿en qué barrio?" (ver askOriginBarrio)
   // pero de una vez comparte su ubicación GPS -- por costumbre, porque no
   // leyó el mensaje, o porque prefiere hacerlo así -- no tiene sentido
@@ -3432,9 +3575,35 @@ async function handleConversation(
   // En el menú no hay "respuesta anterior" que esperar (p. ej. justo después de cancelar):
   // un saludo ahí se atiende como saludo, desde cero.
   if (isGreeting(text) && state === 'awaiting_service') state = 'idle';
-  if (isGreeting(text) && state !== 'idle') {
-    await sendText(phone, `¡Hola de nuevo! 👋 Sigo aquí, esperando tu respuesta anterior.\n\nEscribe *cancelar* si prefieres empezar de nuevo.`);
+  // 2026-10-05: antes se contestaba solo "Sigo aquí, esperando tu respuesta anterior", sin
+  // decir CUÁL, y la persona no sabía qué le faltaba. Ahora se le repite la pregunta exacta
+  // del paso en que va (recordarPasoPendiente). En un viaje en curso (in_trip) el saludo NO
+  // se intercepta: lo que escribe el pasajero ahí le llega al conductor, y un "hola" para
+  // el conductor se quedaba en el bot. En awaiting_rating tampoco: ahí todo lo que no sea
+  // una calificación ya se atiende como conversación nueva (ver ese bloque).
+  if (isGreeting(text) && !['idle', 'in_trip', 'awaiting_rating'].includes(state)) {
+    await recordarPasoPendiente(phone, session, state, `¡Hola de nuevo! 👋 Seguimos con tu pedido.`);
     return;
+  }
+
+  // Mientras se pide una dirección (recogida, confirmar el mapa, destino), lo que claramente NO
+  // es una dirección se contesta repitiendo la pregunta pendiente (ver noEsDireccion). Y tocar
+  // otra vez "🚗 Carro"/"🏍️ Moto" de un mensaje viejo cambia el servicio, no es una dirección.
+  if (['awaiting_origin', 'awaiting_dest', 'awaiting_barrio_recogida'].includes(state) && msgType !== 'location') {
+    const svcBoton = msgBtnId === 'svc_carro' ? 'carro' : msgBtnId === 'svc_moto' ? 'moto' : null;
+    if (svcBoton) {
+      await upsertSession(phone, { service_type: svcBoton });
+      await recordarPasoPendiente(phone, { ...session, service_type: svcBoton }, state, `Listo, ${SERVICE_LABELS[svcBoton] ?? svcBoton} 👍`);
+      return;
+    }
+    if (state === 'awaiting_dest' && preguntaPrecio(text)) {
+      await sendText(phone, `Te digo el precio apenas me digas a dónde vas 🙌\n\n🏁 *¿A dónde vas?* Escríbeme la dirección o comparte la ubicación.`);
+      return;
+    }
+    if (noEsDireccion(text, state === 'awaiting_barrio_recogida')) {
+      await recordarPasoPendiente(phone, session, state, introSegun(text));
+      return;
+    }
   }
 
   // Se va molesto ("Déjelo así", "olvídelo", "ya conseguí") -- 2026-10-02, caso real …833: tras
@@ -3479,6 +3648,31 @@ async function handleConversation(
        'awaiting_price', 'matching', 'stale_search_confirm'].includes(state)) {
     const prog = leerProgramacion(text);
     if (prog) { await manejarProgramado(phone, session, state, text, prog); return; }
+  }
+
+  // ── UBICACIÓN ANTES DE ELEGIR SERVICIO (2026-10-05) ─────────────────────────
+  // Mucha gente empieza mandando su ubicación. Antes caía como texto vacío: en reposo
+  // recibía el saludo y, si la volvía a mandar, "Creo que no te entendí bien 🤔" una y otra
+  // vez. Ahora la ubicación se guarda como recogida y solo se pregunta qué necesita; al
+  // elegir, se sigue directo SIN volver a pedirle la ubicación (ver usarRecogidaPrevia).
+  if (msgType === 'location' && msgLat != null && msgLng != null && (state === 'idle' || state === 'awaiting_service')) {
+    if (!isInColombia(msgLat, msgLng)) {
+      await sendText(phone, `📍 Esa ubicación no parece estar en Colombia.\n\nComparte tu ubicación actual o escríbeme tu dirección (calle, barrio y ciudad).`);
+      return;
+    }
+    const addrPrevia = precomputedAddr ?? await reverseGeocode(msgLat, msgLng);
+    await upsertSession(phone, {
+      state: 'awaiting_service', origin_lat: msgLat, origin_lng: msgLng, origin_address: addrPrevia,
+      pending_location_kind: 'recogida_previa',
+    });
+    await sendButtons(phone,
+      `📍 ¡Recibí tu ubicación! Te recojo ahí.\n\n¿Qué necesitas?`,
+      [
+        { id: 'svc_carro', title: '🚗 Carro' },
+        { id: 'svc_moto', title: '🏍️ Moto' },
+        { id: 'svc_cotizar', title: '💰 Cotizar precio' },
+      ]);
+    return;
   }
 
   // ── IDLE / WELCOME ──────────────────────────────────────────────────────────
@@ -3548,7 +3742,9 @@ async function handleConversation(
       // Si escribió la pregunta completa ("cuánto vale un carro al centro comercial Ventura"),
       // el destino se toma de una vez en vez de volver a preguntarlo (encontrado probando 2026-10-02).
       const parsed = !msgBtnId && text.length >= 12 ? await parseFreeTextRequest(text) : null;
-      await askOriginDirect(phone, parsed?.service_type === 'moto' ? 'moto' : 'carro', parsed?.dest_text ?? null, true);
+      const svcCot = parsed?.service_type === 'moto' ? 'moto' : 'carro';
+      if (await usarRecogidaPrevia(phone, session, svcCot, true, parsed?.dest_text ?? null)) return;
+      await askOriginDirect(phone, svcCot, parsed?.dest_text ?? null, true);
       if (parsed?.dest_text) await upsertSession(phone, { pending_dest_text: parsed.dest_text });
       return;
     }
@@ -3586,6 +3782,16 @@ async function handleConversation(
           return;
         }
       }
+      // Un "ok", "gracias", "?" o un sticker no es algo que no se entendió: solo se repite la
+      // pregunta, sin el "no te entendí" (auditoría 2026-10-05).
+      if (noEsDireccion(text)) {
+        await sendServiceButtons(phone, /gracias/i.test(text)
+          ? `¡Con gusto! 🙌 Cuando quieras, *¿a dónde vas?* Escríbeme el destino, o elige una opción 👇`
+          : /no entiend|no s[eé]|ayuda|qu[eé] hago/i.test(text)
+            ? `Te ayudo 🙂 Solo escríbeme *a dónde vas* (por ejemplo: _Unicentro_ o _Calle 10 #5-20_) y te digo el precio. O elige una opción 👇`
+            : `Cuando quieras 🙂 *¿A dónde vas?* Escríbeme el destino, o elige una opción 👇`);
+        return;
+      }
       await sendServiceButtons(phone, `Creo que no te entendí bien 🤔 ¿A dónde vas? Escríbeme el destino, o elige una opción 👇`);
       return;
     }
@@ -3604,6 +3810,7 @@ async function handleConversation(
       // Flujo rápido (2026-10-01): directo a la ubicación. Antes aquí se preguntaba "¿para ti
       // o para otra persona?" (pedido del usuario 2026-08-11); sigue existiendo, pero solo si
       // el pasajero escribe "otra persona" en el paso de la ubicación (ver awaiting_origin).
+      if (await usarRecogidaPrevia(phone, session, svc, false, null)) return;
       await askOriginDirect(phone, svc, null);
     }
     return;
@@ -4328,7 +4535,12 @@ async function handleConversation(
     }
     // No se entendió: se le vuelve a mostrar SU resumen (el de cotizar o el normal).
     if (session.dest_lat != null && session.dest_lng != null && session.origin_lat != null) {
-      await presentTripSummary(phone, session.dest_name as string, session.dest_lat as number, session.dest_lng as number, session);
+      // "?", "no entiendo", un sticker: se repite el resumen con una línea que lo explique, en
+      // vez de reenviarlo en seco (auditoría 2026-10-05).
+      const encabezado = noEsDireccion(text)
+        ? (/no entiend|no s[eé]|ayuda|qu[eé] hago/i.test(text) ? `Te ayudo 🙂 Este es tu viaje: si está bien, toca *Pedir*.` : `Este es tu viaje 👇`)
+        : undefined;
+      await presentTripSummary(phone, session.dest_name as string, session.dest_lat as number, session.dest_lng as number, session, undefined, encabezado);
       return;
     }
     await resetSession(phone);
@@ -6311,11 +6523,7 @@ async function sendSupportGraph(payload: Record<string, unknown>, sentBy: WaSent
   try {
     const { to, ...rest } = payload;
     const fullBody = { messaging_product: 'whatsapp', ...(to ? recipientField(to as string) : {}), ...rest };
-    const res = await fetch(`https://graph.facebook.com/v20.0/${SUPPORT_PHONE_NUMBER_ID}/messages`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(fullBody),
-    });
+    const res = await postAMeta(`https://graph.facebook.com/v20.0/${SUPPORT_PHONE_NUMBER_ID}/messages`, fullBody);
     const bodyText = await res.text();
     if (!res.ok) console.error('[WA-Support] sendGraph Meta API error:', res.status, bodyText, 'sent:', JSON.stringify(fullBody));
     if (to) {
@@ -6325,6 +6533,10 @@ async function sendSupportGraph(payload: Record<string, unknown>, sentBy: WaSent
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA-Support] sendGraph fetch error:', e);
+    if (payload.to) {
+      const summary = summarizeOutboundPayload(payload);
+      logWaMessage(payload.to as string, 'conductor', 'out', summary.text, summary.type, sentBy, sentByName, { ok: false, body: `sin respuesta de Meta: ${String(e)}` });
+    }
     return { ok: false, body: String(e) };
   }
 }
