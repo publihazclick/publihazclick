@@ -58,7 +58,29 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
   <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+  <!-- Íconos (2026-10-05). Antes se pedían TODAS las variantes (opsz 20-48, wght 100-700, GRAD) = 3,9 MB, y con
+       display=swap el celular mostraba el nombre del ícono en inglés ("featured_seasonal_and_gifts", "location_on")
+       hasta que llegaba la fuente. Ahora solo lo que la app usa (FILL 0/1 y wght 400-700, revisado en todo src/) =
+       1,1 MB, y display=block + la regla de abajo: mientras no carga, el ícono ocupa su lugar pero no se ve. -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400..700,0..1,0&display=block" rel="stylesheet">
+  <style>
+    html:not(.iconos-listos) .material-symbols-outlined { visibility: hidden; max-width: 1em; overflow: hidden; }
+  </style>
+  <script>
+    // Marca los íconos como listos apenas carga la fuente. Si la descarga FALLA se muestran de una; si solo va
+    // lenta se espera hasta 15 s (con 5 s, en un 3G lento -- prueba 2026-10-05: la fuente tardó 12,7 s --
+    // volvían a salir los nombres en inglés). Nunca quedan escondidos para siempre. No bloquea la carga de la app.
+    (function () {
+      var h = document.documentElement, listo = function () { h.classList.add('iconos-listos'); };
+      setTimeout(listo, 15000);
+      try {
+        if (!document.fonts || !document.fonts.load) { listo(); return; }
+        document.fonts.load('24px "Material Symbols Outlined"', 'home').then(function (f) {
+          if (f && f.length) listo();
+        }, listo);
+      } catch (e) { listo(); }
+    })();
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Structured Data: Organization -->

@@ -12279,6 +12279,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             this.driverData.set(d);
             this.driverStatus.set(d.status ?? 'quick');
             this.driverRejectionReason.set(d.rejection_reason ?? null);
+            // Último saldo conocido al instante (2026-10-05): antes se veía "$ 0 COP" al abrir hasta
+            // que _initDriverHome terminaba de consultar la comisión. Luego se refresca desde la base.
+            if (d.wallet_balance != null) this.driverWalletBalance.set(d.wallet_balance);
           }
           _cacheUsed = true;
           // Iniciar GPS durante el splash para tener fix listo cuando el home aparezca
@@ -12387,6 +12390,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       }
       localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: mine }));
       this.driverData.set(mine);
+      // El saldo que ya trae la ficha se muestra de una (ver el mismo cambio en la lectura del caché).
+      if (mine.wallet_balance != null) this.driverWalletBalance.set(mine.wallet_balance);
       this.driverStatus.set(mine?.status ?? 'quick');
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
       this.screen.set('driver-home');

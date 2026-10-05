@@ -13,6 +13,17 @@
 
 ## Pendiente de subir
 
+### Al abrir Movi se veían los nombres de los íconos en inglés y el saldo en $0 (2026-10-05)
+- **Por qué**: el usuario vio al abrir la app "featured_seasonal_and_gifts", "location_on", etc. en vez de íconos, y la
+  información sin cargar.
+- **Qué cambia (solo web)**: `src/index.html` pide solo las variantes de íconos que la app usa (3,9 MB → 1,1 MB) con
+  `display=block`, y los esconde hasta que la fuente llega (si la descarga falla se muestran de una; tope 15 s).
+  `anda-gana.component.ts`: el saldo sale del caché/ficha al instante en vez de "$ 0 COP".
+- **Verificado**: Chrome con red 3G lenta y sin caché: antes a los 2,5 s se veían 4 nombres en inglés y los íconos
+  tardaban 25,6 s; ahora 0 nombres a los 2,5 s ni a los 8 s y los íconos llegan en ~13 s. Al cargar, todos se ven bien.
+  `ngc` OK. NO probado aún en el celular real.
+
+
 ### Rediseño de la pantalla principal del conductor, copia del diseño del usuario (2026-10-05)
 - **Por qué**: el usuario mandó la imagen de cómo quiere la pantalla (captura `Screenshot_20261005_092717...jhjr.jpg`)
   y pidió que quede "tal cual", con tamaños y todo.
