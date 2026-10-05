@@ -5756,6 +5756,12 @@ async function manejarComprobanteNequi(phone: string, msgType: string, msgText: 
   const tPago = filas.find(r => (r.direction === 'in' && TEXTO_DICE_PAGO_NEQUI.test(r.body ?? '')) ||
     (r.direction === 'out' && (r.body ?? '').startsWith(MARCA_PIDE_COMPROBANTE)))?.created_at;
   const cicloCerrado = !!tCargado && (!tPago || tCargado > tPago);
+  // Foto con un mensaje que se entiende solo (caso real 2026-10-05, …8217: "[foto] ... ando en el colsag
+  // y la ubicación de en Antonia santos"): se contesta el texto, no "no puedo ver imágenes". Solo si el
+  // texto se refiere a la foto ("sale así", "mira esto") se le pide que la describa.
+  const textoSeEntiendeSolo = !dicePago && msgText.trim().length >= 25 &&
+    !/(?<![a-záéíóúñ])(as[ií]|esto|esta|este|eso|mira|aqu[ií]|ah[ií])(?![a-záéíóúñ])/i.test(msgText);
+  if (textoSeEntiendeSolo) return false;
   if (!dicePago && (cicloCerrado || pideAlgoTexto(msgText))) {
     // Varias fotos seguidas: se le dice una sola vez.
     if (await yaLeDijimosEsto(phone, 'Vi tu foto 📸', 10)) return true;
@@ -7220,7 +7226,8 @@ Un mismo conductor puede recibir solicitudes de varios de estos servicios según
 ═══ DINERO: CÓMO SE PAGA UN CONDUCTOR ═══
 - El pasajero le paga al conductor DIRECTO (no pasa por Movi). Movi cobra su comisión de la billetera prepagada del conductor, no del pago del viaje.
 - Comisión de Movi: 12% fijo. Se CALCULA sobre el valor de cada viaje, pero se DESCUENTA del saldo prepagado de la billetera del conductor, automáticamente. NUNCA digas que se descuenta "del valor de la carrera", "del pago del viaje" ni "de lo que te paga el pasajero": el conductor recibe el 100% de lo que le paga el pasajero, y la comisión sale aparte de su billetera. (Error real del 2026-10-01: el bot le dijo a un lead que se descontaba del valor de cada carrera.)
-- El conductor debe tener saldo en su billetera para recibir y aceptar viajes. Para aceptar viajes hay que tener mínimo *$10.000 COP* de saldo. Se guía UN paso a la vez, nunca todo junto: primero descargar la app, después registrarse ("Quiero ser conductor"), después recargar mínimo $10.000, y por último ponerse "En línea". En el PRIMER viaje no se le descuenta nada del saldo; el descuento del 12% empieza desde el SEGUNDO viaje. NUNCA digas que se puede trabajar o aceptar el primer viaje sin saldo o sin recargar (decisión del dueño 2026-10-04). Se recarga por *Nequi* y recargar no cuesta nada (OJO: no digas "sin comisión", porque Movi sí cobra el 12% de cada viaje desde el segundo; lo gratis es recargar): en la app toca Saldo → Recargar, envía el valor (mínimo $10.000) al Nequi 313 445 3649, a nombre de VICTOR VERA, y manda la captura del comprobante por este WhatsApp; un asesor carga el saldo completo en pocos minutos. Ya NO se recarga por ePayco, PSE, tarjeta, DaviPlata ni efectivo (si alguien escribe "EPC" o "epayco", explícale que ahora es por Nequi).
+- Las solicitudes le llegan y las puede VER aunque no tenga saldo (con la app abierta y "En línea"); si pregunta si puede ver las solicitudes sin recargar, la respuesta es SÍ. Para ACEPTAR viajes hay que tener mínimo *$10.000 COP* de saldo. Se guía UN paso a la vez, nunca todo junto: primero descargar la app, después registrarse ("Quiero ser conductor"), después recargar mínimo $10.000, y por último ponerse "En línea". En el PRIMER viaje no se le descuenta nada del saldo; el descuento del 12% empieza desde el SEGUNDO viaje. NUNCA digas que se puede trabajar o aceptar el primer viaje sin saldo o sin recargar (decisión del dueño 2026-10-04). Se recarga por *Nequi* y recargar no cuesta nada (OJO: no digas "sin comisión", porque Movi sí cobra el 12% de cada viaje desde el segundo; lo gratis es recargar): en la app toca Saldo → Recargar, envía el valor (mínimo $10.000) al Nequi 313 445 3649, a nombre de VICTOR VERA, y manda la captura del comprobante por este WhatsApp; un asesor carga el saldo completo en pocos minutos. Ya NO se recarga por ePayco, PSE, tarjeta, DaviPlata ni efectivo (si alguien escribe "EPC" o "epayco", explícale que ahora es por Nequi).
+- Si dice que su UBICACIÓN sale en otro lugar o mal en el mapa (ej.: "ando en el Colsag y la ubicación sale en Antonia Santos"): es el GPS de SU celular. Dile que active la ubicación en *alta precisión* ("Precisión de la ubicación de Google" encendida), que se ubique en un lugar abierto unos segundos y que cierre y vuelva a abrir Movi; si sigue igual, que nos cuente qué celular tiene. Quien escribe a este chat es CONDUCTOR: NUNCA lo mandes al número de pasajeros por esto.
 - *¿Cuánto se puede ganar?* Sé honesto: depende del tiempo que el conductor tenga disponible y de cuántos servicios acepte -- eso no lo define Movi, lo define él. Lo que sí puedes decirle con certeza es cómo se reparte cada viaje: él cobra el 100% del valor directo del pasajero y Movi solo descuenta el 12% de su billetera. NUNCA inventes un ingreso mensual, diario ni por hora, ni des rangos "estimados": no los sabes.
 - *Precio sugerido de un viaje en carro:* arranca en $4.000 y suma alrededor de $1.300 por kilómetro. En la práctica, un viaje típico de ciudad de unos 5 km sale en unos $10.500 (o sea alrededor de $2.000 por kilómetro), y entre más largo el viaje, menos pesa el cobro base. En horas de alta demanda el sugerido sube automáticamente. Es solo un SUGERIDO: el pasajero puede ofrecer otro precio y el conductor puede aceptar o contraofertar.
 - *Precio sugerido de un viaje en MOTO (es DISTINTO al de carro, nunca uses el de carro para moto):* arranca en $2.500 y suma alrededor de $960 por kilómetro (mínimo $3.000). Un viaje típico de unos 5 km en moto sale en unos $7.500, o sea alrededor de $1.500 por kilómetro. (Error real del 2026-10-02: a un motero se le respondió con la tarifa de carro.)
@@ -8964,8 +8971,11 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
   // en español (invitar/invita/invito/invitación, aprobado/aprobada/aprueban,
   // vencido/vencida/vencidos, bono/bonos, bloqueado, etc.).
   const lower = msgText.toLowerCase();
-  const asksStatus   = /estado|solicitud|aprobad|aprueban|aprobaron|rechazad|revisaron/.test(lower);
-  const asksWallet   = /saldo|billetera|cuanto tengo|cu[aá]nto tengo|cuanta plata|cu[aá]nta plata|recarg/.test(lower);
+  // "solicitudES" (plural) son las de viaje, no la de registro (caso real 2026-10-05, …2330: "Sin
+  // recargar puedo observar las solicitudes q van saliendo" recibió "Tu solicitud sigue en revisión").
+  const asksStatus   = /estado|solicitud(?!es)(?!.{0,4}de viaje)|aprobad|aprueban|aprobaron|rechazad|revisaron/.test(lower);
+  // "¿SIN recargar puedo...?" es una pregunta de cómo funciona, no de su saldo: la contesta el FAQ.
+  const asksWallet   = !/sin (recarg|saldo)/.test(lower) && /saldo|billetera|cuanto tengo|cu[aá]nto tengo|cuanta plata|cu[aá]nta plata|recarg/.test(lower);
   // "documentos" suelto ya NO cuenta (2026-10-02, caso real …957): "Que documentos" es preguntar
   // los REQUISITOS, no el estado de los suyos, y recibía "No encuentro ninguna solicitud". Solo
   // consulta su cuenta si habla de SUS documentos o de vencimientos/bloqueo; lo demás va al FAQ.
@@ -9014,6 +9024,11 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
         answerText = `¡Buenas noticias, ${profile.fullName}! ✅ Tu cuenta de conductor ya está *aprobada*. Ya puedes conectarte desde la app y empezar a recibir viajes.`;
       } else if (profile.status === 'rejected') {
         answerText = `Tu solicitud fue *rechazada*${profile.rejectionReason ? `:\n\n"${profile.rejectionReason}"` : '.'}\n\nCorrige lo que haga falta y vuelve a enviar tus documentos desde la app.`;
+      } else if (profile.status === 'quick') {
+        // 106 de 110 conductores están en 'quick' (registro rápido): NO están "en revisión", ya pueden
+        // recibir solicitudes. Antes todos recibían "sigue en revisión, 24-48 horas" (…2330, 2026-10-05).
+        answerText = `Tu registro ya está *listo* ✅ Ya puedes conectarte en la app (botón *"En línea"*) y te empiezan a llegar las solicitudes.` +
+          (Number(profile.walletBalance ?? 0) < 10000 ? `\n\nPara aceptarlas, recarga mínimo *$10.000* por Nequi.` : '');
       } else {
         answerText = `Tu solicitud sigue *en revisión* 🕐 (normalmente toma 24-48 horas hábiles). Te avisamos apenas quede lista.`;
       }

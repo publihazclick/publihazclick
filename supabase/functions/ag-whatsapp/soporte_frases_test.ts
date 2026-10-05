@@ -84,3 +84,18 @@ Deno.test('bienvenida al registrarse: nombre, vehículo y recarga', async () => 
   const carro = m.textoBienvenidaRegistro(null, { ...base, wallet_balance: 20000, vehicle_type: 'carro', vehicle_brand: 'Spark ', vehicle_year: 2009, vehicle_color: null, plate: 'CWK748' });
   if (!carro.conSaldo || !carro.texto.includes('*carro 🚗*') || carro.texto.includes('recargar tu saldo') || carro.texto.includes('Color:')) throw new Error(carro.texto);
 });
+
+// Casos reales 2026-10-05 del revisor en tiempo real.
+// …2330: "Sin recargar puedo observar las solicitudes q van saliendo" -> "Tu solicitud sigue en revisión".
+// …8217: foto + "ando en el colsag y la ubicación de en Antonia santos" -> "no puedo ver imágenes".
+Deno.test('preguntas de cómo funciona no se toman como consulta de su cuenta', () => {
+  const linea = (ini: string) => { const i = src.indexOf(ini); return src.slice(i, src.indexOf('\n', i)); };
+  const status = new Function('lower', 'return ' + linea('const asksStatus').split('= ')[1]);
+  const wallet = new Function('lower', 'return ' + linea('const asksWallet').split('= ').slice(1).join('= '));
+  const fotoTexto = new Function('msgText', 'const dicePago = false; return ' + src.slice(src.indexOf('const textoSeEntiendeSolo = ') + 28, src.indexOf(';', src.indexOf('const textoSeEntiendeSolo'))));
+  const t = 'sin recargar puedo observar las solicitudes q van saliendo';
+  if (status(t) || wallet(t)) throw new Error('la pregunta de las solicitudes se tomó como consulta de cuenta');
+  if (!status('cómo va mi solicitud') || !status('en qué estado está mi solicitud de registro') || !wallet('cuánto saldo tengo')) throw new Error('se rompió la consulta de cuenta');
+  if (!fotoTexto('Hola buenas tardes disculpe la molestia pero ando en el colsag y la ubicación de en Antonia santos')) throw new Error('foto con texto claro');
+  if (fotoTexto('Una pregunta la aplicación sale así') || fotoTexto('mira lo que me sale en la pantalla')) throw new Error('foto que hay que describir');
+});
