@@ -5447,7 +5447,7 @@ const MARCA_PIDE_COMPROBANTE = '🧾 ¡Gracias';
 const MARCA_COMPROBANTE_RECIBIDO = '🧾 ¡Recibí tu comprobante';
 const TEXTO_DICE_PAGO_NEQUI = /hice\s+(una|la)\s+recarga|te\s+env[ií]o\s+el\s+comprobante|comprobante\s+(de|del)\s+(pago|nequi|la\s+recarga)|ya\s+(pagu[eé]|transfer[ií]|consign[eé]|envi[eé]\s+la\s+plata)/i;
 
-async function manejarComprobanteNequi(phone: string, msgType: string, msgText: string): Promise<boolean> {
+async function manejarComprobanteNequi(phone: string, msgType: string, msgText: string, mediaId?: string): Promise<boolean> {
   const esArchivo = msgType === 'image' || msgType === 'document';
   const dicePago = TEXTO_DICE_PAGO_NEQUI.test(msgText);
   if (!esArchivo && !dicePago) return false;
@@ -5484,12 +5484,171 @@ async function manejarComprobanteNequi(phone: string, msgType: string, msgText: 
     `Te avisamos por aquí apenas quede listo.`);
 
   const nombre = (await lookupRealFirstName(phone)) ?? 'Un conductor';
-  await sendAdminAlert(SUPPORT_PHONE, '💸 Comprobante de recarga Nequi',
-    `${nombre} (+${wa}) mandó el comprobante de una recarga por Nequi al WhatsApp de conductores. ` +
-    `Revisa en tu Nequi que la plata llegó y cárgale el saldo en el panel de Movi con "Cargar saldo". ` +
-    `Luego respóndele por el chat de conductores en publihazclick.com/admin/anda-gana`);
+  // Foto + lectura con IA (2026-10-04, pedido del usuario: "envíame la foto y si te respondo que cayó,
+  // carga el saldo solo"). Si algo falla, el aviso sale igual, solo que sin foto o sin lectura.
+  const comp = mediaId ? await procesarFotoComprobante(mediaId, wa) : null;
+  const partes = [`${nombre} (+${wa}) mandó un comprobante de recarga por Nequi.`];
+  if (comp?.lectura?.monto) partes.push(`Monto leído: $${Number(comp.lectura.monto).toLocaleString('es-CO')}`);
+  if (comp?.lectura?.referencia) partes.push(`Referencia: ${comp.lectura.referencia}`);
+  if (comp?.lectura?.destinatario) partes.push(`Para: ${comp.lectura.destinatario}`);
+  if (comp?.lectura && comp.lectura.es_comprobante_pago === false) partes.push('⚠️ La IA no ve que sea un comprobante de pago');
+  if (comp?.url) partes.push(`Foto: ${comp.url}`);
+  partes.push(`Revisa tu Nequi y RESPONDE ESTE MENSAJE con "cayó" y el número de aprobación (ej: "sí cayó, aprobación 12345678") y le cargo el saldo yo. Si el monto es otro, escríbelo (ej: "cayó 20.000 aprobación 12345678"). Si no llegó, responde "no cayó".`);
+  await sendAdminAlert(SUPPORT_PHONE, MARCA_ALERTA_COMPROBANTE, partes.join(' · '));
   // Queda en manos del asesor: el bot no le contesta encima mientras tanto.
   await upsertSupportSession(phone, { escalated: true, escalated_at: new Date().toISOString() });
+  return true;
+}
+
+const MARCA_ALERTA_COMPROBANTE = '💸 Comprobante de recarga Nequi';
+
+interface LecturaComprobante { es_comprobante_pago?: boolean; monto?: number | null; referencia?: string | null; destinatario?: string | null; fecha?: string | null }
+
+/** Baja la foto de Meta, la guarda privada en movi-driver-docs (link firmado de 7 días) y la lee con IA. */
+async function procesarFotoComprobante(mediaId: string, wa: string): Promise<{ url: string | null; lectura: LecturaComprobante | null }> {
+  let url: string | null = null;
+  let lectura: LecturaComprobante | null = null;
+  try {
+    const meta = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } }).then(r => r.ok ? r.json() : null);
+    if (!meta?.url) return { url, lectura };
+    const resp = await fetch(meta.url as string, { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
+    if (!resp.ok) return { url, lectura };
+    const tipo = (meta.mime_type as string) || resp.headers.get('content-type') || 'image/jpeg';
+    const bytes = new Uint8Array(await resp.arrayBuffer());
+
+    try {
+      const ext = tipo.includes('png') ? 'png' : tipo.includes('pdf') ? 'pdf' : 'jpg';
+      const ruta = `comprobantes-nequi/${wa}/${Date.now()}.${ext}`;
+      const up = await db().storage.from('movi-driver-docs').upload(ruta, bytes, { contentType: tipo, upsert: false });
+      if (!up.error) {
+        const firmado = await db().storage.from('movi-driver-docs').createSignedUrl(ruta, 7 * 24 * 3600);
+        url = firmado.data?.signedUrl ?? null;
+      } else console.error('[WA] comprobante upload:', up.error);
+    } catch (e) { console.error('[WA] comprobante storage:', e); }
+
+    const apiKey = Deno.env.get('OPENAI_API_KEY');
+    if (apiKey && tipo.startsWith('image/')) {
+      let bin = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini', temperature: 0, response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: 'Lees capturas de comprobantes de pago colombianos (Nequi, Bancolombia, Daviplata). Responde SOLO un JSON con: es_comprobante_pago (boolean), monto (número entero en pesos sin puntos, o null), referencia (string con el número de referencia/aprobación/comprobante, o null), destinatario (nombre o número a quien se envió, o null), fecha (string tal como aparece, o null). No inventes: si no se ve, null.' },
+            { role: 'user', content: [{ type: 'image_url', image_url: { url: `data:${tipo};base64,${btoa(bin)}` } }] },
+          ],
+        }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        lectura = JSON.parse(j?.choices?.[0]?.message?.content ?? '{}') as LecturaComprobante;
+      } else console.error('[WA] comprobante IA:', r.status, await r.text());
+    }
+  } catch (e) { console.error('[WA] procesarFotoComprobante:', e); }
+  return { url, lectura };
+}
+
+/**
+ * El admin responde al aviso de comprobante: "sí cayó, aprobación 12345678" -> se carga el saldo solo.
+ * Se ubica el aviso por el mensaje citado (wamid en ag_wa_message_log); si no citó, se toma el único
+ * aviso de comprobante pendiente de las últimas 48 h. El número de aprobación va en ag_wallet_payments
+ * como invoice 'NEQUI-<aprobación>' (columna única): la misma aprobación no puede cargar saldo dos veces.
+ */
+async function manejarAprobacionNequi(msgText: string, quotedId?: string): Promise<boolean> {
+  const t = msgText.trim();
+  // Sin \b alrededor de palabras con tilde: en JS \b no cuenta "ó" como letra ("cayó" fallaba).
+  const dijoNo = /(^|[^a-záéíóúñü])no\s+(cay[oó]|lleg[oó]|ha\s+(llegado|ca[ií]do)|aparece|est[aá])(?![a-záéíóúñü])|(^|[^a-záéíóúñü])falso(?![a-záéíóúñü])|rechaz/i.test(t);
+  const dijoSi = !dijoNo && /(^|[^a-záéíóúñü])(s[ií]|cay[oó]|lleg[oó]|aprob[a-záéíóúñü]*|confirm[a-záéíóúñü]*|listo|ok|c[aá]rg[a-záéíóúñü]*)(?![a-záéíóúñü])/i.test(t);
+  if (!dijoNo && !dijoSi) return false;
+
+  const db_ = db();
+  const admin = normWaPhone(SUPPORT_PHONE);
+  type Fila = { id: string; body: string | null; created_at: string; wamid: string | null };
+  let aviso: Fila | null = null;
+  if (quotedId) {
+    const { data } = await db_.from('ag_wa_message_log').select('id, body, created_at, wamid')
+      .eq('wamid', quotedId).maybeSingle();
+    if (data && (data.body ?? '').includes(MARCA_ALERTA_COMPROBANTE)) aviso = data as Fila;
+    else if (data) return false; // citó otro mensaje: que lo maneje lo de siempre
+  }
+  if (!aviso) {
+    const { data } = await db_.from('ag_wa_message_log').select('id, body, created_at, wamid')
+      .eq('wa_phone', admin).eq('direction', 'out').like('body', `%${MARCA_ALERTA_COMPROBANTE}%`)
+      .gte('created_at', new Date(Date.now() - 48 * 3600e3).toISOString())
+      .order('created_at', { ascending: false }).limit(10);
+    const pendientes: Fila[] = [];
+    for (const f of (data ?? []) as Fila[]) {
+      const tel = (f.body ?? '').match(/\+(57\d{10})/)?.[1];
+      if (!tel) continue;
+      const { data: hecho } = await db_.from('ag_wa_message_log').select('id').eq('wa_phone', admin).eq('direction', 'out')
+        .like('body', `%[comprobante +${tel}]%`).gte('created_at', f.created_at).limit(1);
+      if (!hecho?.length && !pendientes.some(x => (x.body ?? '').includes(tel))) pendientes.push(f);
+    }
+    if (!pendientes.length) return false;
+    if (pendientes.length > 1) {
+      await sendText(SUPPORT_PHONE, `Tengo ${pendientes.length} comprobantes de Nequi pendientes 🧾 Responde *citando* el aviso del conductor que quieres aprobar (mantén presionado el aviso → Responder).`, 'alerta');
+      return true;
+    }
+    aviso = pendientes[0];
+  }
+
+  const body = aviso.body ?? '';
+  const tel = body.match(/\+(57\d{10})/)?.[1];
+  if (!tel) { await sendText(SUPPORT_PHONE, 'No encontré el celular del conductor en ese aviso 🤔 Cárgale el saldo desde el panel.', 'alerta'); return true; }
+  const montoLeido = Number((body.match(/Monto leído: \$([\d.]+)/)?.[1] ?? '').replace(/\./g, '')) || null;
+
+  const { data: u } = await db_.from('ag_users').select('id, full_name').eq('phone', `+${tel}`).maybeSingle();
+  const { data: d } = u ? await db_.from('ag_drivers').select('id, wallet_balance').eq('ag_user_id', u.id).maybeSingle() : { data: null };
+  const nombre = (u?.full_name as string | undefined)?.split(' ')[0] ?? `+${tel}`;
+  if (!d) { await sendText(SUPPORT_PHONE, `No encontré la cuenta de conductor de +${tel} 🤔 Revísalo en el panel.`, 'alerta'); return true; }
+
+  if (dijoNo) {
+    await sendSupportText(tel, `Hola ${nombre}, revisamos y *no nos aparece el pago* de tu recarga por Nequi 😕\n\nRevisa que lo hayas enviado al Nequi *${NEQUI_RECARGA}* y mándanos de nuevo el comprobante por aquí. Si ya lo enviaste bien, escríbenos y lo revisamos contigo.`, 'sistema');
+    await sendText(SUPPORT_PHONE, `❌ Listo, le avisé a ${nombre} que no apareció el pago. No le cargué nada. [comprobante +${tel}]`, 'alerta');
+    return true;
+  }
+
+  // Monto: el que escribió el admin (con puntos o con $), si no, el que leyó la IA.
+  const montoEscrito = t.match(/\$\s?(\d{1,3}(?:[.,]\d{3})+|\d{4,7})\b/)?.[1] ?? t.match(/\b(\d{1,3}(?:[.,]\d{3})+)\b/)?.[1] ?? null;
+  const monto = montoEscrito ? Number(montoEscrito.replace(/[.,]/g, '')) : montoLeido;
+  // Aprobación: la secuencia de dígitos más larga que no sea el monto.
+  const sinMonto = montoEscrito ? t.replace(montoEscrito, ' ') : t;
+  const aprobacion = (sinMonto.match(/[A-Za-z]{0,3}\d{4,}/g) ?? []).sort((a, b) => b.length - a.length)[0] ?? null;
+
+  if (!monto || monto < 1000 || monto > 1_000_000) {
+    await sendText(SUPPORT_PHONE, `¿Cuánto le cargo a ${nombre}? No pude leer el monto en el comprobante. Responde citando el aviso, por ejemplo: "cayó 20.000 aprobación 12345678".`, 'alerta');
+    return true;
+  }
+  if (!aprobacion) {
+    await sendText(SUPPORT_PHONE, `Me falta el *número de aprobación* para cargarle $${monto.toLocaleString('es-CO')} a ${nombre} (así no se carga dos veces el mismo pago). Responde citando el aviso, por ejemplo: "sí cayó, aprobación 12345678".`, 'alerta');
+    return true;
+  }
+
+  const factura = `NEQUI-${aprobacion.toUpperCase()}`;
+  const { data: pago, error: errPago } = await db_.from('ag_wallet_payments').insert({
+    driver_id: d.id, amount: monto, status: 'approved', invoice: factura,
+    epayco_ref: aprobacion, epayco_medio: 'nequi', epayco_estado: 'Aprobada por el admin (WhatsApp)',
+    approved_at: new Date().toISOString(),
+  }).select('id').single();
+  if (errPago) {
+    const repetida = String((errPago as { code?: string }).code) === '23505';
+    await sendText(SUPPORT_PHONE, repetida
+      ? `⚠️ La aprobación *${aprobacion}* ya se usó para cargar saldo antes. No cargué nada. Si es otro pago, revisa el número.`
+      : `No pude registrar el pago (${(errPago as { message?: string }).message ?? 'error'}). Cárgale el saldo desde el panel.`, 'alerta');
+    return true;
+  }
+  const { error: errCarga } = await db_.rpc('ag_recharge_driver_wallet', { p_driver_id: d.id, p_amount: monto });
+  if (errCarga) {
+    await db_.from('ag_wallet_payments').update({ status: 'failed', epayco_motivo: `No se pudo cargar: ${errCarga.message}` }).eq('id', pago.id);
+    await sendText(SUPPORT_PHONE, `No pude cargar el saldo (${errCarga.message}). Cárgaselo desde el panel.`, 'alerta');
+    return true;
+  }
+  const nuevo = Number(d.wallet_balance ?? 0) + monto;
+  await sendSupportText(tel, `✅ ¡Listo ${nombre}! Te cargamos *$${monto.toLocaleString('es-CO')}* a tu saldo de Movi. Tu saldo ahora es *$${nuevo.toLocaleString('es-CO')}*.\n\nYa puedes aceptar viajes 🚗💨`, 'sistema');
+  await upsertSupportSession(tel, { escalated: false, escalated_at: null });
+  await sendText(SUPPORT_PHONE, `✅ Cargué *$${monto.toLocaleString('es-CO')}* a ${nombre} (aprobación ${aprobacion}). Saldo nuevo: $${nuevo.toLocaleString('es-CO')}. Ya le avisé. [comprobante +${tel}]`, 'alerta');
   return true;
 }
 
@@ -8924,6 +9083,10 @@ serve(async (req) => {
         // está en medio de un flujo de viaje -- si no aplica, devuelve false y el mensaje
         // sigue su curso normal como cualquier otro.
         if (toE164(fromPhone) === toE164(SUPPORT_PHONE) && msgType === 'text') {
+          // Respuesta al aviso de comprobante Nequi ("sí cayó, aprobación 12345678") -> carga el saldo.
+          if (await manejarAprobacionNequi(msgText, msgQuotedId)) {
+            return new Response('ok', { status: 200 });
+          }
           if (await maybeHandleAdminTeaching(msgText, msgQuotedId)) {
             return new Response('ok', { status: 200 });
           }
@@ -8947,7 +9110,8 @@ serve(async (req) => {
         }
 
         // Comprobante de recarga por Nequi (texto del botón de la app y/o la captura).
-        if (isSupportNumber && await manejarComprobanteNequi(fromPhone, msgType, msgText)) {
+        const mediaIdComp = (['image', 'document'].includes(msgType) ? ((msg[msgType] as Record<string, unknown> | undefined)?.id as string | undefined) : undefined);
+        if (isSupportNumber && await manejarComprobanteNequi(fromPhone, msgType, msgText, mediaIdComp)) {
           return new Response('ok', { status: 200 });
         }
 
