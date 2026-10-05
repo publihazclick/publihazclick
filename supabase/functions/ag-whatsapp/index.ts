@@ -5645,7 +5645,12 @@ async function manejarBajaAlertasViaje(phone: string, msgText: string): Promise<
     .order('created_at', { ascending: false }).limit(100);
   const marcas = [MARCA_ALERTA_VIAJE, MARCA_DESCONECTADO, MARCA_TE_CONECTAS];
   const huboAviso = (salientes ?? []).some((r: { body: string }) => marcas.some(m => (r.body ?? '').startsWith(m)));
-  if (!huboAviso) return false;
+  // Sin aviso previo (caso real 2026-10-05: "no mas" a las 10:06 recibió "¿En qué te ayudo?" y a las
+  // 12:22 "NO MAS" sí funcionó): igual se respeta. A un lead del embudo también se le deja de insistir.
+  if (!huboAviso) {
+    const lead = await getLead(phone);
+    if (lead) await upsertLead(phone, { no_insistir: true });
+  }
   await db().from('ag_wa_support_sessions').upsert(
     { wa_phone: wa, alertas_viaje_off: true, alertas_viaje_off_at: new Date().toISOString() },
     { onConflict: 'wa_phone' },
@@ -7171,6 +7176,7 @@ Usa SOLO la información real de abajo -- si algo no está aquí y no lo puedes 
 - Datos personales pedidos: nombre completo, fecha de nacimiento, país, departamento, ciudad, número de cédula. Debe escribirse exactamente como aparece en los documentos oficiales.
 - Documentos del CONDUCTOR: cédula (documento colombiano -- es obligatorio ser colombiano para conducir en Movi), foto de la cédula, licencia de conducción vigente, y una selfie de rostro SIN la cédula (para que el pasajero lo reconozca al llegar).
 - Documentos del VEHÍCULO: SOAT vigente, tarjeta de propiedad (foto frontal y trasera), revisión tecnomecánica vigente, fotos del vehículo. El seguro de responsabilidad civil ya NO se pide (no es obligatorio en Colombia como el SOAT).
+- *Primer viaje SIN papeles (regla del dueño):* el registro NO exige subir documentos para empezar. Si preguntan si pueden trabajar sin SOAT, sin licencia a la mano o sin tecnomecánica, responde que pueden registrarse y hacer su *primer viaje sin subir papeles*, y que los documentos se suben después en la app (SOAT y licencia son obligatorios por ley para seguir trabajando). NUNCA digas "si no tienes el SOAT no podrás registrarte" (error real del 2026-10-05).
 - *¿Qué carros y motos se aceptan?* Se aceptan carros Y motos matriculados en Colombia O en Venezuela (placa colombiana o venezolana, ambas están bien -- no hay restricción de formato de placa por país). Lo único que debe ser colombiano es la cédula del CONDUCTOR (la persona), no el vehículo.
 - *¿Desde qué año se aceptan?* Carros: modelo ${new Date().getFullYear() - 23} en adelante (máximo 23 años de antigüedad). Motos: modelo ${new Date().getFullYear() - 17} en adelante (máximo 17 años de antigüedad). Si el vehículo es más viejo que eso no se puede registrar (ni seguir conectado si ya lo tenía registrado y se le venció el límite mientras estaba activo). SIEMPRE que pregunten por año/antigüedad de carro o moto, responde con el año mínimo exacto de arriba, no solo "el máximo son X años" -- muchos conductores no van a restar el año ellos mismos.
 - Un conductor puede tener carro Y moto guardados a la vez y elegir cuál es su vehículo "actual" desde "Mis vehículos" en la app -- el historial de viajes, la billetera, las calificaciones y los bonos no se pierden al cambiar. Al cambiar de vehículo actual, los documentos/vencimientos que se revisan pasan a ser los del vehículo recién elegido.
@@ -7437,6 +7443,9 @@ async function capturarCelularOculto(fromPhone: string, msgText: string, isSuppo
 async function pedirCelularSiOculto(fromPhone: string, isSupportNumber: boolean): Promise<void> {
   try {
     if (!isBsuid(fromPhone)) return;
+    // No en el mismo instante en que le preguntamos el nombre (2026-10-05): le llegaban dos preguntas
+    // seguidas. Se pide en su siguiente mensaje.
+    if (isSupportNumber && (await getLead(fromPhone))?.paso === 'nombre') return;
     const { data: fila } = await db().from('ag_wa_celular_oculto').select('celular, pedido_at').eq('bsuid', fromPhone).maybeSingle();
     if (fila?.celular) return;
     if (fila?.pedido_at && Date.now() - new Date(fila.pedido_at as string).getTime() < 24 * 3600e3) return;
@@ -7919,6 +7928,57 @@ async function leadSaludar(phone: string, name: string, primerMensaje: string, e
  * exactamente el estado de hoy. Nunca hay que insistir ni trabar el embudo por esto -- alguien
  * que viene de un anuncio quiere información, no un interrogatorio.
  */
+/**
+ * Auditoría del soporte a conductores, 2026-10-05 (37 conversaciones de 24 h revisadas a pedido del
+ * usuario: "hay demasiadas incongruencias al atender"). Estas tres funciones separan lo que NO es un
+ * nombre ni una pregunta, para no contestar "¡Mucho gusto!" o "¿En qué te ayudo?" a todo:
+ *  - pideAlgoTexto: pide información ("cuénteme de qué se trata", "¿es como inDriver?").
+ *  - esCierreOAcuse: se despide o asiente ("gracias", "ok señora", "por ahora nada", "claro").
+ *  - diceQueLuego: avisa que lo hará después ("ahora te vuelvo a escribir", "ocupado",
+ *    "listo voy a hacerlo") -- antes "listo voy a hacerlo" se tomaba como "ya la descargué".
+ */
+function pideAlgoTexto(msg: string): boolean {
+  return /[?¿]/.test(msg) ||
+    /\b(informaci[oó]n|info|deme|d[eé]me|cu[eé]nte(me|nos)?|expl[ií]que(me)?|explica|de qu[eé] se trata|qu[eé] es|c[oó]mo (es|funciona|se)|cu[aá]nto|requisitos?|documentos?)\b/i.test(msg);
+}
+function esCierreOAcuse(msg: string): boolean {
+  const t = normalizarTexto(msg).replace(/[¡!¿?.,;:]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!/[a-z0-9]/.test(t)) return /^[\p{Extended_Pictographic}\s‍️]+$/u.test(msg.trim()); // solo 👍 / 🙏
+  if (t.length > 60) return false;
+  return /^((muchas|mil) )?gracias( (a ti|a usted|senora|senor|senorita))?$|^(ok|okay|oki|okey|vale|listo|bueno|bien|perfecto|entendido|de acuerdo|claro|dale|excelente|genial|super|chevere|ah ok|aja)( (gracias|senora|senor|senorita|entonces|listo))?$|^(bien|listo|ok|okey|okay) gracias$|^(por ahora|de momento|por el momento) (nada|no)( mas)?( gracias)?$|^nada (mas )?(gracias)?$|^estare (atento|pendiente)\b|^(quedo|quedamos) (atento|pendiente)/.test(t);
+}
+function diceQueLuego(msg: string): boolean {
+  const t = normalizarTexto(msg);
+  return /\b(voy a|ahorita|en un rato|luego|despues|mas tarde|manana|ocupad[oa]|estoy trabajando|estaba trabajando|estoy manejando|te (vuelvo a )?escribo|vuelvo a escribir|te aviso|le aviso|ya mismo lo hago|lo hago ahora)\b/.test(t);
+}
+
+/** Mensaje de un contestador automático de negocio ("Gracias por comunicarte con…"). No se le contesta. */
+function esRespuestaAutomatica(msg: string): boolean {
+  return /gracias por comunicarte con|gracias por (tu|su) mensaje\. si no te respondo|si no te respondo inmediatamente|mensaje autom[aá]tico|respuesta autom[aá]tica|nuestro horario de atenci[oó]n|en este momento no (estamos|podemos) (disponibles|atender)/i.test(msg);
+}
+
+/** Primera línea del paso de descarga según lo que contestó a "¿con quién tengo el gusto?". */
+function introPasoNombre(msg: string, nombre: string | null): string {
+  if (nombre) return '¡Mucho gusto! 🙌';
+  if (pideAlgoTexto(msg)) {
+    return '¡Claro que sí, te cuento! 🙌 Movi es una app de transporte en Cúcuta: el pasajero propone el precio, ' +
+      'tú lo aceptas o le haces una contraoferta, y *él te paga directo a ti*.';
+  }
+  if (/^(hola|ola|buenas|buenos|buen dia|muy buenas)/.test(normalizarTexto(msg))) return '¡Hola, bienvenido! 🙌';
+  return '¡Listo! 🙌';
+}
+
+/** true si el último mensaje que le mandamos es exactamente este texto y salió hace menos de `min` minutos. */
+async function yaLeDijimosEsto(phone: string, inicio: string, min: number): Promise<boolean> {
+  const { data } = await db().from('ag_wa_message_log').select('body, created_at')
+    .eq('wa_phone', normWaPhone(phone)).eq('role', 'conductor').eq('direction', 'out')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  return !!data && String(data.body ?? '').startsWith(inicio) &&
+    Date.now() - new Date(data.created_at as string).getTime() < min * 60e3;
+}
+
+const CIERRE_CORTES = '¡Con gusto! 🙌 Aquí quedo para lo que necesites.';
+
 function leeNombreDado(texto: string): string | null {
   let t = (texto ?? '').trim();
   if (!t || t.length > 40) return null;
@@ -7944,7 +8004,7 @@ function leeNombreDado(texto: string): string | null {
   if (primera.length < 3 || primera.length > 15) return null;
 
   // Palabras que la gente contesta y que NO son su nombre. Si cae acá, se sigue sin nombre.
-  if (/^(gracias|claro|listo|bueno|buenas|buenos|vale|ok|si|no|nada|dias|dia|tardes|noches|quiero|necesito|informacion|info|trabajar|manejar|conductor|conductora|moto|carro|taxi|nombre|usuario|amigo|amiga|señor|senor|señora|senora|don|dona|joven|mucho|gusto|igualmente|dime|cuenta|cual|como|que|para|por|del|los|las|una|uno)$/i
+  if (/^(gracias|claro|listo|bueno|buenas|buenos|vale|ok|si|no|nada|dias|dia|tardes|noches|quiero|necesito|informacion|info|trabajar|manejar|conductor|conductora|moto|carro|taxi|nombre|usuario|amigo|amiga|señor|senor|señora|senora|don|dona|joven|mucho|gusto|igualmente|dime|cuenta|cuenteme|cuentame|digame|expliqueme|explicame|ocupado|ocupada|estaba|estoy|ahora|luego|cual|como|que|para|por|del|los|las|una|uno)$/i
         .test(primera.normalize('NFD').replace(/[̀-ͯ]/g, ''))) return null;
 
   // Capitalizado natural: "CARLOS" y "carlos" se ven mal en un saludo.
@@ -8438,7 +8498,7 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
     if (!interesado) {
       const pelado = normalizarTexto(msgText).replace(/[¡!¿?.,]/g, '').trim();
       const esSaludoPelado = pelado.length <= 22 &&
-        /^(hola|ola|holaa+|buenas|buenos dias|buenas tardes|buenas noches|info|informacion|hey|hi|buen dia|que mas|quiero saber)$/.test(pelado);
+        /^(hola|ola|holaa+|buenas|buenos dias|buenas tardes|buenas noches|info|informacion|hey|hi|buen dia|que mas|quiero saber)( [a-zñ]{2,15})?$/.test(pelado);
       if (esSaludoPelado) saludoDeDesconocido = (await lookupAgUserBasic(phone)) === null;
     }
 
@@ -8517,8 +8577,16 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
     // Si en vez del nombre contesta directo con el vehículo ("moto"), no se le insiste: se
     // anota y se sigue al primer paso. Adelantarse es señal de que quiere ir al grano.
     if (vTexto) { await leadElegirVehiculo(phone, vTexto, lead); return true; }
-    // Un nombre usable o nada. En los dos casos se avanza -- nunca se vuelve a preguntar.
-    await leadPrimerPaso(phone, leeNombreDado(msgText));
+    // Dos saludos seguidos ("Hola Victor" + "Buen día", 4 s de diferencia, caso real 2026-10-05):
+    // el segundo no responde a la pregunta del nombre, que acabamos de hacer. Se espera.
+    const recienPregunta = lead.ultimo_out_at && Date.now() - new Date(lead.ultimo_out_at).getTime() < 2 * 60e3;
+    if (recienPregunta && /^(hola|ola|buenas|buenos dias|buen dia|buenas tardes|buenas noches|hey|saludos)$/.test(t.replace(/[¡!¿?.,]/g, '').trim())) return true;
+    // Un nombre usable o nada. En los dos casos se avanza -- nunca se vuelve a preguntar. Pero
+    // "¡Mucho gusto!" SOLO si de verdad dio un nombre (auditoría 2026-10-05: "Cuénteme de qué se
+    // trata" y "Muy buenas noches" recibían "¡Mucho gusto!").
+    // Si pide algo ("Cuénteme de qué se trata") no hay nombre que leer: leeNombreDado devolvía "Cuénteme".
+    const nombreLeido = pideAlgoTexto(msgText) ? null : leeNombreDado(msgText);
+    await leadPrimerPaso(phone, nombreLeido, introPasoNombre(msgText, nombreLeido));
     return true;
   }
 
@@ -8534,6 +8602,21 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
     // por eso ahí solo se toma moto o carro, nunca 'ninguno'.
     if (vTexto && (lead.paso === 'saludado' || (vTexto !== 'ninguno' && corto))) {
       await leadElegirVehiculo(phone, vTexto, lead);
+      return true;
+    }
+    // "Ahora te vuelvo a escribir", "Ocupado", "Listo voy a hacerlo" (casos reales 2026-10-05): lo
+    // hará después. Antes los dos primeros recibían "¡Mucho gusto!" y el tercero se tomaba como
+    // "ya la descargué". Va ANTES del "ya/listo" de abajo.
+    if (lead.paso === 'pitch' && diceQueLuego(msgText)) {
+      const r = '¡Dale, sin afán! 🙌 Cuando tengas la app me avisas por aquí y seguimos.';
+      if (!(await yaLeDijimosEsto(phone, r, 30))) await sendSupportButtons(phone, r, LEAD_BTN_CIERRE);
+      return true;
+    }
+    // "Bien gracias", "Ok", "Claro" en el paso de la descarga: se agradece y se recuerda el paso UNA
+    // vez (antes: "¡Mucho gusto!" tres veces seguidas a "Estaba trabajando / Ahora mire / Bien gracias").
+    if (lead.paso === 'pitch' && esCierreOAcuse(msgText) && !/\b(ya|listo|la tengo)\b/.test(t)) {
+      const r = '¡Con gusto! 🙌 Cuando descargues la app me avisas y te envío el video para seguir.';
+      if (!(await yaLeDijimosEsto(phone, r, 30))) await sendSupportButtons(phone, r, LEAD_BTN_CIERRE);
       return true;
     }
     // "ya" / "listo" sueltos solo valen en 'pitch', que es justo cuando se le pidió avisar.
@@ -8557,7 +8640,7 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
     // "Pero deme primero información" se leía como el nombre "Pero" (caso real …346): si el mensaje
     // pide algo, no es un nombre -- va al FAQ, que sí explica cómo funciona.
     const pideAlgo = /\b(informaci[oó]n|info|deme|d[eé]me|quiero|necesito|explica|expl[ií]queme|c[oó]mo|cu[aá]nto|qu[eé]|cu[aá]l|documentos?|requisitos?)\b/i.test(msgText);
-    if (lead.paso === 'pitch' && !/[?¿]/.test(msgText) && !pideAlgo && leeNombreDado(msgText)) {
+    if (lead.paso === 'pitch' && !lead.nombre_dado && !/[?¿]/.test(msgText) && !pideAlgo && leeNombreDado(msgText)) {
       await sendSupportButtons(phone,
         `¡Mucho gusto! 🙌 Me avisas apenas tengas la app descargada y te envío el video para seguir.`,
         LEAD_BTN_CIERRE);
@@ -8612,6 +8695,10 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
     return;
   }
 
+  // Contestador automático de un negocio (caso real 2026-10-05, …0399): mandaba dos mensajes y el bot
+  // respondía dos veces "¿En qué te ayudo?". A una máquina no se le contesta.
+  if (!btnId && esRespuestaAutomatica(msgText)) return;
+
   // Captación primero: es el único camino que atiende bien al lead de la pauta, y
   // si no le corresponde el mensaje devuelve false y todo sigue exactamente igual
   // que antes (menú, datos de la cuenta, FAQ con IA, escalada).
@@ -8633,8 +8720,28 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
     const escalatedAt = session.escalated_at ? new Date(session.escalated_at as string).getTime() : 0;
     const lead = await getLead(phone);
     const leadEnEmbudo = !!lead && !['humano', 'registrado'].includes(lead.paso);
-    if (!leadEnEmbudo && Date.now() - escalatedAt < ESCALATION_TTL_MS) return;
-    await upsertSupportSession(phone, { escalated: false, escalated_at: null });
+    // Mientras un asesor atiende (p. ej. verifica un comprobante de Nequi) el bot no le habla encima,
+    // PERO una pregunta concreta sí se contesta: "¿esta empresa de dónde es?", escrita 30 s después
+    // del comprobante, se quedó sin respuesta (caso real 2026-10-05). Si pide una persona, se respeta.
+    const preguntaConcreta = pideAlgoTexto(msgText) && !pideHumano(msgText);
+    if (!leadEnEmbudo && !preguntaConcreta && Date.now() - escalatedAt < ESCALATION_TTL_MS) return;
+    if (!leadEnEmbudo && preguntaConcreta && Date.now() - escalatedAt < ESCALATION_TTL_MS) {
+      // Se contesta sin quitar la escalada: el asesor sigue a cargo del resto.
+    } else {
+      await upsertSupportSession(phone, { escalated: false, escalated_at: null });
+    }
+  }
+
+  // Despedida o acuse ("gracias", "ok señora", "por ahora nada", "estaré atento", "claro"). Antes la IA
+  // contestaba "¡Tranquilo, aquí estoy a cualquier hora! ¿En qué te ayudo?" -- volver a preguntar a
+  // quien se está despidiendo -- y una vez un "Claro" se escaló a un asesor. Se cierra con amabilidad
+  // y sin pregunta, y si ya se le dijo hace poco no se repite (auditoría 2026-10-05).
+  if (!btnId && esCierreOAcuse(msgText)) {
+    if (!(await yaLeDijimosEsto(phone, CIERRE_CORTES, 60))) {
+      await sendSupportText(phone, CIERRE_CORTES);
+      await logSupportInteraction(phone, msgText, 'cierre', CIERRE_CORTES);
+    }
+    return;
   }
 
   // Saludo o mensaje demasiado corto/genérico ("hola", "ayuda", "info", solo
@@ -8745,6 +8852,11 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
         // sin registro le salía "No encuentro ninguna solicitud" a "¿cómo se recarga? tengo Nequi").
         action = 'wallet:how_to_recharge';
         answerText = RESPUESTA_COMO_RECARGAR;
+      } else if (msgText.length > 120) {
+        // Mensaje largo que solo menciona "recargar" o "solicitud" de pasada (caso real 2026-10-05: un
+        // conductor contó su miedo a que le roben la moto y preguntó cómo se recarga, y recibió "No
+        // encuentro ninguna solicitud"). Eso no es consultar su cuenta: lo contesta el FAQ completo.
+        answerText = null;
       } else {
         action = 'profile:not_found';
         answerText = 'No encuentro ninguna solicitud registrada con este número 🤔\n\n¿Ya completaste el registro en la app Movi (sección "Quiero ser conductor")? Si el registro lo hiciste con otro número, dime cuál para buscarlo.';
