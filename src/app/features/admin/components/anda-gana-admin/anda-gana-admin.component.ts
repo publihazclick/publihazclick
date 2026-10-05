@@ -1309,7 +1309,7 @@ export class AndaGanaAdminComponent implements OnInit, OnDestroy {
   async confirmRecharge(driverId: string) {
     if (!this.rechargeAmount || this.rechargeAmount <= 0) return;
     this.actionLoading.set(driverId);
-    const result = await this.agService.adminRechargeDriver(driverId, this.rechargeAmount);
+    const result = await this.agService.adminRechargeDriver(driverId, this.rechargeAmount, this.authService.getAccessToken() ?? '');
     if (result.success) {
       this.rechargingId.set(null);
       this.rechargeAmount = 0;

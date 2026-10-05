@@ -21911,16 +21911,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   async rechargePassengerWallet() {
-    const amount = this.pRechargeAmount();
-    if (amount < 5000) { alert('Monto mínimo $5,000'); return; }
-    this.pRechargeLoading.set(true);
-    try {
-      await this.agService.creditPassengerWallet(amount, 'recharge', 'Recarga wallet');
-      this.pRechargeAmount.set(0);
-      await this.loadPassengerWallet();
-    } finally {
-      this.pRechargeLoading.set(false);
-    }
+    // DESACTIVADO 2026-10-04: esto sumaba saldo SIN cobrar nada (no pasaba por ninguna pasarela):
+    // cualquier pasajero podía darse el saldo que quisiera. ag_passenger_wallet_credit quedó cerrada
+    // para los usuarios (migración 311). Cuando haya recarga de pasajero con pago real, va aquí.
+    alert('La recarga de saldo para pasajeros todavía no está disponible. Puedes pagar tus viajes en efectivo.');
   }
 
   // ═══════════════════════════════════════════════════

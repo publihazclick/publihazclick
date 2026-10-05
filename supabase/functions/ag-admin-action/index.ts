@@ -85,19 +85,38 @@ Deno.serve(async (req) => {
       }
       case 'reject_withdrawal': {
         if (!body.withdrawal_id) return json({ error: 'missing_withdrawal_id' }, 400);
-        const { error } = await movi
+        // Solo un retiro PENDIENTE se puede rechazar (2026-10-04): antes no se miraba el estado, y
+        // rechazar dos veces el mismo retiro (doble clic, reintento) devolvía la plata dos veces.
+        const { data: rechazados, error } = await movi
           .from('ag_withdrawals')
           .update({
             status: 'rejected',
             rejection_reason: body.reason ?? null,
             processed_at: new Date().toISOString(),
           })
-          .eq('id', body.withdrawal_id);
+          .eq('id', body.withdrawal_id)
+          .eq('status', 'pending')
+          .select('id');
         if (error) throw error;
+        if (!rechazados?.length) return json({ error: 'El retiro ya fue procesado' }, 409);
         const { error: refundError } = await movi.rpc('ag_admin_refund_withdrawal', {
           p_withdrawal_id: body.withdrawal_id,
         });
         if (refundError) throw refundError;
+        return json({ ok: true });
+      }
+      // Cargar saldo a un conductor desde el panel (2026-10-04). Antes el panel llamaba directo a
+      // ag_recharge_driver_wallet con la llave pública de Movi, así que esa función tenía que estar
+      // abierta a cualquiera: con la llave pública cualquiera podía ponerle el saldo que quisiera a
+      // cualquier conductor. Ahora pasa por aquí (admin verificado) y la función se cerró
+      // (migración 311).
+      case 'recharge_driver': {
+        const amount = Number(body.amount);
+        if (!body.driver_id) return json({ error: 'missing_driver_id' }, 400);
+        if (!Number.isInteger(amount) || amount <= 0 || amount > 1_000_000) return json({ error: 'Monto inválido (entre $1 y $1.000.000)' }, 400);
+        const { error } = await movi.rpc('ag_recharge_driver_wallet', { p_driver_id: body.driver_id, p_amount: amount });
+        if (error) throw error;
+        console.log(`[ag-admin-action] recharge_driver ${body.driver_id} $${amount} por ${admin.userId}`);
         return json({ ok: true });
       }
       case 'resolve_sos': {

@@ -1447,12 +1447,16 @@ export class AndaGanaService {
     return data ?? [];
   }
 
-  async adminRechargeDriver(driverId: string, amount: number): Promise<{ success: boolean; error?: string }> {
-    const { error } = await this.supabase.rpc('ag_recharge_driver_wallet', {
-      p_driver_id: driverId,
-      p_amount:    amount,
-    });
-    return error ? { success: false, error: error.message } : { success: true };
+  /** Cargar saldo desde el panel admin. Pasa por ag-admin-action (admin verificado con su token de
+   * publihazclick): antes llamaba directo a ag_recharge_driver_wallet con la llave pública de Movi y
+   * esa función estaba abierta a cualquiera (cerrada en la migración 311, 2026-10-04). */
+  async adminRechargeDriver(driverId: string, amount: number, publihazclickToken: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.callAdminAction(publihazclickToken, { action: 'recharge_driver', driver_id: driverId, amount });
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e instanceof Error ? e.message : 'No se pudo cargar el saldo' };
+    }
   }
 
   async getDriverStats(driverId: string): Promise<{ avgRating: number; completedTrips: number }> {
