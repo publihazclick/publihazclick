@@ -5597,6 +5597,59 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
           </a>
         </div>
       }
+      <!-- (2) Consejo de una sola vez (ver _mostrarConsejo). Arriba, para no tapar los botones del viaje. -->
+      @if (consejo(); as c) {
+        <div class="fixed left-0 right-0 flex justify-center px-4" style="top:calc(env(safe-area-inset-top,0px) + 70px);z-index:9890">
+          <div class="w-full max-w-lg rounded-2xl p-4 flex gap-3" style="background:#0f172a;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,0.35)">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:24px;color:#22d3ee">{{ c.icono }}</span>
+            <div class="flex-1 min-w-0">
+              <p class="font-black text-sm" style="margin:0">{{ c.titulo }}</p>
+              <p class="text-xs leading-relaxed" style="margin:4px 0 10px;color:rgba(255,255,255,0.85)">{{ c.texto }}</p>
+              <button (click)="cerrarConsejo()" class="rounded-lg text-xs font-black active:scale-95"
+                style="min-height:34px;padding:0 14px;background:#22d3ee;color:#0f172a">Entendido</button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- (3) ¿No te llegan viajes? Revisa el celular y dice qué arreglar (ver diagnostico). -->
+      @if (diagnosticoAbierto()) {
+        <div class="fixed inset-0 flex items-end sm:items-center justify-center" style="z-index:9950;background:rgba(15,23,42,0.55)"
+          (click)="diagnosticoAbierto.set(false)">
+          <div class="w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 flex flex-col gap-3" style="background:#fff;max-height:88dvh;overflow:auto;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px)"
+            (click)="$event.stopPropagation()">
+            <div class="flex items-center justify-between gap-2">
+              <p class="font-black" style="margin:0;font-size:17px;color:#0f172a">¿No te llegan viajes?</p>
+              <button (click)="diagnosticoAbierto.set(false)" class="w-9 h-9 rounded-full flex items-center justify-center" style="background:#F1F5F9">
+                <span class="material-symbols-outlined text-slate-500" style="font-size:20px">close</span>
+              </button>
+            </div>
+            <p class="text-slate-500 text-xs" style="margin:-4px 0 4px">Revisamos tu celular. Arregla lo que esté en rojo:</p>
+            @for (d of diagnostico(); track d.id) {
+              <div class="flex items-center gap-3 rounded-xl p-3" [style.background]="d.ok ? '#F0FDF4' : '#FEF2F2'">
+                <span class="material-symbols-outlined flex-shrink-0" style="font-size:22px;font-variation-settings:'FILL' 1"
+                  [style.color]="d.ok ? '#16a34a' : '#dc2626'">{{ d.ok ? 'check_circle' : 'cancel' }}</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-black" style="margin:0;color:#0f172a">{{ d.titulo }}</p>
+                  <p class="text-xs text-slate-600 leading-snug" style="margin:1px 0 0">{{ d.detalle }}</p>
+                </div>
+                @if (!d.ok) {
+                  <button (click)="ejecutarAccionAyuda(d.id)" class="flex-shrink-0 rounded-lg text-xs font-black text-white active:scale-95"
+                    style="min-height:36px;padding:0 12px;background:#dc2626">{{ d.accion }}</button>
+                }
+              </div>
+            }
+            @if (diagnosticoTodoOk()) {
+              <p class="text-sm text-slate-700 leading-snug rounded-xl p-3" style="margin:0;background:#EFF6FF">
+                Todo está bien ✅ Si no te llegan viajes es porque en este momento no hay solicitudes cerca. Deja Movi abierta y en línea: apenas haya una, te suena.
+              </p>
+            }
+            <a href="https://wa.me/573009645697?text=Hola%2C%20no%20me%20llegan%20viajes%20en%20Movi" target="_blank" rel="noopener"
+              class="text-center text-xs font-bold" style="color:#16a34a;text-decoration:none">¿Sigue sin funcionar? Escríbenos por WhatsApp</a>
+          </div>
+        </div>
+      }
+
       <!-- ══ Tarjeta Wallet (saldo de recarga) — siempre visible, toggle panel ══ -->
       <button (click)="toggleWalletPanel()"
         class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
@@ -5710,26 +5763,40 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
 
       @if (driverSection() === null) {
 
-      <!-- Mensaje de saldo (decisión del usuario 2026-10-04): ya NO se dice "no necesitas saldo para tu
-           primera carrera" -- quien no recarga no se toma en serio la app. Se pide recargar mínimo $10.000 y se
-           aclara que el primer viaje no descuenta nada. La LÓGICA no cambió (el primer viaje se puede tomar sin
-           saldo). Se muestra a quien todavía no tiene $10.000 de saldo. -->
-      @if ((driverStatus() === 'quick' || driverStatus() === 'pending' || driverStatus() === 'approved') && driverWalletBalance() < 10000 && !walletPanelOpen()) {
-        <div class="rounded-2xl p-4 flex flex-col gap-3"
-          style="background:linear-gradient(135deg,rgba(36,91,219,0.10),rgba(59,130,246,0.07));border:1px solid rgba(36,91,219,0.25)">
-          <div class="flex items-start gap-3">
-            <span class="material-symbols-outlined flex-shrink-0" style="font-size:28px;color:#245BDB">rocket_launch</span>
-            <div class="min-w-0">
-              <p class="font-black text-sm" style="color:#0f172a;margin:0">Recarga mínimo {{ formatCOP(10000) }} para aceptar viajes</p>
-              <p class="text-slate-600 text-xs leading-relaxed mt-1" style="margin-bottom:0">Tu primer viaje es gratis: no se te descuenta nada. Desde el segundo, Movi descuenta el 12% de cada viaje de tu saldo.</p>
-            </div>
+      <!-- (1) Tus primeros pasos (2026-10-04). Reemplaza la tarjeta azul de "Recarga mínimo $10.000": el
+           mensaje de saldo vive ahora en el paso 2. Cada paso se marca solo y tiene su botón; la tarjeta
+           desaparece cuando termina los 5. Ver primerosPasos. -->
+      @if (mostrarPrimerosPasos() && !walletPanelOpen()) {
+        <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:#FFFFFF;border:1.5px solid rgba(36,91,219,0.25);box-shadow:0 2px 10px rgba(15,23,42,0.05)">
+          <div class="flex items-center justify-between gap-2">
+            <p class="font-black text-sm" style="color:#0f172a;margin:0">Tus primeros pasos</p>
+            <span class="text-xs font-black" style="color:#245BDB">{{ pasosHechos() }} de {{ primerosPasos().length }}</span>
           </div>
-          <button (click)="toggleWalletPanel()"
-            class="w-full rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
-            style="min-height:46px;background:linear-gradient(135deg,#245BDB,#1d4ed8)">
-            <span class="material-symbols-outlined" style="font-size:18px">account_balance_wallet</span>
-            Recargar ahora
-          </button>
+          <div class="w-full rounded-full overflow-hidden" style="height:6px;background:#E2E8F0">
+            <div class="h-full rounded-full transition-all" style="background:linear-gradient(90deg,#245BDB,#16a34a)"
+              [style.width]="(pasosHechos() / primerosPasos().length * 100) + '%'"></div>
+          </div>
+          @for (paso of primerosPasos(); track paso.id; let i = $index) {
+            <div class="flex items-start gap-3">
+              <span class="flex items-center justify-center flex-shrink-0 rounded-full text-xs font-black"
+                style="width:24px;height:24px"
+                [style.background]="paso.hecho ? '#16a34a' : '#E2E8F0'" [style.color]="paso.hecho ? '#fff' : '#64748b'">
+                @if (paso.hecho) { <span class="material-symbols-outlined" style="font-size:16px">check</span> } @else { {{ i + 1 }} }
+              </span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-bold leading-snug" style="margin:0"
+                  [style.color]="paso.hecho ? '#94a3b8' : '#0f172a'" [class.line-through]="paso.hecho">{{ paso.titulo }}</p>
+                @if (!paso.hecho && paso.detalle) {
+                  <p class="text-slate-500 text-xs leading-snug" style="margin:2px 0 0">{{ paso.detalle }}</p>
+                }
+              </div>
+              @if (!paso.hecho && paso.accion) {
+                <button (click)="ejecutarAccionAyuda(paso.id)"
+                  class="flex-shrink-0 rounded-lg text-xs font-black text-white active:scale-95 transition-all"
+                  style="min-height:36px;padding:0 12px;background:#245BDB">{{ paso.accion }}</button>
+              }
+            </div>
+          }
         </div>
       }
       @if (driverStatus() === 'pending_docs') {
@@ -5951,10 +6018,16 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
               <span style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:10px;font-weight:900;padding:2px 7px;border-radius:999px">{{ visibleDriverRequests().length }}</span>
             }
           </div>
-          <button (click)="reloadFullPage()"
-            class="flex items-center gap-1 text-xs text-cyan-600 font-bold active:scale-95 transition-all">
-            <span class="material-symbols-outlined" style="font-size:14px">refresh</span> Actualizar
-          </button>
+          <div class="flex items-center gap-3">
+            <button (click)="ejecutarAccionAyuda('diagnostico')"
+              class="flex items-center gap-1 text-xs font-bold active:scale-95 transition-all" style="color:#245BDB">
+              <span class="material-symbols-outlined" style="font-size:14px">help</span> ¿No te llegan viajes?
+            </button>
+            <button (click)="reloadFullPage()"
+              class="flex items-center gap-1 text-xs text-cyan-600 font-bold active:scale-95 transition-all">
+              <span class="material-symbols-outlined" style="font-size:14px">refresh</span> Actualizar
+            </button>
+          </div>
         </div>
       }
       @if (driverStatus() === 'rejected') {
@@ -6402,7 +6475,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
                  driverSection() === 'quests' ? 'Metas y bonos' :
                  driverSection() === 'vehicles' ? 'Mis vehículos' :
                  driverSection() === 'blacklist' ? 'Pasajeros bloqueados' :
-                 driverSection() === 'tutorial' ? 'Tutorial' :
+                 driverSection() === 'tutorial' ? '¿Cómo hago…?' :
                  driverSection() === 'preferences' ? 'Preferencias' :
                  driverSection() === 'autoaccept' ? 'Auto-aceptar' :
                  driverSection() === 'documents' ? 'Mis documentos' :
@@ -6801,24 +6874,37 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
             </div>
           }
 
-          <!-- ── TUTORIAL ── -->
+          <!-- ── ¿CÓMO HAGO…? (2026-10-04, reemplaza el tutorial de 8 pasos; ver guias) ── -->
           @if (!loadingSection() && driverSection() === 'tutorial') {
-            <div class="flex flex-col gap-4">
-              @for (t of tutorialSteps; track t.title) {
-                <div class="rounded-2xl p-4" style="background:#F0F9FF;border:1px solid rgba(8,145,178,0.2)">
-                  <div class="flex items-center gap-2 mb-2">
-                    <span class="material-symbols-outlined text-cyan-600" style="font-size:22px">{{ t.icon }}</span>
-                    <p class="font-black" style="color:#0f172a">{{ t.title }}</p>
-                  </div>
-                  <p class="text-slate-700 text-sm">{{ t.body }}</p>
+            <div class="flex flex-col gap-2">
+              <p class="text-slate-500 text-xs px-1" style="margin:0 0 4px">Toca lo que quieres aprender. Cada guía tiene pocos pasos.</p>
+              @for (g of guias; track g.id) {
+                <div class="rounded-2xl overflow-hidden" style="background:#FFFFFF;border:1px solid #E2E8F0">
+                  <button (click)="toggleGuia(g.id)" class="w-full flex items-center gap-3 p-4 text-left active:bg-slate-50">
+                    <span class="material-symbols-outlined flex-shrink-0" style="font-size:22px;color:#245BDB">{{ g.icono }}</span>
+                    <span class="flex-1 min-w-0 font-black text-sm" style="color:#0f172a">{{ g.titulo }}</span>
+                    <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:20px">{{ guiaAbierta() === g.id ? 'expand_less' : 'expand_more' }}</span>
+                  </button>
+                  @if (guiaAbierta() === g.id) {
+                    <div class="px-4 pb-4 flex flex-col gap-2.5">
+                      @for (paso of g.pasos; track $index) {
+                        <div class="flex gap-3">
+                          <span class="flex items-center justify-center flex-shrink-0 rounded-full text-xs font-black"
+                            style="width:22px;height:22px;background:#EFF6FF;color:#245BDB">{{ $index + 1 }}</span>
+                          <p class="flex-1 min-w-0 text-sm text-slate-700 leading-snug" style="margin:0">{{ paso }}</p>
+                        </div>
+                      }
+                      @if (g.accion) {
+                        <button (click)="ejecutarAccionAyuda(g.accion.id)"
+                          class="w-full rounded-xl text-sm font-black text-white mt-1 active:scale-[0.98]"
+                          style="min-height:44px;background:#245BDB">{{ g.accion.texto }}</button>
+                      }
+                    </div>
+                  }
                 </div>
               }
-              @if (!tutorialDone()) {
-                <button (click)="completeTutorial()" class="py-3 rounded-xl text-white text-sm font-black"
-                  style="background:linear-gradient(135deg,#16a34a,#059669)">He leído todo · Completar</button>
-              } @else {
-                <p class="text-emerald-600 text-sm text-center">✓ Tutorial completado</p>
-              }
+              <a href="https://wa.me/573009645697?text=Hola%2C%20tengo%20una%20duda%20sobre%20Movi" target="_blank" rel="noopener"
+                class="text-center text-sm font-bold mt-2" style="color:#16a34a;text-decoration:none">¿No te quedó claro? Escríbenos por WhatsApp</a>
             </div>
           }
 
@@ -10909,6 +10995,164 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   addingVehicle = signal(false);
   newVehicle = { vehicle_type: 'carro', plate: '', brand: '', model: '', color: '', year: new Date().getFullYear() };
 
+  // ═══ Aprender usando la app (2026-10-04, pedido del usuario) ════════════════════════════════
+  // El tutorial de 8 pasos del menú lo había completado 5 de 104 conductores: nadie lo busca, y
+  // además no hablaba de recargar ni de los avisos. La idea ahora es enseñar en el MOMENTO en que
+  // se necesita, en 4 capas: (1) "Tus primeros pasos" en la pantalla principal, (2) consejos que
+  // salen UNA vez justo cuando pasa algo, (3) "¿No te llegan viajes?" que revisa el celular solo,
+  // y (4) guías cortas "¿Cómo hago…?" que reemplazan el tutorial. Mismos textos que el bot de WhatsApp.
+
+  // ── (1) Tus primeros pasos ──
+  readonly viajesHechos = computed(() => Number((this.driverData() as any)?.metric_trips_completed ?? 0));
+  /** Avisos de viaje listos: en la APK se lee el celular (notificaciones + batería); en web, el push. */
+  readonly avisosOk = computed(() => {
+    const c = this.estadoCelular();
+    return c ? (c.notificationsOn && c.batteryExempt) : this.pushEnabled();
+  });
+  readonly primerosPasos = computed(() => {
+    const viajes = this.viajesHechos();
+    return [
+      { id: 'registro', titulo: 'Registrarte', detalle: '', accion: '', hecho: true },
+      { id: 'recarga', titulo: 'Recargar mínimo $10.000', detalle: 'Tu primer viaje es gratis: no se te descuenta nada.', accion: 'Recargar', hecho: this.driverWalletBalance() >= 10000 || viajes > 0 },
+      { id: 'avisos', titulo: 'Activar los avisos de viajes', detalle: 'Para que te lleguen las solicitudes aunque tengas Movi cerrada.', accion: 'Activar', hecho: this.avisosOk() },
+      { id: 'linea', titulo: 'Ponerte "En línea"', detalle: 'Con el GPS activo. Así te empiezan a llegar viajes.', accion: 'Conectarme', hecho: this.driverOnline() || viajes > 0 },
+      { id: 'viaje', titulo: 'Hacer tu primer viaje', detalle: 'Cuando llegue una solicitud: toca "Aceptar" o "Contra-oferta".', accion: '', hecho: viajes > 0 },
+    ];
+  });
+  readonly pasosHechos = computed(() => this.primerosPasos().filter(p => p.hecho).length);
+  readonly mostrarPrimerosPasos = computed(() =>
+    !!this.driverData() && ['quick', 'pending', 'approved'].includes(this.driverStatus() ?? '') &&
+    this.pasosHechos() < this.primerosPasos().length);
+
+  /** Un solo lugar para los botones de la lista, del diagnóstico y de las guías. */
+  ejecutarAccionAyuda(id: string): void {
+    switch (id) {
+      case 'recarga':
+        this.diagnosticoAbierto.set(false);
+        if (this.driverSection() !== null) this.driverSection.set(null);
+        if (!this.walletPanelOpen()) this.toggleWalletPanel();
+        if (isPlatformBrowser(this.platformId)) setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80);
+        break;
+      case 'avisos':
+      case 'notif':
+        if (this.estadoCelular()) {
+          if (!this.estadoCelular()!.notificationsOn) this.openNotificationSettings();
+          else this.activarBateriaInstantaneo();
+        } else this.enablePush().catch(() => {});
+        break;
+      case 'bateria': this.activarBateriaInstantaneo(); break;
+      case 'linea':
+        if (!this.driverOnline()) this.toggleOnline().catch(() => {});
+        break;
+      case 'gps': this.retryGps('ag-map-user'); break;
+      case 'docs':
+        this.diagnosticoAbierto.set(false);
+        this.openDriverSection('documents');
+        break;
+      case 'diagnostico': this.diagnosticoAbierto.set(true); break;
+      case 'invitar': this.openDriverSection('referrals'); break;
+    }
+    this.cdr.markForCheck();
+  }
+
+  // ── (2) Consejos que salen UNA sola vez, justo cuando pasa algo ──
+  consejo = signal<{ clave: string; icono: string; titulo: string; texto: string } | null>(null);
+  private _mostrarConsejo(clave: string, icono: string, titulo: string, texto: string): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    // A quien ya hizo varios viajes no se le enseña lo básico.
+    if (this.viajesHechos() >= 2) return;
+    try {
+      if (localStorage.getItem('movi-consejo-' + clave) === '1') return;
+      localStorage.setItem('movi-consejo-' + clave, '1');
+    } catch { return; }
+    this.consejo.set({ clave, icono, titulo, texto });
+    this.cdr.markForCheck();
+  }
+  cerrarConsejo(): void { this.consejo.set(null); this.cdr.markForCheck(); }
+  private readonly _consejoEnLinea = effect(() => {
+    if (this.driverOnline()) untracked(() => this._mostrarConsejo('en_linea', 'wifi_tethering', '¡Ya estás en línea! 🟢',
+      'Deja Movi abierta o en segundo plano. Si la cierras del todo, no te llegan los viajes.'));
+  });
+  private readonly _consejoSolicitud = effect(() => {
+    if (this.driverData() && this.visibleDriverRequests().length > 0) untracked(() => this._mostrarConsejo('primera_solicitud', 'local_offer', 'Te llegó una solicitud 🚗',
+      'Tienes 2 opciones: toca "Aceptar" si te sirve el precio del pasajero, o "Contra-oferta" para proponer tu precio.'));
+  });
+  private readonly _consejoViajeAceptado = effect(() => {
+    if (this.driverActiveTrips().length > 0) untracked(() => this._mostrarConsejo('viaje_aceptado', 'navigation', '¡Tienes un viaje! 🙌',
+      '1. Toca "Origen" para ir a recoger. 2. Al llegar, "Llegué al punto de recogida". 3. Cuando se suba, "Pasajero a bordo". 4. Al llegar al destino, "Finalizar viaje".'));
+  });
+  private readonly _consejoPrimerViaje = effect(() => {
+    if (this.viajesHechos() === 1) untracked(() => this._mostrarConsejo('primer_viaje', 'celebration', '¡Hiciste tu primer viaje! 🎉',
+      'El pasajero te paga directo a ti. Desde tu próximo viaje, Movi descuenta el 12% de cada viaje de tu saldo.'));
+  });
+
+  // ── (3) ¿No te llegan viajes? ──
+  diagnosticoAbierto = signal(false);
+  readonly diagnostico = computed(() => {
+    const c = this.estadoCelular();
+    const lista: { ok: boolean; titulo: string; detalle: string; accion: string; id: string }[] = [
+      { ok: this.driverOnline(), titulo: 'En línea', detalle: this.driverOnline() ? 'Estás conectado.' : 'Estás desconectado: así no te llegan viajes.', accion: 'Conectarme', id: 'linea' },
+      { ok: this.gpsStatus() === 'granted', titulo: 'GPS', detalle: this.gpsStatus() === 'granted' ? 'Tu ubicación está activa.' : 'Movi no tiene tu ubicación.', accion: 'Activar', id: 'gps' },
+      { ok: c ? c.notificationsOn : this.pushEnabled(), titulo: 'Avisos de viajes', detalle: (c ? c.notificationsOn : this.pushEnabled()) ? 'Las notificaciones están activas.' : 'Las notificaciones de Movi están apagadas.', accion: 'Activar', id: 'notif' },
+    ];
+    if (c) lista.push({ ok: c.batteryExempt, titulo: 'Batería', detalle: c.batteryExempt ? 'El celular no le pone freno a Movi.' : 'El ahorro de batería puede demorar o esconder los avisos.', accion: 'Activar', id: 'bateria' });
+    lista.push({ ok: this.driverWalletBalance() >= 10000, titulo: 'Saldo', detalle: this.driverWalletBalance() >= 10000 ? `Tienes ${this.formatCOP(this.driverWalletBalance())}.` : `Tienes ${this.formatCOP(this.driverWalletBalance())}. Recarga mínimo $10.000 para aceptar viajes.`, accion: 'Recargar', id: 'recarga' });
+    lista.push({ ok: !this.docAlertsHaveExpired(), titulo: 'Documentos', detalle: this.docAlertsHaveExpired() ? 'Tienes documentos vencidos.' : 'Tus documentos están al día.', accion: 'Renovar', id: 'docs' });
+    return lista;
+  });
+  readonly diagnosticoTodoOk = computed(() => this.diagnostico().every(d => d.ok));
+
+  // ── (4) ¿Cómo hago…? (reemplaza el tutorial del menú) ──
+  guiaAbierta = signal<string | null>(null);
+  readonly guias: { id: string; icono: string; titulo: string; pasos: string[]; accion?: { texto: string; id: string } }[] = [
+    { id: 'recargar', icono: 'account_balance_wallet', titulo: 'Recargar mi saldo', pasos: [
+      'En la pantalla principal, toca tu saldo y luego "Recargar".',
+      'Envía el valor que quieras (mínimo $10.000) al Nequi 313 445 3649, a nombre de VICTOR VERA.',
+      'Toca "Enviar comprobante" y mándanos la captura por WhatsApp.',
+      'Te cargamos el valor completo en pocos minutos. Recargar no cuesta nada.',
+    ], accion: { texto: 'Ir a recargar', id: 'recarga' } },
+    { id: 'recibir', icono: 'notifications_active', titulo: 'Recibir viajes', pasos: [
+      'Recarga mínimo $10.000 y activa los avisos de viajes.',
+      'Prende el botón verde "En línea" con el GPS activo.',
+      'Deja Movi abierta o en segundo plano. No la cierres del todo.',
+      'Cuando llegue una solicitud, suena y aparece en tu pantalla.',
+    ], accion: { texto: '¿No te llegan? Revisar mi celular', id: 'diagnostico' } },
+    { id: 'aceptar', icono: 'local_offer', titulo: 'Aceptar o hacer contra-oferta', pasos: [
+      'En la solicitud ves de dónde a dónde va y el precio que ofrece el pasajero.',
+      'Toca "Aceptar" si te sirve ese precio.',
+      'Si no, toca "Contra-oferta" y pon tu precio.',
+      'El pasajero elige. Si te acepta, el viaje es tuyo.',
+    ] },
+    { id: 'viaje', icono: 'navigation', titulo: 'Durante el viaje', pasos: [
+      'Toca "Origen" para que el mapa te lleve a recoger al pasajero.',
+      'Al llegar, toca "Llegué al punto de recogida".',
+      'Cuando se suba, toca "Pasajero a bordo".',
+      'Toca "Destino" para que el mapa te lleve al final.',
+      'Al llegar, toca "Finalizar viaje".',
+    ] },
+    { id: 'cobrar', icono: 'payments', titulo: 'Cobrar y cuánto me descuentan', pasos: [
+      'El pasajero te paga directo a ti. Lo que te paga es 100% tuyo.',
+      'Tu primer viaje es gratis: no se te descuenta nada.',
+      'Desde el segundo viaje, Movi descuenta el 12% de cada viaje de tu saldo.',
+      'Ejemplo: en un viaje de $10.000 se descuentan $1.200 de tu saldo.',
+    ] },
+    { id: 'documentos', icono: 'badge', titulo: 'Mis documentos', pasos: [
+      'Tu primer viaje lo puedes hacer sin subir papeles.',
+      'Para seguir trabajando, sube tus documentos en el menú, en "Mis documentos".',
+      'Si un documento está por vencer, te avisamos en la pantalla principal.',
+    ], accion: { texto: 'Ir a mis documentos', id: 'docs' } },
+    { id: 'invitar', icono: 'card_giftcard', titulo: 'Ganar invitando', pasos: [
+      'En el menú, toca "Recomienda y Gana".',
+      'Copia tu link y compártelo con tu familia, amigos y grupos.',
+      'Te queda el 2% de cada servicio de quien entre con tu link, de por vida.',
+    ], accion: { texto: 'Ir a invitar', id: 'invitar' } },
+    { id: 'emergencia', icono: 'emergency', titulo: 'Si tienes una emergencia', pasos: [
+      'Durante el viaje, toca el botón rojo de pánico.',
+      'Les avisamos a tus contactos con tu ubicación.',
+    ] },
+  ];
+  toggleGuia(id: string): void { this.guiaAbierta.set(this.guiaAbierta() === id ? null : id); }
+
   readonly tutorialSteps = [
     { icon: 'directions_car', title: '1. Antes de salir', body: 'Revisa SOAT vigente, tecnomecánica, combustible y limpieza del vehículo. Los pasajeros califican todo.' },
     { icon: 'wifi_tethering', title: '2. Ponte en línea', body: 'Activa el botón verde de "En línea" cuando estés listo para trabajar. Necesitas GPS activado y permiso de ubicación.' },
@@ -11845,7 +12089,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'settings',        label: 'Configuración',        action: 'settings',     sectionLabel: '',              danger: false, divider: false },
     { icon: 'flag',            label: 'Reportar problema',    action: 'report',       sectionLabel: '',              danger: false, divider: false },
     { icon: 'support_agent',   label: 'Soporte',              action: 'support',      sectionLabel: '',              danger: false, divider: false },
-    { icon: 'school',          label: 'Tutorial',             action: 'tutorial',     sectionLabel: '',              danger: false, divider: false },
+    { icon: 'help',            label: '¿Cómo hago…?',         action: 'tutorial',     sectionLabel: '',              danger: false, divider: false },
     { icon: 'gavel',           label: 'Términos y condiciones', action: 'terms',      sectionLabel: '',              danger: false, divider: false },
     { icon: 'privacy_tip',     label: 'Política de privacidad', action: 'privacy',    sectionLabel: '',              danger: false, divider: false },
     { icon: '',                label: '',                     action: '',             sectionLabel: 'Soporte directo', danger: false, divider: true },
