@@ -836,7 +836,20 @@ function expandStreetType(segment: string): string {
 // arrancado en paralelo con Mapbox (no en serie) y con timeout corto propio,
 // así que si Nominatim tarda o falla el pasajero de todos modos recibe su
 // dirección a tiempo, solo sin el barrio.
+//
+// 2026-10-05 (cuarta vez que la ubicación se vuelve lenta): el 2026-10-03 la espera de
+// Nominatim se subió de 900 ms a 2500 ms y, como reverseGeocode esperaba este barrio
+// antes de contestar, cada ubicación que caía fuera de nuestra tabla (~1 de cada 4
+// puntos de Cúcuta) dejaba al pasajero mirando el chat hasta 2,5 s extra. Ahora se
+// separa en dos: barrioDeTabla() (1 ms, va en el camino rápido) y barrioDeNominatim()
+// (lento, sin garantía; en una ubicación compartida corre DESPUÉS de responder, ver
+// completarBarrioEnSegundoPlano). fetchNeighborhood sigue igual para direcciones
+// escritas.
 async function fetchNeighborhood(lat: number, lng: number): Promise<string | undefined> {
+  return (await barrioDeTabla(lat, lng)) ?? (await barrioDeNominatim(lat, lng, 2500));
+}
+
+async function barrioDeTabla(lat: number, lng: number): Promise<string | undefined> {
   // PRIMERO nuestra propia tabla (migración 301, barrios y conjuntos de OSM guardados en
   // PostGIS). Nominatim desde Supabase fallaba al instante (prueba real 2026-10-03: el bot
   // dijo "no lo pude identificar" en La Ínsula, que Nominatim sí conoce desde un PC). Si la
@@ -853,6 +866,10 @@ async function fetchNeighborhood(lat: number, lng: number): Promise<string | und
   } catch (e) {
     console.error('[Geo] ag_barrio_en (tabla de barrios) error:', e);
   }
+  return undefined;
+}
+
+async function barrioDeNominatim(lat: number, lng: number, timeoutMs: number): Promise<string | undefined> {
   try {
     const r = await fetchWithTimeout(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&accept-language=es`,
@@ -862,8 +879,9 @@ async function fetchNeighborhood(lat: number, lng: number): Promise<string | und
       // las veces y el pasajero veía "Barrio o sector: no lo pude identificar" (prueba real
       // del usuario ese día). Corre en paralelo con Mapbox, así que solo alarga la respuesta
       // cuando Nominatim está lento -- y el barrio es lo que el conductor necesita para
-      // ubicar la zona (caso Luis Felipe, mismo día).
-      2500
+      // ubicar la zona (caso Luis Felipe, mismo día). Desde 2026-10-05 la ubicación
+      // compartida ya NO espera esto (ver fetchNeighborhood); solo la dirección escrita.
+      timeoutMs
     );
     if (!r.ok) {
       // 429/403 = límite de uso de Nominatim; se registra para poder distinguirlo de "no hay barrio".
@@ -881,6 +899,34 @@ async function fetchNeighborhood(lat: number, lng: number): Promise<string | und
     console.error('[Geo] fetchNeighborhood (Nominatim) error:', e);
     return undefined;
   }
+}
+
+// ─── Barrio después de responder (2026-10-05) ──────────────────────────────────
+// reverseGeocode ya no espera a Nominatim. Cuando nuestra tabla no tuvo el barrio, se
+// anota aquí la dirección que salió sin él, y el webhook -- YA con la respuesta enviada
+// al pasajero -- le pregunta a Nominatim con calma. Si lo encuentra, completa la
+// dirección guardada en la sesión para que la tarjeta del conductor lleve el barrio
+// (caso Luis Felipe 2026-10-03). Solo reemplaza si la sesión sigue teniendo EXACTAMENTE
+// la dirección sin barrio: si el pasajero ya escribió la suya o mandó otra ubicación,
+// no se toca nada.
+const barrioPendiente = new Map<string, { sinBarrio: string; street: string; city?: string }>();
+const claveBarrio = (lat: number, lng: number) => `${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+async function completarBarrioEnSegundoPlano(phone: string, lat: number, lng: number): Promise<void> {
+  const clave = claveBarrio(lat, lng);
+  const pendiente = barrioPendiente.get(clave);
+  barrioPendiente.delete(clave);
+  if (!pendiente) return;
+  const barrio = (await barrioDeNominatim(lat, lng, 4000))?.trim();
+  if (!barrio) return;
+  const conBarrio = [pendiente.street, barrio, pendiente.city].filter(Boolean).join(', ');
+  const [o, d] = await Promise.all([
+    db().from('ag_wa_sessions').update({ origin_address: conBarrio })
+      .eq('wa_phone', phone).eq('origin_address', pendiente.sinBarrio),
+    db().from('ag_wa_sessions').update({ dest_name: conBarrio })
+      .eq('wa_phone', phone).eq('dest_name', pendiente.sinBarrio),
+  ]);
+  if (o.error || d.error) console.error('[Geo] completar barrio:', o.error ?? d.error);
 }
 
 // ─── Geocoding inverso (solo Mapbox) ───────────────────────────────────────────
@@ -904,7 +950,10 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   // Arrancada ANTES de esperar a Mapbox (no con await todavía) para que
   // corra en paralelo de verdad, no en serie -- se recoge más abajo, después
   // de tener ya la calle/ciudad de Mapbox.
-  const neighborhoodPromise = fetchNeighborhood(lat, lng);
+  // Solo nuestra tabla (1 ms): Nominatim aquí era lo que volvía lenta la ubicación
+  // (2026-10-05). Si la tabla no tiene el barrio, se anota para buscarlo después de
+  // responder (completarBarrioEnSegundoPlano).
+  const neighborhoodPromise = barrioDeTabla(lat, lng);
   const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN');
   if (mapboxToken) {
     try {
@@ -972,6 +1021,10 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
         // y este await es instantáneo; si no, espera como mucho lo que le
         // quede de su propio timeout (2500 ms desde 2026-10-03, ver fetchNeighborhood).
         const barrio = await neighborhoodPromise;
+        if (!barrio && street) {
+          if (barrioPendiente.size > 200) barrioPendiente.clear(); // tope por si alguna nunca se recoge
+          barrioPendiente.set(claveBarrio(lat, lng), { sinBarrio: segments.slice(0, 2).join(', '), street, city });
+        }
         // Sin la palabra "barrio" repetida -- se lee como cualquier persona
         // diría su propia dirección: "calle, zona, ciudad", sin etiquetas
         // (pedido explícito del usuario 2026-08-28: se veía raro repetir
@@ -9004,6 +9057,8 @@ serve(async (req) => {
           sessionPromise,
         ]);
         const precomputedRoute = precomputedRoutePromise ? await precomputedRoutePromise : undefined;
+        // Cuánto tardó dirección + sesión + ruta (todo lo previo a contestar). Ver migración 312.
+        const geoMs = Date.now() - t0;
         if (dedupeResult?.error) {
           // 23505 = unique_violation -- mensaje repetido, no reprocesar.
           if ((dedupeResult.error as { code?: string }).code === '23505') {
@@ -9196,6 +9251,16 @@ serve(async (req) => {
         } else {
           await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession, precomputedRoute, msgBtnId);
         }
+        // Momento en que el pasajero ya tiene la respuesta en su chat (lo que él percibe).
+        const respuestaMs = Date.now() - t0;
+        // Barrio que nuestra tabla no tenía: se busca en Nominatim AHORA, con la respuesta ya
+        // enviada (ver completarBarrioEnSegundoPlano). waitUntil deja terminar la tarea sin
+        // retrasar el 200 a Meta.
+        if (!isSupportNumber && rawLat != null && rawLng != null) {
+          const tarea = completarBarrioEnSegundoPlano(fromPhone, rawLat, rawLng)
+            .catch(e => console.error('[Geo] completar barrio:', e));
+          (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(tarea);
+        }
 
         // DESPUÉS de su respuesta normal (para no interrumpir): pedirle el celular si lo tiene oculto.
         await pedirCelularSiOculto(fromPhone, isSupportNumber);
@@ -9203,7 +9268,7 @@ serve(async (req) => {
         // Fire-and-forget: no debe agregar latencia a la respuesta real que
         // ya se le mandó al pasajero.
         if (rawLat != null && rawLng != null) {
-          db().from('ag_wa_location_latency').insert({ wa_phone: fromPhone, ms: Date.now() - t0 })
+          db().from('ag_wa_location_latency').insert({ wa_phone: fromPhone, ms: Date.now() - t0, geo_ms: geoMs, respuesta_ms: respuestaMs })
             .then(({ error }) => { if (error) console.error('[WA] location latency log error:', error); });
         }
       }
