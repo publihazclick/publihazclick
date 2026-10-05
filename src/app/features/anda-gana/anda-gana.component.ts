@@ -3465,7 +3465,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
                             <span class="material-symbols-outlined" style="font-size:24px;font-variation-settings:'FILL' 1"
                               [style.color]="ccSharingLocation()?'#16a34a':'#94a3b8'">location_on</span>
                             <span class="text-xs font-black" [style.color]="ccSharingLocation()?'#15803d':'#64748b'">
-                              {{ ccSharingLocation() ? 'Compartiendo' : 'Ubicación' }}
+                              {{ ccSharingLocation() ? 'Enviada ✓' : 'Ubicación' }}
                             </span>
                           </button>
                           <button (click)="ccAddStopModal.set(true)"
@@ -10402,7 +10402,16 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
             <div class="max-w-[75%] px-3 py-2 rounded-2xl text-sm"
               [style.background]="ccIsMyMessage(msg)?'#4C7DF0':'#f1f5f9'"
               [style.color]="ccIsMyMessage(msg)?'white':'#1e293b'">
-              <p>{{ msg.content }}</p>
+              <!-- Ubicación enviada con el botón "Ubicación" (ver ccShareLiveLocation): se muestra con un
+                   botón para abrir el mapa en vez del enlace largo en texto plano. -->
+              @if (ccLinkUbicacion(msg); as link) {
+                <p>📍 Mi ubicación</p>
+                <a [href]="link" target="_blank" rel="noopener" class="inline-block mt-1 px-2.5 py-1 rounded-lg text-xs font-black"
+                  [style.background]="ccIsMyMessage(msg) ? 'rgba(255,255,255,0.2)' : '#E0F2FE'"
+                  [style.color]="ccIsMyMessage(msg) ? '#fff' : '#0369A1'" style="text-decoration:none">Abrir en el mapa</a>
+              } @else {
+                <p>{{ msg.content }}</p>
+              }
               <p class="text-[10px] mt-0.5 opacity-70">{{ msg.created_at | date:'HH:mm' }}</p>
             </div>
           </div>
@@ -15342,6 +15351,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } catch {} finally { this.cdr.markForCheck(); }
   }
 
+  /** Enlace de Google Maps si el mensaje es una ubicación mandada con ccShareLiveLocation; si no, null. */
+  ccLinkUbicacion(msg: any): string | null {
+    const m = String(msg?.content ?? '').match(/^📍 Mi ubicación: (https:\/\/maps\.google\.com\/\?q=-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?)$/);
+    return m ? m[1] : null;
+  }
+
   ccIsMyMessage(msg: any): boolean {
     const req = this.ccActiveReq();
     if (!req) return false;
@@ -15361,26 +15376,33 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Manda la ubicación actual del pasajero al conductor por el CHAT de Movi del viaje (2026-10-05).
+   *
+   * Antes abría WhatsApp directo al número REAL del conductor (wa.me/driver_phone): el pasajero
+   * quedaba con el número del conductor y el conductor con el del pasajero -- revisión de privacidad
+   * pedida por el usuario. Además nunca funcionó: marcaba "Compartiendo" antes de tener la posición
+   * y la condición para abrir WhatsApp ya no se cumplía. Ahora es un solo mensaje por toque (antes
+   * repetía cada 10 s, que en el chat sería spam); ccSharingLocation solo muestra "Enviada ✓" 3 s.
+   */
   ccShareLiveLocation(): void {
-    if (this.ccSharingLocation()) {
-      if (this.ccLocationInterval) { clearInterval(this.ccLocationInterval); this.ccLocationInterval = null; }
-      this.ccSharingLocation.set(false);
-      return;
-    }
-    const send = () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          const req = this.ccActiveReq();
-          if (!req?.driver_phone) return;
-          const url = `https://wa.me/${req.driver_phone}?text=${encodeURIComponent(`📍 Mi ubicación en vivo: https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`)}`;
-          if (!this.ccSharingLocation()) window.open(url, '_blank');
-        }, () => {}, { enableHighAccuracy: true });
+    const id = this.ccActiveReqId();
+    if (!id || this.ccSharingLocation() || !navigator.geolocation) return;
+    if (this.ccLocationInterval) { clearInterval(this.ccLocationInterval); this.ccLocationInterval = null; }
+    navigator.geolocation.getCurrentPosition(async pos => {
+      try {
+        const link = `https://maps.google.com/?q=${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
+        const { error } = await getMoviClient().rpc('cc_send_message', {
+          p_request_id: id, p_content: `📍 Mi ubicación: ${link}`, p_predefined: false,
+        });
+        if (error) throw error;
+        this.ccSharingLocation.set(true);
+        this.cdr.markForCheck();
+        setTimeout(() => { this.ccSharingLocation.set(false); this.cdr.markForCheck(); }, 3000);
+      } catch {
+        alert('No se pudo enviar tu ubicación. Intenta de nuevo.');
       }
-    };
-    this.ccSharingLocation.set(true);
-    send();
-    this.ccLocationInterval = setInterval(send, 10000);
-    this.cdr.markForCheck();
+    }, () => alert('Activa la ubicación del celular para poder enviarla.'), { enableHighAccuracy: true, timeout: 15000 });
   }
 
   async ccSubmitAddStop(): Promise<void> {

@@ -13,6 +13,14 @@
 
 ## Pendiente de subir
 
+### "Ciudad a ciudad": el botón Ubicación ya no abre WhatsApp al número real del conductor (2026-10-05)
+- **Por qué**: revisión de privacidad pedida por el usuario. `ccShareLiveLocation` abría `wa.me/<número del conductor>`:
+  cada uno quedaba con el número del otro. Además nunca funcionó (marcaba "Compartiendo" antes de tener la posición).
+- **Qué cambia (solo web)**: un toque = un mensaje en el chat de Movi del viaje (`cc_send_message`) con la ubicación;
+  el botón muestra "Enviada ✓" 3 s. En el chat se ve "📍 Mi ubicación" + botón "Abrir en el mapa" (solo enlaces de
+  maps.google.com). Ese servicio tuvo 0 viajes en 60 días. `ngc` OK. NO probado en celular.
+
+
 ### Al abrir Movi se veían los nombres de los íconos en inglés y el saldo en $0 (2026-10-05)
 - **Por qué**: el usuario vio al abrir la app "featured_seasonal_and_gifts", "location_on", etc. en vez de íconos, y la
   información sin cargar.
