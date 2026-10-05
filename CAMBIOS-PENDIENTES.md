@@ -14,6 +14,7 @@
 ## Pendiente de subir
 
 ### "Ciudad a ciudad": el botón Ubicación ya no abre WhatsApp al número real del conductor (2026-10-05)
+- **SUBIDO a producción el 2026-10-05.**
 - **Por qué**: revisión de privacidad pedida por el usuario. `ccShareLiveLocation` abría `wa.me/<número del conductor>`:
   cada uno quedaba con el número del otro. Además nunca funcionó (marcaba "Compartiendo" antes de tener la posición).
 - **Qué cambia (solo web)**: un toque = un mensaje en el chat de Movi del viaje (`cc_send_message`) con la ubicación;
@@ -22,6 +23,7 @@
 
 
 ### Al abrir Movi se veían los nombres de los íconos en inglés y el saldo en $0 (2026-10-05)
+- **SUBIDO a producción el 2026-10-05.**
 - **Por qué**: el usuario vio al abrir la app "featured_seasonal_and_gifts", "location_on", etc. en vez de íconos, y la
   información sin cargar.
 - **Qué cambia (solo web)**: `src/index.html` pide solo las variantes de íconos que la app usa (3,9 MB → 1,1 MB) con
@@ -33,6 +35,7 @@
 
 
 ### Rediseño de la pantalla principal del conductor, copia del diseño del usuario (2026-10-05)
+- **SUBIDO a producción el 2026-10-05.**
 - **Por qué**: el usuario mandó la imagen de cómo quiere la pantalla (captura `Screenshot_20261005_092717...jhjr.jpg`)
   y pidió que quede "tal cual", con tamaños y todo.
 - **Qué cambia (solo web, `anda-gana.component.ts`; NO necesita APK: la app carga la web)**: saludo grande en 2 líneas,
