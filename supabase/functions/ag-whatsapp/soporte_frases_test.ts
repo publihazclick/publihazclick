@@ -132,3 +132,15 @@ Deno.test('migraciones 319-320: esperas de 15 min y 3 h, un solo recordatorio, i
   if (/'20 minutes','3 hours','20 hours'/.test(sql)) throw new Error('volvieron los 3 "¿sigues ahí?"');
   if (/\+ interval '2[1-9] hours'/.test(sql)) throw new Error('el "gana invitando" volvió a salir a las 24 h o más');
 });
+
+// Pedido del usuario 2026-10-05: "hay gente que le da miedo tocar enlaces". Cada mensaje que manda el
+// link de descarga dice también cómo buscarla en Play Store, en el mismo mensaje.
+Deno.test('cada link de descarga va con "búscala en Play Store como MOVI TRANSPORTE URBANO"', () => {
+  const lineas = src.split('\n');
+  const sinAviso = lineas.map((l, i) => [l, i] as const)
+    .filter(([l]) => l.includes('${APP_DOWNLOAD_LINK}') && !l.trim().startsWith('- El link oficial'))
+    .filter(([, i]) => !lineas.slice(i, i + 3).join('\n').includes('BUSCALA_EN_PLAY_STORE'))
+    .map(([l, i]) => `línea ${i + 1}: ${l.trim()}`);
+  if (sinAviso.length) throw new Error('\n' + sinAviso.join('\n'));
+  if (!/MOVI TRANSPORTE URBANO/.test(src)) throw new Error('falta el nombre en Play Store');
+});
