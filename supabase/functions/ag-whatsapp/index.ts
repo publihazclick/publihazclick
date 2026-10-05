@@ -6181,7 +6181,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     return;
   }
 
-  // "Gana invitando" a las 24 h de registrado sin recargar (cron ag_wa_lead_followups, migración 319).
+  // "Gana invitando" antes de las 24 h de registrado sin recargar (cron ag_wa_lead_followups, migraciones 319-320).
   if (event === 'lead_invita_gana') {
     await leadInvitaGanaProgramado(phone);
     return;
@@ -8328,7 +8328,7 @@ async function leadListoRegistro(phone: string, noSabe: boolean): Promise<void> 
 /**
  * El "gana invitando", UNA vez en la vida del número (invita_gana_at, migración 319).
  *
- * Cuándo (decidido con el usuario 2026-10-05): con la primera recarga, o a las 24 h de registrado si
+ * Cuándo (decidido con el usuario 2026-10-05): con la primera recarga, o a las 20 h de registrado si
  * no ha recargado (cron ag_wa_lead_followups -> evento 'lead_invita_gana'). Medido ese día: de 61
  * conductores registrados en 30 días solo 1 recargó y ninguno hizo un viaje, así que ponerlo solo
  * después de la recarga (como estaba) o del primer viaje casi no le llegaba a nadie. Y el cuello de

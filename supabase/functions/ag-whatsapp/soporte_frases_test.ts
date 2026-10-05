@@ -122,12 +122,13 @@ Deno.test('el embudo de conductores no vuelve a meter botón, video ni preguntas
   if (!/invita_gana_at/.test(cuerpo('leadInvitaYGana'))) throw new Error('el "gana invitando" perdió el "una vez en la vida"');
 });
 
-Deno.test('migración 319: esperas de 15 min y 3 h, un solo recordatorio', async () => {
-  const sql = await Deno.readTextFile(new URL('../../migrations/319_ag_embudo_conductores_simplificado.sql', import.meta.url));
+Deno.test('migraciones 319-320: esperas de 15 min y 3 h, un solo recordatorio, invita antes de 24 h', async () => {
+  const sql = await Deno.readTextFile(new URL('../../migrations/320_ag_invita_gana_antes_de_24h.sql', import.meta.url));
   for (const s of ["l.paso = 'nombre'", "interval '15 minutes'", "l.paso = 'pitch'", 'l.pidio_codigo_at IS NULL',
                    'l.recordatorio_descarga_at IS NULL', "interval '3 hours'", "'lead_invita_gana'", 'l.invita_gana_at IS NULL',
-                   "interval '24 hours'", 'COALESCE(d.wallet_balance, 0) < 10000']) {
+                   "interval '20 hours'", 'COALESCE(d.wallet_balance, 0) < 10000']) {
     if (!sql.includes(s)) throw new Error(`falta en la migración: ${s}`);
   }
   if (/'20 minutes','3 hours','20 hours'/.test(sql)) throw new Error('volvieron los 3 "¿sigues ahí?"');
+  if (/\+ interval '2[1-9] hours'/.test(sql)) throw new Error('el "gana invitando" volvió a salir a las 24 h o más');
 });
