@@ -5605,7 +5605,7 @@ async function manejarAprobacionNequi(msgText: string, quotedId?: string): Promi
   if (!d) { await sendText(SUPPORT_PHONE, `No encontré la cuenta de conductor de +${tel} 🤔 Revísalo en el panel.`, 'alerta'); return true; }
 
   if (dijoNo) {
-    await sendSupportText(tel, `Hola ${nombre}, revisamos y *no nos aparece el pago* de tu recarga por Nequi 😕\n\nRevisa que lo hayas enviado al Nequi *${NEQUI_RECARGA}* y mándanos de nuevo el comprobante por aquí. Si ya lo enviaste bien, escríbenos y lo revisamos contigo.`, 'sistema');
+    await sendSupportText(tel, `Hola, revisamos y *no nos aparece el pago* de tu recarga por Nequi 😕\n\nRevisa que lo hayas enviado al Nequi *${NEQUI_RECARGA}* y mándanos de nuevo el comprobante por aquí. Si ya lo enviaste bien, escríbenos y lo revisamos contigo.`, 'sistema');
     await sendText(SUPPORT_PHONE, `❌ Listo, le avisé a ${nombre} que no apareció el pago. No le cargué nada. [comprobante +${tel}]`, 'alerta');
     return true;
   }
@@ -5646,7 +5646,7 @@ async function manejarAprobacionNequi(msgText: string, quotedId?: string): Promi
     return true;
   }
   const nuevo = Number(d.wallet_balance ?? 0) + monto;
-  await sendSupportText(tel, `✅ ¡Listo ${nombre}! Te cargamos *$${monto.toLocaleString('es-CO')}* a tu saldo de Movi. Tu saldo ahora es *$${nuevo.toLocaleString('es-CO')}*.\n\n${LEAD_PONTE_EN_LINEA}`, 'sistema');
+  await sendSupportText(tel, `✅ ¡Listo! Te cargamos *$${monto.toLocaleString('es-CO')}* a tu saldo de Movi. Tu saldo ahora es *$${nuevo.toLocaleString('es-CO')}*.\n\n${LEAD_PONTE_EN_LINEA}`, 'sistema');
   // Primera recarga de alguien que venía del embudo: ahora sí, el "gana invitando".
   if (Number(d.wallet_balance ?? 0) < 10000 && await getLead(tel)) await leadInvitaYGana(tel);
   await upsertSupportSession(tel, { escalated: false, escalated_at: null });
@@ -5697,7 +5697,7 @@ async function notaSaldoConductor(tel: string): Promise<string> {
 }
 
 async function enviarListaAyudaRecarga(tel: string, nombre: string | null, intro?: string): Promise<WaResult> {
-  const saludo = intro ?? `${nombre ? `Hola ${nombre}, v` : 'V'}imos que tu recarga de saldo en Movi no se completó y queremos ayudarte a terminarla.`;
+  const saludo = intro ?? `Vimos que tu recarga de saldo en Movi no se completó y queremos ayudarte a terminarla.`;
   const nota = await notaSaldoConductor(tel);
   return sendSupportGraph({
     to: tel, type: 'interactive',
@@ -5845,7 +5845,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     if (!ult || Date.now() - new Date(ult.created_at as string).getTime() > 23 * 3600e3) return;
     const nombre = await lookupRealFirstName(phone);
     await sendSupportText(phone,
-      `${nombre ? `¡Hola ${nombre}! 👋` : '¡Hola! 👋'} Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
+      `¡Hola! 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.\n\n` +
       `Vi que empezaste tu registro pero te falta un paso: los *Datos del vehículo* 🏍️🚗 Es menos de un minuto.\n\n` +
       `Abre la app, entra a *"Quiero ser conductor"* y completa tu moto o carro. Recuerda que tu primer viaje lo puedes hacer *sin subir papeles*.\n\n` +
       `¿Te trabaste en algo? Escríbeme y te ayudo.`);
@@ -7585,9 +7585,10 @@ const LEAD_BTN_MODELO = [
   { id: 'lead_modelo_nose', title: 'No estoy seguro' },
 ];
 
+// Solo "Ya la descargué" (2026-10-04, pedido del usuario): en el paso de descargar, el botón
+// "Tengo una duda" distraía del único paso que importa ahí. Las dudas igual se pueden escribir.
 const LEAD_BTN_CIERRE = [
   { id: 'lead_descargo', title: 'Ya la descargué' },
-  { id: 'lead_duda',     title: 'Tengo una duda' },
 ];
 
 /**
@@ -7625,7 +7626,7 @@ async function leadSaludar(phone: string, name: string, primerMensaje: string, e
 
   // Si ya sabemos quién es, no hay nada que preguntar: directo al primer paso (la descarga).
   if (nombre) {
-    await leadPrimerPaso(phone, nombre, `¡Hola ${nombre}! 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.`);
+    await leadPrimerPaso(phone, nombre, `¡Hola! 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.`);
     return;
   }
 
@@ -7814,12 +7815,12 @@ async function leadYaRegistrado(phone: string, lead: LeadRow | null): Promise<vo
   // Ya tiene saldo: directo a conectarse.
   if (Number(d.wallet_balance ?? 0) >= 10000) {
     await sendSupportText(phone,
-      `¡Bienvenido a Movi${nombre ? `, ${nombre}` : ''}! 🎉 Ya tienes saldo, así que estás listo.\n\n${LEAD_PONTE_EN_LINEA}`);
+      `¡Bienvenido a Movi! 🎉 Ya tienes saldo, así que estás listo.\n\n${LEAD_PONTE_EN_LINEA}`);
     await leadInvitaYGana(phone);
     return;
   }
   await sendSupportButtons(phone,
-    `¡Bienvenido a Movi${nombre ? `, ${nombre}` : ''}! 🎉 Ya casi estás listo para recibir viajes.\n\n` +
+    `¡Bienvenido a Movi! 🎉 Ya casi estás listo para recibir viajes.\n\n` +
     `El último paso es *recargar tu saldo*: mínimo *$10.000*. Con eso ya puedes aceptar viajes.\n\n` +
     `Tranquilo: en tu *primer viaje no se te descuenta nada*. Desde el segundo viaje, Movi descuenta el 12% de cada viaje de ese saldo.`,
     LEAD_BTN_RECARGA);
@@ -7946,7 +7947,7 @@ async function leadEmbudoProgramado(phone: string, name: string | null, yaContac
   // Si ya sabemos su nombre real, no hay nada que preguntar: al primer paso (la descarga).
   if (nombre) {
     await leadPrimerPaso(phone, nombre,
-      `¡Hola ${nombre}! 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.` +
+      `¡Hola! 👋 Soy ${LEAD_ASESORA}, del equipo de conductores de Movi.` +
       (recibioError ? `\n\nDisculpa el desorden de anoche, se nos cruzaron unos mensajes 🙏` : ''));
     return;
   }
@@ -8041,7 +8042,7 @@ async function leadFollowup(phone: string, name: string | null, paso: string, ve
       await sendSupportText(phone, `¿Sigues por ahí? 😊 Dime tu nombre y seguimos.`);
     } else if (paso === 'saludado') {
       await sendSupportButtons(phone,
-        `${nombre ? `${nombre}, ` : ''}¿sigues por ahí? 😊 Solo dime con qué te vas a mover y te explico lo tuyo en concreto.`,
+        `¿Sigues por ahí? 😊 Solo dime con qué te vas a mover y te explico lo tuyo en concreto.`,
         LEAD_BTN_VEHICULO);
     } else if (paso === 'vehiculo' && v) {
       await sendSupportButtons(phone,
@@ -8073,7 +8074,7 @@ async function leadFollowup(phone: string, name: string | null, paso: string, ve
       // 'pitch': el segundo toque ataca los bloqueos reales (ocupado, no la encuentra en la
       // tienda), no repite el argumento de venta -- eso ya se lo dijeron al entregarle el link.
       await sendSupportButtons(phone,
-        `${nombre ? `${nombre}, s` : 'S'}i no la encuentras en Play Store, búscala exacto como *"Movi - Transporte Urbano"* 👇\n` +
+        `Si no la encuentras en Play Store, búscala exacto como *"Movi - Transporte Urbano"* 👇\n` +
         `${APP_DOWNLOAD_LINK}`,
         LEAD_BTN_CIERRE);
     }
@@ -8087,14 +8088,14 @@ async function leadFollowup(phone: string, name: string | null, paso: string, ve
   // que en el último mensaje se le da directo en vez de pedirle el nombre otra vez.
   if (paso === 'saludado' || (paso === 'vehiculo' && v)) {
     await sendSupportText(phone,
-      `Último mensaje mío por hoy, ${nombre ? `${nombre}: ` : 'te cuento: '}` +
+      `Último mensaje mío por hoy, te cuento: ` +
       `en un rato se me cierra la ventana para escribirte gratis por acá, y después tengo que ` +
       `esperar a que tú me vuelvas a escribir.\n\n` +
       `Si quieres seguir, contéstame con qué te vas a mover (moto o carro) y te mando el link ` +
       `de una, así sea rapidito. Si no, no hay problema -- este chat queda abierto para cuando quieras.`);
   } else {
     await sendSupportText(phone,
-      `Último mensaje mío por hoy, ${nombre ? `${nombre}: ` : 'te cuento: '}` +
+      `Último mensaje mío por hoy, te cuento: ` +
       `en un rato se me cierra la ventana para escribirte gratis por acá.\n\n` +
       `Te dejo el link una vez más por si te animas ahora:\n${APP_DOWNLOAD_LINK}\n\n` +
       `Y si necesitas algo de Movi más adelante, escríbeme a este mismo chat -- acá quedo.`);
@@ -8383,7 +8384,7 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
     // Solo se usa el nombre REAL de la cuenta (el que la persona escribió al registrarse,
     // igual al de su cédula); si no tiene cuenta, se saluda sin nombre.
     const menuText =
-      `${greetingOpener(await lookupRealFirstName(phone))} Soy el asistente de conductores de Movi.\n\n` +
+      `${greetingOpener(null)} Soy el asistente de conductores de Movi.\n\n` +
       `Pregúntame lo que necesites, por ejemplo:\n` +
       `- Cómo registrarme y qué documentos necesito\n` +
       `- Cuánto es la comisión y cómo me pagan\n` +
