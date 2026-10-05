@@ -912,21 +912,28 @@ async function barrioDeNominatim(lat: number, lng: number, timeoutMs: number): P
 const barrioPendiente = new Map<string, { sinBarrio: string; street: string; city?: string }>();
 const claveBarrio = (lat: number, lng: number) => `${lat.toFixed(6)},${lng.toFixed(6)}`;
 
-async function completarBarrioEnSegundoPlano(phone: string, lat: number, lng: number): Promise<void> {
+// Devuelve qué pasó, y se guarda en ag_wa_location_latency.barrio_tarde (migración 313) para
+// poder comprobar que esto funciona sin leer conversaciones:
+//   'tabla'          -> nuestra tabla ya tenía el barrio, no hizo falta nada
+//   'guardado'       -> Nominatim lo encontró y se completó la dirección en la sesión
+//   'sesion_cambio'  -> lo encontró, pero el pasajero ya había escrito/cambiado la dirección
+//   'no_encontrado'  -> Nominatim no respondió o no tiene barrio para ese punto
+async function completarBarrioEnSegundoPlano(phone: string, lat: number, lng: number): Promise<string> {
   const clave = claveBarrio(lat, lng);
   const pendiente = barrioPendiente.get(clave);
   barrioPendiente.delete(clave);
-  if (!pendiente) return;
+  if (!pendiente) return 'tabla';
   const barrio = (await barrioDeNominatim(lat, lng, 4000))?.trim();
-  if (!barrio) return;
+  if (!barrio) return 'no_encontrado';
   const conBarrio = [pendiente.street, barrio, pendiente.city].filter(Boolean).join(', ');
   const [o, d] = await Promise.all([
     db().from('ag_wa_sessions').update({ origin_address: conBarrio })
-      .eq('wa_phone', phone).eq('origin_address', pendiente.sinBarrio),
+      .eq('wa_phone', phone).eq('origin_address', pendiente.sinBarrio).select('wa_phone'),
     db().from('ag_wa_sessions').update({ dest_name: conBarrio })
-      .eq('wa_phone', phone).eq('dest_name', pendiente.sinBarrio),
+      .eq('wa_phone', phone).eq('dest_name', pendiente.sinBarrio).select('wa_phone'),
   ]);
   if (o.error || d.error) console.error('[Geo] completar barrio:', o.error ?? d.error);
+  return ((o.data?.length ?? 0) + (d.data?.length ?? 0)) > 0 ? 'guardado' : 'sesion_cambio';
 }
 
 // ─── Geocoding inverso (solo Mapbox) ───────────────────────────────────────────
@@ -8659,6 +8666,17 @@ serve(async (req) => {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return new Response('Bad Request', { status: 400 }); }
 
+  // Pulso para mantener la función despierta (cron movi-calentar-whatsapp, migración 314,
+  // 2026-10-05). Medido ese día: la primera ubicación tras unos minutos sin uso tarda
+  // 1,6-1,9 s (arranque en frío: cargar este archivo, abrir la conexión a la base y cargar
+  // PostGIS); con la función despierta, 0,6-0,7 s. Con pocos pasajeros al día casi todos
+  // caían en frío. Se consulta la tabla de barrios para dejar lista también esa parte.
+  // No manda mensajes ni toca datos.
+  if (body.calentar === true && Object.keys(body).length === 1) {
+    await barrioDeTabla(7.8939, -72.5078);
+    return new Response('ok', { status: 200 });
+  }
+
   // Envío manual desde código Angular (no de Meta ni de trigger)
   if (!body._internal_event && !body.entry && (body.phone || body.to === 'admin')) {
     const { phone, to, event, data, message } = body as Record<string, unknown>;
@@ -9256,20 +9274,21 @@ serve(async (req) => {
         // Barrio que nuestra tabla no tenía: se busca en Nominatim AHORA, con la respuesta ya
         // enviada (ver completarBarrioEnSegundoPlano). waitUntil deja terminar la tarea sin
         // retrasar el 200 a Meta.
-        if (!isSupportNumber && rawLat != null && rawLng != null) {
-          const tarea = completarBarrioEnSegundoPlano(fromPhone, rawLat, rawLng)
-            .catch(e => console.error('[Geo] completar barrio:', e));
-          (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(tarea);
-        }
-
         // DESPUÉS de su respuesta normal (para no interrumpir): pedirle el celular si lo tiene oculto.
         await pedirCelularSiOculto(fromPhone, isSupportNumber);
 
-        // Fire-and-forget: no debe agregar latencia a la respuesta real que
-        // ya se le mandó al pasajero.
+        // Registro de tiempos (migraciones 239/312/313), en segundo plano: no le agrega nada a
+        // la respuesta que ya se le mandó. Se escribe cuando termina la búsqueda del barrio
+        // para guardar también qué pasó con él (barrio_tarde).
         if (rawLat != null && rawLng != null) {
-          db().from('ag_wa_location_latency').insert({ wa_phone: fromPhone, ms: Date.now() - t0, geo_ms: geoMs, respuesta_ms: respuestaMs })
+          const msTotal = Date.now() - t0;
+          const tarea = (isSupportNumber ? Promise.resolve('soporte') : completarBarrioEnSegundoPlano(fromPhone, rawLat, rawLng))
+            .catch(e => { console.error('[Geo] completar barrio:', e); return 'error'; })
+            .then(estado => db().from('ag_wa_location_latency').insert({
+              wa_phone: fromPhone, ms: msTotal, geo_ms: geoMs, respuesta_ms: respuestaMs, barrio_tarde: estado,
+            }))
             .then(({ error }) => { if (error) console.error('[WA] location latency log error:', error); });
+          (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(tarea);
         }
       }
     } catch (e) {
