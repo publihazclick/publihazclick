@@ -5748,6 +5748,24 @@ async function manejarComprobanteNequi(phone: string, msgType: string, msgText: 
     return true;
   }
 
+  // La recarga ya se cargó y no ha hablado de otra, o la foto trae una pregunta: NO es un comprobante.
+  // Caso real 2026-10-05 (…8217, lo detectó el revisor en tiempo real): con los $10.000 ya cargados
+  // mandó "[foto] Una pregunta la aplicación sale así" y el bot contestó "¡Recibí tu comprobante!"
+  // y le volvió a avisar al admin; la siguiente foto no tuvo ninguna respuesta.
+  const tCargado = filas.find(r => r.direction === 'out' && (r.body ?? '').startsWith('✅ ¡Listo! Te cargamos'))?.created_at;
+  const tPago = filas.find(r => (r.direction === 'in' && TEXTO_DICE_PAGO_NEQUI.test(r.body ?? '')) ||
+    (r.direction === 'out' && (r.body ?? '').startsWith(MARCA_PIDE_COMPROBANTE)))?.created_at;
+  const cicloCerrado = !!tCargado && (!tPago || tCargado > tPago);
+  if (!dicePago && (cicloCerrado || pideAlgoTexto(msgText))) {
+    // Varias fotos seguidas: se le dice una sola vez.
+    if (await yaLeDijimosEsto(phone, 'Vi tu foto 📸', 10)) return true;
+    await sendSupportText(phone,
+      `Vi tu foto 📸 pero por este chat no puedo ver imágenes.\n\n` +
+      `¿Me escribes qué te sale en la pantalla o cuál es tu duda? Así te ayudo 🙌\n\n` +
+      `_Si es el comprobante de otra recarga, escríbeme "hice una recarga" y me mandas la foto._`);
+    return true;
+  }
+
   // Un archivo sin contexto de recarga (p. ej. una foto de documentos) sigue el camino de siempre.
   if (!dicePago && !dijoQuePago && !lePedimos) return false;
 
@@ -7939,7 +7957,7 @@ async function leadSaludar(phone: string, name: string, primerMensaje: string, e
  */
 function pideAlgoTexto(msg: string): boolean {
   return /[?¿]/.test(msg) ||
-    /\b(informaci[oó]n|info|deme|d[eé]me|cu[eé]nte(me|nos)?|expl[ií]que(me)?|explica|de qu[eé] se trata|qu[eé] es|c[oó]mo (es|funciona|se)|cu[aá]nto|requisitos?|documentos?)\b/i.test(msg);
+    /\b(informaci[oó]n|info|deme|d[eé]me|cu[eé]nte(me|nos)?|expl[ií]que(me)?|explica|de qu[eé] se trata|qu[eé] es|c[oó]mo (es|funciona|se)|cu[aá]nto|requisitos?|documentos?|pregunta|duda|consulta|no entiendo|no s[eé])\b/i.test(msg);
 }
 function esCierreOAcuse(msg: string): boolean {
   const t = normalizarTexto(msg).replace(/[¡!¿?.,;:]/g, ' ').replace(/\s+/g, ' ').trim();

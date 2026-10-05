@@ -17,6 +17,7 @@ const casos: Array<[string, (t: string) => unknown, unknown]> = [
   ['Cuénteme de q se trata', f.pideAlgoTexto, true],
   ['Es como indriver?', f.pideAlgoTexto, true],
   ['Fernando casanova', f.pideAlgoTexto, false],
+  ['Una pregunta la aplicación sale así', f.pideAlgoTexto, true],
   // cierres y acuses
   ['Por ahora nada , gracias', f.esCierreOAcuse, true],
   ['Ok señora', f.esCierreOAcuse, true],
