@@ -5708,14 +5708,26 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
 
       @if (driverSection() === null) {
 
-      @if (driverStatus() === 'quick') {
-        <div class="rounded-2xl p-4 flex items-start gap-3"
+      <!-- Mensaje de saldo (decisión del usuario 2026-10-04): ya NO se dice "no necesitas saldo para tu
+           primera carrera" -- quien no recarga no se toma en serio la app. Se pide recargar mínimo $10.000 y se
+           aclara que el primer viaje no descuenta nada. La LÓGICA no cambió (el primer viaje se puede tomar sin
+           saldo). Se muestra a quien todavía no tiene $10.000 de saldo. -->
+      @if ((driverStatus() === 'quick' || driverStatus() === 'pending' || driverStatus() === 'approved') && driverWalletBalance() < 10000 && !walletPanelOpen()) {
+        <div class="rounded-2xl p-4 flex flex-col gap-3"
           style="background:linear-gradient(135deg,rgba(36,91,219,0.10),rgba(59,130,246,0.07));border:1px solid rgba(36,91,219,0.25)">
-          <span class="material-symbols-outlined flex-shrink-0" style="font-size:28px;color:#245BDB">rocket_launch</span>
-          <div>
-            <p class="font-black text-sm" style="color:#0f172a">No necesitas saldo para tu primera carrera</p>
-            <p class="text-slate-600 text-xs leading-relaxed mt-0.5">Acepta un viaje ahora mismo sin saldo ni aprobación. Después de tu primer viaje completa tu registro.</p>
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:28px;color:#245BDB">rocket_launch</span>
+            <div class="min-w-0">
+              <p class="font-black text-sm" style="color:#0f172a;margin:0">Recarga mínimo {{ formatCOP(10000) }} para aceptar viajes</p>
+              <p class="text-slate-600 text-xs leading-relaxed mt-1" style="margin-bottom:0">En tu primer viaje no se te descuenta nada de tu saldo; el descuento empieza desde el segundo viaje.</p>
+            </div>
           </div>
+          <button (click)="toggleWalletPanel()"
+            class="w-full rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            style="min-height:46px;background:linear-gradient(135deg,#245BDB,#1d4ed8)">
+            <span class="material-symbols-outlined" style="font-size:18px">account_balance_wallet</span>
+            Recargar ahora
+          </button>
         </div>
       }
       @if (driverStatus() === 'pending_docs') {

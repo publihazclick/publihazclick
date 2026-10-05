@@ -5423,6 +5423,18 @@ async function recordatorioConectarse(motivo: string, telefonos: string[]): Prom
 // Cada opción tiene su respuesta concreta; la elección queda en ag_wallet_payments.ayuda_paso y se le
 // avisa al admin. "Me cobraron y no veo el saldo", "Otro problema" y "Sigue sin funcionar" pasan a un
 // asesor (el bot se calla para no pisarlo). Los ids rec_* son estables; el texto se puede cambiar.
+// MENSAJE DE SALDO (decisión del usuario 2026-10-04, después de hablar con conductores): ya NO se dice
+// que el primer viaje no necesita saldo -- quien no ha recargado "no se toma en serio" estar pendiente de
+// la app ni de los viajes. Se dice que hay que recargar mínimo $10.000 para aceptar viajes y que el primer
+// viaje no descuenta nada. OJO: la LÓGICA no cambió (cc_accept_offer sigue dejando tomar el primer viaje
+// sin saldo); esto es solo lo que se le DICE al conductor.
+const MENSAJE_SALDO_INICIAL = 'El primer paso es *descargar la app y recargar mínimo $10.000* a tu saldo para poder aceptar viajes. En tu *primer viaje no se te descuenta nada*; el descuento empieza desde el *segundo viaje*.';
+// Recarga por Nequi directo (desde 2026-10-04 la app ya no muestra ePayco).
+const NEQUI_RECARGA = '313 445 3649';
+const PASOS_RECARGA_NEQUI =
+  `1. En la app toca tu *Saldo* → *Recargar*.\n` +
+  `2. Envía el valor que quieras recargar (mínimo $10.000) al *Nequi ${NEQUI_RECARGA}*.\n` +
+  `3. Mándanos por aquí la *captura del comprobante* y te cargamos el saldo completo, sin comisión, en pocos minutos.`;
 const PLANTILLA_AYUDA_RECARGA = 'movi_recarga_no_completada';
 const BOTON_PLANTILLA_AYUDA_RECARGA = 'Contarte qué pasó';
 // "no pude recargar", "no puedo recargar el saldo", "no me deja recargar", "problema con la recarga".
@@ -5430,7 +5442,7 @@ const BOTON_PLANTILLA_AYUDA_RECARGA = 'Contarte qué pasó';
 const ESCRIBIO_NO_PUDO_RECARGAR = /^(?=.{0,120}$).*\b(no\s+(pude|puedo|logr[eéo]|me\s+deja|me\s+dej[oó])\s+(hacer\s+(la\s+)?)?recarg|problema\w*\s+(con|para|en)\s+(la\s+|mi\s+)?recarg)/i;
 
 const PASOS_RECARGA: Record<string, { titulo: string; desc: string }> = {
-  rec_p_no_abre:  { titulo: 'No abrió el pago',          desc: 'Toqué pagar y no se abrió la página de ePayco' },
+  rec_p_no_abre:  { titulo: 'No abrió el pago',          desc: 'Toqué pagar y no se abrió la página de pago' },
   rec_p_banco:    { titulo: 'El banco o Nequi rechazó',  desc: 'Llegué a pagar y me salió rechazado' },
   rec_p_medio:    { titulo: 'No sé cómo pagar',          desc: 'No sé qué medio elegir o cómo hacerlo' },
   rec_p_comision: { titulo: 'No entiendo el cobro',      desc: 'Me cobra más de lo que me llega' },
@@ -5458,7 +5470,7 @@ async function notaSaldoConductor(tel: string): Promise<string> {
     // Regla de saldo del 2026-10-04 (igual para todos los estados): primer viaje gratis; desde el
     // segundo, alcanza con tener en el saldo la comisión de ese viaje (12% del precio).
     if (!(Number(d.metric_trips_completed) > 0)) {
-      return `💡 *Dato importante:* tu *primera carrera no necesita saldo*. Ponte en línea y acepta un viaje sin recargar. Desde el segundo viaje sí necesitas saldo para la comisión.\n\n`;
+      return `💡 *Dato importante:* ${MENSAJE_SALDO_INICIAL}\n\n`;
     }
     return `💡 *Dato importante:* para aceptar un viaje solo necesitas tener en tu saldo la *comisión de ese viaje* (12% del precio; por ejemplo $1.200 en un viaje de $10.000). Hoy tienes $${Number(d.wallet_balance ?? 0).toLocaleString('es-CO')}.\n\n`;
   } catch (e) { console.error('[WA] notaSaldoConductor:', e); }
@@ -5533,7 +5545,7 @@ async function manejarAyudaRecarga(tel: string, msgText: string, btnId?: string)
     const etiqueta = id === 'rec_sigue' ? 'Sigue sin funcionar' : PASOS_RECARGA[id].titulo;
     await registrarPasoRecarga(tel, id === 'rec_sigue' ? 'sigue_sin_funcionar' : id.replace('rec_p_', ''), etiqueta);
     const texto = id === 'rec_p_cobrado'
-      ? `Tranquilo, lo revisamos 🙏 Envíanos por aquí una *captura del comprobante* del pago (o el número de referencia de ePayco) y un asesor te acredita el saldo apenas lo confirme.`
+      ? `Tranquilo, lo revisamos 🙏 Envíanos por aquí una *captura del comprobante* de Nequi y un asesor te acredita el saldo apenas lo confirme.`
       : `Cuéntanos con tus palabras qué pasó o envíanos una *captura de pantalla* del error. Ya le avisamos a un asesor y te escribe por aquí 🙏`;
     await sendSupportText(tel, texto);
     // Que el bot no le responda encima al asesor (mismo mecanismo que el resto de escaladas).
@@ -5542,29 +5554,15 @@ async function manejarAyudaRecarga(tel: string, msgText: string, btnId?: string)
   }
 
   const respuestas: Record<string, string> = {
+    // Desde 2026-10-04 la app solo muestra la recarga por Nequi: todas estas respuestas llevan a ese camino.
     rec_p_no_abre:
-      `Prueba así 👇\n\n` +
-      `1. Actualiza Movi en Play Store a la última versión.\n` +
-      `2. Revisa que tengas buena señal o Wi-Fi.\n` +
-      `3. En la app toca tu *Saldo* → *Recargar*, elige el monto y el medio de pago, y toca pagar.\n` +
-      `4. Se abre la página de *ePayco*: no cierres la app mientras pagas.\n\n` +
-      `¿Pudiste recargar?`,
+      `Ahora la recarga es más fácil, directo por Nequi 👇\n\n${PASOS_RECARGA_NEQUI}\n\n¿Pudiste recargar?`,
     rec_p_banco:
-      `Ese rechazo casi siempre lo pone el banco, no Movi. Revisa según tu medio de pago 👇\n\n` +
-      `• *PSE*: necesitas tener activa la banca por internet y cupo para pagos en línea.\n` +
-      `• *Nequi*: después de elegirlo te llega una notificación en la app de Nequi; tienes pocos minutos para aceptarla.\n` +
-      `• *Tarjeta*: tiene que estar habilitada para compras por internet.\n\n` +
-      `Si un medio no te deja, prueba con otro (por ejemplo Nequi en vez de PSE). ¿Pudiste recargar?`,
+      `Ahora no necesitas pasar por el banco: recarga directo por Nequi 👇\n\n${PASOS_RECARGA_NEQUI}\n\n¿Pudiste recargar?`,
     rec_p_medio:
-      `Así se recarga 👇\n\n` +
-      `1. En la app toca tu *Saldo* → *Recargar*.\n` +
-      `2. Elige el monto (mínimo $10.000).\n` +
-      `3. Elige *PSE / Nequi* o *Tarjeta* y toca pagar.\n` +
-      `4. En la página de *ePayco* eliges tu banco o Nequi y confirmas.\n\n` +
-      `El saldo aparece apenas el pago se aprueba. ¿Pudiste recargar?`,
+      `Así se recarga 👇\n\n${PASOS_RECARGA_NEQUI}\n\n¿Pudiste recargar?`,
     rec_p_comision:
-      `Cuando recargas, la pasarela de pago (ePayco) y el banco cobran una comisión por el pago. Por eso pagas un poco más de lo que llega a tu saldo: por ejemplo, para recargar *$10.000* pagas *$12.380*.\n\n` +
-      `Esa diferencia no es para Movi, y la app te la muestra antes de pagar. ¿Pudiste recargar?`,
+      `Ahora la recarga por Nequi es *sin comisión*: si envías $10.000, te llegan $10.000 completos 🙌\n\n${PASOS_RECARGA_NEQUI}\n\n¿Pudiste recargar?`,
   };
   const texto = respuestas[id];
   if (!texto) return false;
@@ -6706,7 +6704,7 @@ Un mismo conductor puede recibir solicitudes de varios de estos servicios según
 ═══ DINERO: CÓMO SE PAGA UN CONDUCTOR ═══
 - El pasajero le paga al conductor DIRECTO (no pasa por Movi). Movi cobra su comisión de la billetera prepagada del conductor, no del pago del viaje.
 - Comisión de Movi: 12% fijo. Se CALCULA sobre el valor de cada viaje, pero se DESCUENTA del saldo prepagado de la billetera del conductor, automáticamente. NUNCA digas que se descuenta "del valor de la carrera", "del pago del viaje" ni "de lo que te paga el pasajero": el conductor recibe el 100% de lo que le paga el pasajero, y la comisión sale aparte de su billetera. (Error real del 2026-10-01: el bot le dijo a un lead que se descontaba del valor de cada carrera.)
-- El conductor debe mantener saldo en su billetera para poder seguir recibiendo viajes. *La recarga mínima es de $10.000 COP.* Se recarga desde la app por ePayco (la pasarela de pagos; si alguien escribe "EPC", "epayco" o parecido, se refiere a eso) con tarjeta, PSE, Nequi, DaviPlata o en efectivo. El PRIMER viaje no necesita saldo.
+- El conductor debe tener saldo en su billetera para recibir y aceptar viajes. *El primer paso es descargar la app y recargar mínimo $10.000 COP.* En el PRIMER viaje no se le descuenta nada del saldo; el descuento del 12% empieza desde el SEGUNDO viaje. NUNCA digas que se puede trabajar o aceptar el primer viaje sin saldo o sin recargar (decisión del dueño 2026-10-04). Se recarga por *Nequi, sin comisión*: en la app toca Saldo → Recargar, envía el valor (mínimo $10.000) al Nequi 313 445 3649 y manda la captura del comprobante por este WhatsApp; un asesor carga el saldo completo en pocos minutos. Ya NO se recarga por ePayco, PSE, tarjeta, DaviPlata ni efectivo (si alguien escribe "EPC" o "epayco", explícale que ahora es por Nequi).
 - *¿Cuánto se puede ganar?* Sé honesto: depende del tiempo que el conductor tenga disponible y de cuántos servicios acepte -- eso no lo define Movi, lo define él. Lo que sí puedes decirle con certeza es cómo se reparte cada viaje: él cobra el 100% del valor directo del pasajero y Movi solo descuenta el 12% de su billetera. NUNCA inventes un ingreso mensual, diario ni por hora, ni des rangos "estimados": no los sabes.
 - *Precio sugerido de un viaje en carro:* arranca en $4.000 y suma alrededor de $1.300 por kilómetro. En la práctica, un viaje típico de ciudad de unos 5 km sale en unos $10.500 (o sea alrededor de $2.000 por kilómetro), y entre más largo el viaje, menos pesa el cobro base. En horas de alta demanda el sugerido sube automáticamente. Es solo un SUGERIDO: el pasajero puede ofrecer otro precio y el conductor puede aceptar o contraofertar.
 - *Precio sugerido de un viaje en MOTO (es DISTINTO al de carro, nunca uses el de carro para moto):* arranca en $2.500 y suma alrededor de $960 por kilómetro (mínimo $3.000). Un viaje típico de unos 5 km en moto sale en unos $7.500, o sea alrededor de $1.500 por kilómetro. (Error real del 2026-10-02: a un motero se le respondió con la tarifa de carro.)
@@ -6738,7 +6736,7 @@ Un mismo conductor puede recibir solicitudes de varios de estos servicios según
 - Se puede cambiar el número de celular registrado (pide verificación por SMS al número nuevo) y dar de baja la cuenta desde el menú de Seguridad en la app -- dar de baja bloquea el acceso pero no borra el historial.
 
 ═══ CONFIANZA / "¿VALE LA PENA?" ═══
-Si preguntan CÓMO SE USA la app, cómo funciona, cómo se trabaja o cómo se reciben viajes -- aunque esté mal escrito o sea muy corto ("como como se utiliza", "y cómo es eso", "cómo se trabaja ahí") -- SIEMPRE "answer" con el paso a paso de "CÓMO FUNCIONA UN VIAJE" de arriba (En línea con GPS, llegan solicitudes, aceptar o contraofertar, recoger, el pasajero paga directo, Movi descuenta el 12% de la billetera, el primer viaje sin saldo). NUNCA escales esto: tienes toda la información. (Error real 2026-10-02: se escaló "Como como se utiliza".)
+Si preguntan CÓMO SE USA la app, cómo funciona, cómo se trabaja o cómo se reciben viajes -- aunque esté mal escrito o sea muy corto ("como como se utiliza", "y cómo es eso", "cómo se trabaja ahí") -- SIEMPRE "answer" con el paso a paso de "CÓMO FUNCIONA UN VIAJE" de arriba (En línea con GPS, llegan solicitudes, aceptar o contraofertar, recoger, el pasajero paga directo, Movi descuenta el 12% de la billetera; antes de empezar hay que recargar mínimo $10.000 y el primer viaje no descuenta nada). NUNCA escales esto: tienes toda la información. (Error real 2026-10-02: se escaló "Como como se utiliza".)
 
 Frases de cortesía o saludo ("qué pena la hora", "disculpe la hora", "buenas noches", "perdón la molestia") NO son pedidos de viaje: responde con calidez ("¡Tranquilo, aquí estoy a cualquier hora! ¿En qué te ayudo?"). Solo mándalo al número de pasajeros si de verdad pide un viaje o un domicilio. (Error real 2026-10-02: a "Que pena la hora" se le respondió que este número no es para pedir viajes.)
 
@@ -8041,9 +8039,8 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
 // ─── Conversación completa del número de soporte ──────────────────────────────
 /** Cómo se recarga la billetera. Medios confirmados por el usuario en su video de recargas. */
 const RESPUESTA_COMO_RECARGAR =
-  `Se recarga desde la app, con el botón *Recargar* de tu billetera, por *ePayco* (la pasarela de pagos de Movi) 💳\n\n` +
-  `Puedes pagar con *Nequi*, *DaviPlata*, *PSE*, tarjeta o en *efectivo*. La recarga mínima es de *$10.000*.\n\n` +
-  `Recuerda que *tu primer viaje no necesita saldo*.`;
+  `Se recarga por *Nequi, sin comisión* 💚\n\n${PASOS_RECARGA_NEQUI}\n\n` +
+  `Recuerda: en tu *primer viaje no se te descuenta nada*; el descuento empieza desde el segundo viaje.`;
 
 async function handleSupportConversation(phone: string, name: string, msgText: string, btnId?: string): Promise<void> {
   // Foto, audio, sticker o archivo sin texto (2026-10-02, caso real …957): mandó una foto
@@ -8125,7 +8122,8 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
       `2️⃣ Te llegan las solicitudes cercanas con el precio que ofrece el pasajero.\n` +
       `3️⃣ La aceptas, o le haces una contraoferta.\n` +
       `4️⃣ Vas por el pasajero, lo llevas, y *él te paga directo a ti*.\n` +
-      `5️⃣ Movi descuenta el 12% de tu billetera (tu primer viaje no necesita saldo).\n\n` +
+      `5️⃣ Movi descuenta el 12% de tu billetera (en tu primer viaje no se te descuenta nada).\n\n` +
+      `👉 ${MENSAJE_SALDO_INICIAL}\n\n` +
       `Si aún no te registras: descarga la app 👉 ${APP_DOWNLOAD_LINK} y entra a *"Quiero ser conductor"*.\n\n` +
       `Aquí abajo te dejo un video de 3 minutos donde lo ves todo 👇`;
     await sendSupportText(phone, reply);
@@ -8209,7 +8207,7 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
         ? `${RESPUESTA_COMO_RECARGAR}\n\nTu saldo actual es *${fmtCOP(profile.walletBalance)}*.`
         : `Tu saldo actual en la billetera es *${fmtCOP(profile.walletBalance)}* 💰\n\n` +
           `De ahí se descuenta el 12% de comisión de cada viaje (lo que te paga el pasajero es 100% tuyo). ` +
-          `Recargas desde la app con Nequi, DaviPlata, PSE, tarjeta o efectivo, desde $10.000.`;
+          `Recargas por *Nequi, sin comisión*, desde $10.000: envía el valor al Nequi ${NEQUI_RECARGA} y mándanos la captura por aquí.`;
     } else if (asksDocs) {
       action = 'profile:docs';
       const lines = [
@@ -8279,7 +8277,9 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
     // recargas, "¿cómo recargo?" sí. Raíces sin \b por la misma razón que los regex de arriba.
     const t = normalizarTexto(msgText);
     if (/recarg|como (pago|se paga|cancelo) la comision|como meto (plata|saldo)|como pongo saldo/.test(t)) {
-      await sendSupportVideo(phone, 'recargas', 'faq_recargas');
+      // Video de recargas PAUSADO (2026-10-04): muestra el proceso por ePayco, que ya no existe en la app
+      // (ahora es solo Nequi) y dice "tu primer viaje no necesita saldo", que ya no se dice. El texto con
+      // los pasos de Nequi ya salió arriba. Volver a activarlo cuando haya un video nuevo de Nequi.
     } else if (asksReferral) {
       await sendSupportVideo(phone, 'invitados', 'faq_invitados');
     } else if (/como funciona|como se usa|como (uso|manejo) la (app|aplicacion)|como (recibo|acepto|tomo) (los |un |una )?(viaje|servicio|solicitud|carrera)|como me pongo en linea|como me conecto/.test(t)) {
