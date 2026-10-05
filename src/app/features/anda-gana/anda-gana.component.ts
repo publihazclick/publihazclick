@@ -11771,7 +11771,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { divider: true,  section: 'Mi cuenta', icon: '', label: '', action: '' },
     { icon: 'person',           label: 'Mi perfil',                action: 'profile',           divider: false, section: '' },
     { icon: 'star',             label: 'Mi nivel y puntos',        action: 'loyalty',           divider: false, section: '' },
-    { icon: 'account_balance_wallet', label: 'Mi wallet',          action: 'wallet',            divider: false, section: '' },
+    // 'Mi wallet' del pasajero QUITADO del menú (pedido del usuario 2026-10-04): los pasajeros no recargan
+    // saldo y su botón "Recargar" sumaba plata sin cobrar. Las comisiones de referidos van en "Recomienda y Gana".
     { icon: 'credit_card',      label: 'Métodos de pago',          action: 'paymentmethods',    divider: false, section: '' },
     { icon: 'favorite',         label: 'Direcciones favoritas',    action: 'favorites',         divider: false, section: '' },
     { divider: true,  section: 'Ganancias', icon: '', label: '', action: '' },
