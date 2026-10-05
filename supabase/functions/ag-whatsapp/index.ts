@@ -8165,32 +8165,133 @@ const LEAD_BTN_RECARGA = [
 ];
 const DIJO_YA_ME_REGISTRE = /ya\s+me\s+registr|ya\s+termin[eé]\s+(el\s+|mi\s+)?registro|ya\s+(estoy|qued[eé])\s+registrad|ya\s+llen[eé]\s+(los|mis)\s+datos/i;
 
+/** Columnas del conductor que hacen falta para la bienvenida con los datos del vehículo. */
+const COLS_BIENVENIDA = 'id, created_at, wallet_balance, vehicle_type, vehicle_brand, vehicle_model, vehicle_year, vehicle_color, vehicle_plate, plate';
+type ConductorBienvenida = {
+  id: string; created_at: string; wallet_balance: number | null; vehicle_type: string | null;
+  vehicle_brand: string | null; vehicle_model: string | null; vehicle_year: number | null;
+  vehicle_color: string | null; vehicle_plate: string | null; plate: string | null;
+};
+
+/** "jhon jairo martinez" -> "Jhon". El nombre con el que se registró en la app, no el del chat. */
+function primerNombre(full: string | null | undefined): string | null {
+  const p = (full ?? '').trim().split(/\s+/)[0];
+  if (!p || p.length < 2) return null;
+  return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+}
+
+/**
+ * Bienvenida al terminar el registro (2026-10-05, pedido del usuario): "tomando el nombre con el
+ * que se registró en la app le dices su nombre y veo que te has registrado como conductor de moto
+ * (o carro), le muestras los datos del vehículo que registró y le dices que el siguiente paso es
+ * recargar saldo". Así no tiene que avisar él, y se le confirma lo que quedó guardado.
+ * Corto a propósito ("vamos disminuyendo tantos textos innecesarios"): sin la nota del 12%.
+ */
+function textoBienvenidaRegistro(nombre: string | null, d: ConductorBienvenida): { texto: string; conSaldo: boolean } {
+  const tipo = (d.vehicle_type ?? '').trim().toLowerCase();
+  const veh = tipo === 'moto' ? 'moto 🏍️' : tipo === 'camion' ? 'camión 🚛' : 'carro 🚗';
+  const limpio = (s: string | null | undefined) => (s ?? '').trim();
+  const marca = [limpio(d.vehicle_brand), limpio(d.vehicle_model)].filter(Boolean).join(' ');
+  const placa = limpio(d.vehicle_plate || d.plate).toUpperCase();
+  const datos = [
+    marca && `• Marca: ${marca}`,
+    d.vehicle_year && `• Modelo: ${d.vehicle_year}`,
+    limpio(d.vehicle_color) && `• Color: ${limpio(d.vehicle_color)}`,
+    placa && `• Placa: ${placa}`,
+  ].filter(Boolean).join('\n');
+  const conSaldo = Number(d.wallet_balance ?? 0) >= 10000;
+  const texto =
+    `${nombre ? `¡${nombre}, ya` : '¡Ya'} quedaste registrado en Movi! 🎉\n\n` +
+    `Veo que te registraste como conductor de *${veh}*` + (datos ? `:\n${datos}` : '.') + `\n\n` +
+    (conSaldo
+      ? `Ya tienes saldo ✅, así que estás listo.\n\n${LEAD_PONTE_EN_LINEA}`
+      : `El siguiente paso es *recargar tu saldo*: mínimo *$10.000* por Nequi. Con eso ya te empiezan a llegar viajes 🚀`);
+  return { texto, conSaldo };
+}
+
+/** Manda la bienvenida (con botones de recarga si le falta saldo). */
+async function enviarBienvenidaRegistro(phone: string, nombre: string | null, d: ConductorBienvenida): Promise<void> {
+  const { texto, conSaldo } = textoBienvenidaRegistro(nombre, d);
+  if (conSaldo) { await sendSupportText(phone, texto); await leadInvitaYGana(phone); }
+  else await sendSupportButtons(phone, texto, LEAD_BTN_RECARGA);
+}
+
+/**
+ * Aviso automático apenas se registra (2026-10-05). Lo dispara el trigger de ag_drivers
+ * (migración 318) en cuanto la app guarda el vehículo. Solo se le escribe a quien está
+ * conversando con el chat de conductores: tiene que existir su lead y haber escrito en las
+ * últimas 24 h (fuera de esa ventana WhatsApp no deja mandar texto libre). Una sola vez por
+ * persona (bienvenida_registro_at), y nunca si el dueño está atendiendo ese chat a mano.
+ */
+async function bienvenidaConductorRegistrado(userId: string): Promise<{ enviado: boolean; motivo: string }> {
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return { enviado: false, motivo: 'id inválido' };
+  const { data: u } = await db().from('ag_users').select('id, full_name, phone, created_at').eq('id', userId).maybeSingle();
+  if (!u?.phone) return { enviado: false, motivo: 'sin teléfono' };
+  const { data: d } = await db().from('ag_drivers').select(COLS_BIENVENIDA).eq('ag_user_id', userId)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  const cond = d as ConductorBienvenida | null;
+  if (!cond?.vehicle_type) return { enviado: false, motivo: 'sin vehículo todavía' };
+  // Un conductor viejo que cambia de vehículo también dispara el trigger: eso no es un registro.
+  if (Date.now() - new Date(cond.created_at).getTime() > 48 * 3600e3) return { enviado: false, motivo: 'registro viejo' };
+
+  const phone = normWaPhone(toE164(u.phone as string));
+  const { data: lead } = await db().from('ag_driver_leads')
+    .select('wa_phone, ultimo_in_at, registrado_at, bienvenida_registro_at').eq('wa_phone', phone).maybeSingle();
+  if (!lead) return { enviado: false, motivo: 'no escribió al chat de conductores' };
+  if (lead.bienvenida_registro_at) return { enviado: false, motivo: 'ya se le dio la bienvenida' };
+  if (!lead.ultimo_in_at || Date.now() - new Date(lead.ultimo_in_at).getTime() > 23.5 * 3600e3) {
+    return { enviado: false, motivo: 'fuera de la ventana de 24 h' };
+  }
+  const { data: delAdmin } = await db().from('ag_wa_message_log').select('id')
+    .eq('wa_phone', phone).eq('role', 'conductor').eq('direction', 'out').eq('sent_by', 'admin')
+    .gte('created_at', new Date(Date.now() - 30 * 60e3).toISOString()).limit(1);
+  if (delAdmin?.length) return { enviado: false, motivo: 'el dueño está atendiendo este chat' };
+
+  // Reclamo atómico: si el trigger se dispara dos veces (INSERT + UPDATE del vehículo), sale una.
+  const ahora = new Date().toISOString();
+  const { data: tomado } = await db().from('ag_driver_leads')
+    .update({
+      bienvenida_registro_at: ahora, paso: 'registrado', ag_user_id: u.id,
+      registrado_at: lead.registrado_at ?? u.created_at, ultimo_out_at: ahora, nudges_enviados: 0, updated_at: ahora,
+    })
+    .eq('wa_phone', phone).is('bienvenida_registro_at', null).select('wa_phone');
+  if (!tomado?.length) return { enviado: false, motivo: 'ya se le dio la bienvenida' };
+
+  await enviarBienvenidaRegistro(phone, primerNombre(u.full_name as string | null), cond);
+  return { enviado: true, motivo: 'ok' };
+}
+
 /** "Ya me registré": se verifica de verdad (cuenta de conductor con este número) antes de seguir. */
 async function leadYaRegistrado(phone: string, lead: LeadRow | null): Promise<void> {
-  const { data: u } = await db().from('ag_users').select('id, full_name').eq('phone', toE164(phone)).maybeSingle();
-  const { data: d } = u ? await db().from('ag_drivers').select('id, wallet_balance').eq('ag_user_id', u.id).maybeSingle() : { data: null };
-  if (!d) {
+  const { data: u } = await db().from('ag_users').select('id, full_name, created_at').eq('phone', toE164(phone)).maybeSingle();
+  const { data: d } = u ? await db().from('ag_drivers').select(COLS_BIENVENIDA).eq('ag_user_id', u.id)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle() : { data: null };
+  const cond = d as ConductorBienvenida | null;
+  if (!cond) {
     await sendSupportButtons(phone,
       `Todavía no me aparece tu registro 🤔\n\n` +
       `Revisa que hayas terminado todos los pasos de *"Quiero ser conductor"* y que te registraste con *este mismo número* de WhatsApp.\n\n` +
       `Cuando termines, toca el botón otra vez 👇`, LEAD_BTN_REGISTRO);
     return;
   }
-  await upsertLead(phone, { paso: 'registrado', ultimo_out_at: new Date().toISOString(), nudges_enviados: 0 });
-  const nombre = (u?.full_name as string | undefined)?.trim().split(/\s+/)[0] ?? lead?.nombre_dado ?? null;
-
-  // Ya tiene saldo: directo a conectarse.
-  if (Number(d.wallet_balance ?? 0) >= 10000) {
-    await sendSupportText(phone,
-      `¡Bienvenido a Movi! 🎉 Ya tienes saldo, así que estás listo.\n\n${LEAD_PONTE_EN_LINEA}`);
-    await leadInvitaYGana(phone);
+  const nombre = primerNombre(u?.full_name as string | null) ?? lead?.nombre_dado ?? null;
+  const ahora = new Date().toISOString();
+  // Si el aviso automático ya le mostró sus datos, no se le repiten: solo se le confirma.
+  const { data: tomado } = await db().from('ag_driver_leads')
+    .update({ bienvenida_registro_at: ahora, paso: 'registrado', ag_user_id: u!.id, ultimo_out_at: ahora, nudges_enviados: 0, updated_at: ahora })
+    .eq('wa_phone', phone).is('bienvenida_registro_at', null).select('wa_phone');
+  if (lead && !tomado?.length) {
+    if (Number(cond.wallet_balance ?? 0) >= 10000) {
+      await sendSupportText(phone, `¡Sí${nombre ? `, ${nombre}` : ''}! Ya te veo registrado ✅ y con saldo.\n\n${LEAD_PONTE_EN_LINEA}`);
+    } else {
+      await sendSupportButtons(phone,
+        `¡Sí${nombre ? `, ${nombre}` : ''}! Ya te veo registrado ✅\n\nTe falta *recargar tu saldo*: mínimo *$10.000* por Nequi.`,
+        LEAD_BTN_RECARGA);
+    }
     return;
   }
-  await sendSupportButtons(phone,
-    `¡Bienvenido a Movi! 🎉 Ya casi estás listo para recibir viajes.\n\n` +
-    `El último paso es *recargar tu saldo*: mínimo *$10.000*. Con eso ya puedes aceptar viajes.\n\n` +
-    `Tranquilo: en tu *primer viaje no se te descuenta nada*. Desde el segundo viaje, Movi descuenta el 12% de cada viaje de ese saldo.`,
-    LEAD_BTN_RECARGA);
+  if (!lead) await upsertLead(phone, { paso: 'registrado', bienvenida_registro_at: ahora, ultimo_out_at: ahora, nudges_enviados: 0 });
+  await enviarBienvenidaRegistro(phone, nombre, cond);
 }
 
 /** Cómo recargar, en pasos cortos. La captura la atiende manejarComprobanteNequi. */
@@ -9284,6 +9385,14 @@ serve(async (req) => {
     const n = await recordatorioConectarse(String(body.motivo ?? 'diario'), tels)
       .catch(e => { console.error('[WA] recordatorioConectarse:', e); return 0; });
     return new Response(JSON.stringify({ enviados: n }), { headers: { 'Content-Type': 'application/json' } });
+  }
+
+  // Terminó el registro de conductor -> bienvenida con su nombre y su vehículo (migración 318).
+  if (body._internal_event === 'bienvenida_conductor') {
+    if (!(await esLlamadaDeServicio())) return noAutorizado();
+    const r = await bienvenidaConductorRegistrado(String(body.ag_user_id ?? ''))
+      .catch(e => { console.error('[WA] bienvenidaConductorRegistrado:', e); return { enviado: false, motivo: 'error' }; });
+    return new Response(JSON.stringify(r), { headers: { 'Content-Type': 'application/json' } });
   }
 
   // Recarga de saldo sin completar -> preguntarle al conductor en qué paso se quedó (migración 307).

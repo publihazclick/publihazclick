@@ -59,3 +59,28 @@ Deno.test('el saludo del paso nombre no dice "Mucho gusto" si no dio un nombre',
   const c = f.introPasoNombre('Johan Hernández', 'Johan');
   if (/Mucho gusto/.test(a) || /Mucho gusto/.test(b) || !/Mucho gusto/.test(c)) throw new Error([a, b, c].join(' | '));
 });
+
+// Bienvenida automática al registrarse (2026-10-05, migración 318). Caso real …2330: se registró
+// con moto y el chat no le dijo nada. Debe decir su nombre de la app, moto/carro, los datos del
+// vehículo y que lo siguiente es recargar -- sin la nota del 12% ("textos innecesarios").
+Deno.test('bienvenida al registrarse: nombre, vehículo y recarga', async () => {
+  const trozo = (ini: string, fin: string) => { const i = src.indexOf(ini); const j = src.indexOf(fin, i); if (i < 0 || j < 0) throw new Error('no encontré ' + ini); return src.slice(i, j); };
+  const codigo = [
+    trozo('const LEAD_PONTE_EN_LINEA', ';\n') + ';',
+    trozo('type ConductorBienvenida', '};\n') + '};',
+    trozo('function primerNombre(', '\n}\n') + '\n}',
+    trozo('function textoBienvenidaRegistro(', '\n}\n') + '\n}',
+    'export { primerNombre, textoBienvenidaRegistro };',
+  ].join('\n');
+  const m = await import('data:application/typescript;base64,' + btoa(unescape(encodeURIComponent(codigo))));
+  const base = { id: 'x', created_at: '', vehicle_model: null, vehicle_plate: null };
+  const moto = m.textoBienvenidaRegistro(m.primerNombre('JHON jairo Martinez'),
+    { ...base, wallet_balance: 0, vehicle_type: 'moto', vehicle_brand: 'Hero', vehicle_year: 2023, vehicle_color: 'Azul ', plate: 'gqw61g' });
+  const t = moto.texto as string;
+  for (const debe of ['¡Jhon, ya quedaste registrado', '*moto 🏍️*', 'Marca: Hero', 'Modelo: 2023', 'Color: Azul\n', 'Placa: GQW61G', 'recargar tu saldo', '$10.000']) {
+    if (!t.includes(debe)) throw new Error(`falta "${debe}" en:\n${t}`);
+  }
+  if (/12%|primer viaje/i.test(t) || moto.conSaldo) throw new Error(t);
+  const carro = m.textoBienvenidaRegistro(null, { ...base, wallet_balance: 20000, vehicle_type: 'carro', vehicle_brand: 'Spark ', vehicle_year: 2009, vehicle_color: null, plate: 'CWK748' });
+  if (!carro.conSaldo || !carro.texto.includes('*carro 🚗*') || carro.texto.includes('recargar tu saldo') || carro.texto.includes('Color:')) throw new Error(carro.texto);
+});
