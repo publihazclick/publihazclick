@@ -9,7 +9,7 @@ function grab(name: string): string {
   const j = src.indexOf('\n}\n', i);
   return src.slice(i, j + 2).replace(/\): (boolean|string \| null|string) \{/, ') {').replace(/\((\w+): string(, (\w+): string \| null)?\)/, (_m, a, _b, c) => c ? `(${a}, ${c})` : `(${a})`);
 }
-const nombres = ['normalizarTexto', 'pideAlgoTexto', 'esCierreOAcuse', 'diceQueLuego', 'esRespuestaAutomatica', 'introPasoNombre', 'leeNombreDado'];
+const nombres = ['normalizarTexto', 'pideHumano', 'pideAlgoTexto', 'esCierreOAcuse', 'diceQueLuego', 'esRespuestaAutomatica', 'introPasoNombre', 'leeNombreDado'];
 const f = new Function(nombres.map(grab).join('\n') + `\nreturn { ${nombres.join(', ')} };`)();
 
 const casos: Array<[string, (t: string) => unknown, unknown]> = [
@@ -39,6 +39,10 @@ const casos: Array<[string, (t: string) => unknown, unknown]> = [
   ["Gracias por comunicarte con EHBRA 'S. Agente on line de productos y servicios . Estamos atentos a sus requerimientos", f.esRespuestaAutomatica, true],
   ['Gracias por tu mensaje. Si no te respondo inmediatamente , si lo haré lo antes posible.', f.esRespuestaAutomatica, true],
   ['Gracias', f.esRespuestaAutomatica, false],
+  // pide una persona (aunque no diga 'asesor')
+  ['Necesito hablar c9n  victor landazuri', (t: string) => f.pideHumano(t), true],
+  ['Quiero hablar con el dueño', (t: string) => f.pideHumano(t), true],
+  ['el asesor me dijo que sí', (t: string) => f.pideHumano(t), false],
   // nombre
   ['Johan Hernández', f.leeNombreDado, 'Johan'],
   ['Cuénteme de q se trata', (t: string) => f.pideAlgoTexto(t) ? null : f.leeNombreDado(t), null],

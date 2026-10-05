@@ -7834,7 +7834,9 @@ function pideHumano(texto: string): boolean {
   // Hacen falta las DOS mitades: "el asesor me dijo que sí" menciona un asesor pero
   // no está pidiendo uno. Las raíces van sin terminación a propósito (atend- cubre
   // atender/atienda/atiendan; pued- cubre puedo/puede/pueden).
-  return /(asesor|humano|una persona|con alguien|agente|operador|representante)/.test(t)
+  // "Necesito hablar con Victor Landazuri" / "con el dueño" (caso real 2026-10-05, …5200): no decía
+  // "asesor" y el bot lo trató como un lead más.
+  return /(asesor|humano|una persona|con alguien|agente|operador|representante|victor|landazur|el due[nñ]o|el gerente|el jefe|el se[nñ]or|la se[nñ]ora|administrador)/.test(t)
       && /(hablar|habla con|comunicar|pasame|pasar|quiero|necesito|pued|atend|atienda|contacto)/.test(t);
 }
 
@@ -8727,6 +8729,16 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
     return;
   }
 
+  // El dueño está atendiendo este chat a mano (2026-10-05, …5200): escribió "Hola / ¿De quién me hablas?"
+  // y el bot igual le contestó a la persona por encima. Si hay un mensaje del admin en los últimos
+  // 30 minutos, el bot se queda callado (el mensaje igual queda en el registro y en la bandeja).
+  {
+    const { data: delAdmin } = await db().from('ag_wa_message_log').select('id')
+      .eq('wa_phone', normWaPhone(phone)).eq('role', 'conductor').eq('direction', 'out').eq('sent_by', 'admin')
+      .gte('created_at', new Date(Date.now() - 30 * 60e3).toISOString()).limit(1);
+    if (delAdmin && delAdmin.length) return;
+  }
+
   // Contestador automático de un negocio (caso real 2026-10-05, …0399): mandaba dos mensajes y el bot
   // respondía dos veces "¿En qué te ayudo?". A una máquina no se le contesta.
   if (!btnId && esRespuestaAutomatica(msgText)) return;
@@ -8991,6 +9003,9 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
 
   await escalateSupportConversation(phone, name, msgText);
   await logSupportInteraction(phone, msgText, 'escalate', null);
+  // Lead del embudo escalado: sin esto, su siguiente mensaje anulaba la escalada ("un lead en el embudo
+  // nunca se deja callado") y el bot seguía hablando mientras el asesor atendía (…5200, 2026-10-05).
+  if (await getLead(phone)) await upsertLead(phone, { paso: 'humano' });
 }
 
 // ─── Servidor principal ───────────────────────────────────────────────────────
