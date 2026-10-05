@@ -5604,7 +5604,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
             <span class="material-symbols-outlined flex-shrink-0" style="font-size:24px;color:#22d3ee">{{ c.icono }}</span>
             <div class="flex-1 min-w-0">
               <p class="font-black text-sm" style="margin:0">{{ c.titulo }}</p>
-              <p class="text-xs leading-relaxed" style="margin:4px 0 10px;color:rgba(255,255,255,0.85)">{{ c.texto }}</p>
+              <p class="text-xs leading-relaxed" style="margin:4px 0 10px;color:rgba(255,255,255,0.85);white-space:pre-line">{{ c.texto }}</p>
               <button (click)="cerrarConsejo()" class="rounded-lg text-xs font-black active:scale-95"
                 style="min-height:34px;padding:0 14px;background:#22d3ee;color:#0f172a">Entendido</button>
             </div>
@@ -5789,12 +5789,13 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
                 @if (!paso.hecho && paso.detalle) {
                   <p class="text-slate-500 text-xs leading-snug" style="margin:2px 0 0">{{ paso.detalle }}</p>
                 }
+                @if (!paso.hecho && paso.accion) {
+                  <!-- Debajo del texto y no al lado: a 320 px, al lado, partía el título en 3 líneas. -->
+                  <button (click)="ejecutarAccionAyuda(paso.id)"
+                    class="rounded-lg text-xs font-black text-white active:scale-95 transition-all"
+                    style="min-height:36px;padding:0 16px;margin-top:8px;background:#245BDB">{{ paso.accion }}</button>
+                }
               </div>
-              @if (!paso.hecho && paso.accion) {
-                <button (click)="ejecutarAccionAyuda(paso.id)"
-                  class="flex-shrink-0 rounded-lg text-xs font-black text-white active:scale-95 transition-all"
-                  style="min-height:36px;padding:0 12px;background:#245BDB">{{ paso.accion }}</button>
-              }
             </div>
           }
         </div>
@@ -11075,11 +11076,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   });
   private readonly _consejoSolicitud = effect(() => {
     if (this.driverData() && this.visibleDriverRequests().length > 0) untracked(() => this._mostrarConsejo('primera_solicitud', 'local_offer', 'Te llegó una solicitud 🚗',
-      'Tienes 2 opciones: toca "Aceptar" si te sirve el precio del pasajero, o "Contra-oferta" para proponer tu precio.'));
+      'Tienes 2 opciones:\n• "Aceptar" si te sirve el precio del pasajero.\n• "Contra-oferta" para proponer tu precio.'));
   });
   private readonly _consejoViajeAceptado = effect(() => {
     if (this.driverActiveTrips().length > 0) untracked(() => this._mostrarConsejo('viaje_aceptado', 'navigation', '¡Tienes un viaje! 🙌',
-      '1. Toca "Origen" para ir a recoger. 2. Al llegar, "Llegué al punto de recogida". 3. Cuando se suba, "Pasajero a bordo". 4. Al llegar al destino, "Finalizar viaje".'));
+      '1. Toca "Origen" para ir a recoger.\n2. Al llegar, toca "Llegué al punto de recogida".\n3. Cuando se suba, toca "Pasajero a bordo".\n4. Al llegar al destino, toca "Finalizar viaje".'));
   });
   private readonly _consejoPrimerViaje = effect(() => {
     if (this.viajesHechos() === 1) untracked(() => this._mostrarConsejo('primer_viaje', 'celebration', '¡Hiciste tu primer viaje! 🎉',
