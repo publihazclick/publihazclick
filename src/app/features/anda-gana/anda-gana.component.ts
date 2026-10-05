@@ -5605,12 +5605,13 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
           : 'background:linear-gradient(135deg,#0f172a,#1e293b);border:1.5px solid rgba(34,211,238,0.25);border-radius:18px;padding:14px 16px;cursor:pointer;position:relative;overflow:hidden'">
         <!-- glow -->
         <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(34,211,238,0.08);pointer-events:none"></div>
-        <div class="flex items-center justify-center flex-shrink-0"
+        <!-- Ícono decorativo: se oculta en celulares angostos para que el saldo no parta en 3 líneas -->
+        <div class="hidden min-[400px]:flex items-center justify-center flex-shrink-0"
           style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,rgba(34,211,238,0.2),rgba(6,182,212,0.12));border:1px solid rgba(34,211,238,0.3)">
           <span class="material-symbols-outlined" style="font-size:22px;color:#22d3ee;font-variation-settings:'FILL' 1">account_balance_wallet</span>
         </div>
         <div class="flex-1 min-w-0 text-left">
-          <p style="color:rgba(148,163,184,0.9);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0">Saldo de Recarga</p>
+          <p class="whitespace-nowrap" style="color:rgba(148,163,184,0.9);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0">Saldo de Recarga</p>
           <p style="color:#fff;font-size:20px;font-weight:900;margin:0;line-height:1.15;letter-spacing:-0.01em">{{ formatCOP(driverWalletBalance()) }}</p>
           <p style="color:rgba(34,211,238,0.7);font-size:10px;font-weight:600;margin:0;margin-top:1px">Se descuenta desde la 2ª carrera</p>
         </div>
@@ -5633,36 +5634,54 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
 
       <!-- Panel de recarga inline (se abre debajo de la tarjeta) -->
       @if (walletPanelOpen()) {
-        <div style="background:#FFFFFF;border:1.5px solid rgba(34,211,238,0.25);border-top:none;border-radius:0 0 18px 18px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-top:-2px">
-          <!-- Recarga por Nequi, sin comisión (2026-10-04): va primero porque es la que sí funciona. -->
-          <div class="rounded-2xl p-3 flex flex-col gap-2" style="background:#F0FDF4;border:1.5px solid #86EFAC">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined" style="font-size:20px;color:#16a34a;font-variation-settings:'FILL' 1">savings</span>
-              <p class="text-slate-900 text-sm font-black" style="margin:0">Recarga por Nequi · sin comisión</p>
-            </div>
-            <p class="text-slate-600 text-xs leading-snug" style="margin:0">
-              1. Envía el valor que quieras recargar (mínimo {{ formatCOP(10000) }}) a este Nequi:
-            </p>
-            <div class="flex items-center gap-2">
-              <span class="flex-1 text-slate-900 font-black tracking-wide" style="font-size:18px">313 445 3649</span>
-              <button (click)="copiarNequi()"
-                class="px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 active:scale-95"
-                style="background:#16a34a;color:#fff">
-                <span class="material-symbols-outlined" style="font-size:14px">{{ nequiCopiado() ? 'check' : 'content_copy' }}</span>
-                {{ nequiCopiado() ? 'Copiado' : 'Copiar' }}
-              </button>
-            </div>
-            <p class="text-slate-600 text-xs leading-snug" style="margin:0">
-              2. Mándanos la captura del comprobante por WhatsApp. Te cargamos el saldo completo, sin descuentos, en pocos minutos.
-            </p>
-            <a [href]="nequiComprobanteUrl()" target="_blank" rel="noopener"
-              class="w-full py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
-              style="background:#25D366;color:#fff;text-decoration:none">
-              <!-- Logo de WhatsApp (pedido del usuario: que se entienda que abre WhatsApp) -->
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35M12.05 21.5h-.01a9.4 9.4 0 0 1-4.79-1.31l-.34-.2-3.56.93.95-3.47-.22-.36a9.38 9.38 0 0 1-1.44-5.01c0-5.19 4.23-9.42 9.43-9.42 2.52 0 4.88.98 6.66 2.76a9.36 9.36 0 0 1 2.76 6.67c0 5.2-4.23 9.42-9.44 9.42M20.07 3.92A11.27 11.27 0 0 0 12.05.6C5.8.6.72 5.68.72 11.93c0 2 .52 3.95 1.52 5.67L.62 23.4l5.94-1.56a11.3 11.3 0 0 0 5.48 1.4h.01c6.25 0 11.33-5.08 11.33-11.33 0-3.03-1.18-5.87-3.31-8.01"/></svg>
-              Enviar comprobante por WhatsApp
-            </a>
+        <!-- Recarga por Nequi, sin comisión (2026-10-04). Rediseño: una sola superficie (antes caja dentro
+             de caja), pasos numerados, número de Nequi grande y botones de al menos 44-48 px para el dedo.
+             La columna del conductor ya tiene max-w-lg, así que en computador no se estira. -->
+        <div style="background:#FFFFFF;border:1.5px solid rgba(34,211,238,0.25);border-top:none;border-radius:0 0 18px 18px;padding:18px 16px 16px;display:flex;flex-direction:column;gap:16px;margin-top:-18px">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <p class="text-slate-900 font-black" style="margin:0;font-size:16px;line-height:1.2">Recarga por Nequi</p>
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-black" style="background:#DCFCE7;color:#15803d">Sin comisión</span>
           </div>
+
+          <!-- Paso 1 -->
+          <div class="flex gap-3">
+            <span class="flex items-center justify-center flex-shrink-0 rounded-full text-xs font-black"
+              style="width:24px;height:24px;background:#16a34a;color:#fff">1</span>
+            <p class="flex-1 min-w-0 text-slate-700 text-sm leading-snug" style="margin:0">
+              Envía el valor que quieras recargar <span class="text-slate-500">(mínimo {{ formatCOP(10000) }})</span> a este Nequi:
+            </p>
+          </div>
+          <!-- Número a todo el ancho: con sangría, a 320 px el botón Copiar tapaba los últimos dígitos. -->
+          <div class="flex items-center gap-2 rounded-xl p-1.5 pl-3" style="background:#F0FDF4;border:1px solid #BBF7D0;margin-top:-6px">
+                <span class="flex-1 min-w-0 text-slate-900 font-black whitespace-nowrap" style="font-size:clamp(17px,5.4vw,21px);letter-spacing:0.02em">313 445 3649</span>
+                <button (click)="copiarNequi()"
+                  class="flex-shrink-0 rounded-lg text-xs font-black flex items-center justify-center gap-1 active:scale-95 transition-all"
+                  style="min-height:40px;padding:0 14px;color:#fff"
+                  [style.background]="nequiCopiado() ? '#15803d' : '#16a34a'">
+                  <span class="material-symbols-outlined" style="font-size:16px">{{ nequiCopiado() ? 'check' : 'content_copy' }}</span>
+                  {{ nequiCopiado() ? 'Copiado' : 'Copiar' }}
+                </button>
+          </div>
+
+          <!-- Paso 2 -->
+          <div class="flex gap-3">
+            <span class="flex items-center justify-center flex-shrink-0 rounded-full text-xs font-black"
+              style="width:24px;height:24px;background:#16a34a;color:#fff">2</span>
+            <p class="flex-1 min-w-0 text-slate-700 text-sm leading-snug" style="margin:0">
+              Mándanos la captura del comprobante por WhatsApp.
+            </p>
+          </div>
+
+          <a [href]="nequiComprobanteUrl()" target="_blank" rel="noopener"
+            class="w-full rounded-xl font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            style="min-height:50px;padding:0 16px;font-size:15px;background:#25D366;color:#fff;text-decoration:none;box-shadow:0 4px 14px rgba(37,211,102,0.3)">
+            <!-- Logo de WhatsApp (pedido del usuario: que se entienda que abre WhatsApp) -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35M12.05 21.5h-.01a9.4 9.4 0 0 1-4.79-1.31l-.34-.2-3.56.93.95-3.47-.22-.36a9.38 9.38 0 0 1-1.44-5.01c0-5.19 4.23-9.42 9.43-9.42 2.52 0 4.88.98 6.66 2.76a9.36 9.36 0 0 1 2.76 6.67c0 5.2-4.23 9.42-9.44 9.42M20.07 3.92A11.27 11.27 0 0 0 12.05.6C5.8.6.72 5.68.72 11.93c0 2 .52 3.95 1.52 5.67L.62 23.4l5.94-1.56a11.3 11.3 0 0 0 5.48 1.4h.01c6.25 0 11.33-5.08 11.33-11.33 0-3.03-1.18-5.87-3.31-8.01"/></svg>
+            <span class="whitespace-nowrap">Enviar comprobante<span class="hidden min-[400px]:inline"> por WhatsApp</span></span>
+          </a>
+          <p class="text-slate-500 text-xs text-center leading-snug" style="margin:-6px 0 0">
+            Te cargamos el saldo completo, sin descuentos, en pocos minutos.
+          </p>
           <!-- ePayco QUITADO del panel del conductor (pedido del usuario 2026-10-04: "dejemos solo Nequi
                para no enredar el proceso"). Desde el 28-ago ninguna recarga por ePayco se completó. La
                lógica (startWalletRecharge, ag-create-wallet-recharge, ag-epayco-webhook) sigue en el
