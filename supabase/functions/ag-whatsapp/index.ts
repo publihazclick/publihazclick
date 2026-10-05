@@ -466,6 +466,14 @@ function summarizeOutboundPayload(payload: Record<string, unknown>): { text: str
     const loc = payload.location as Record<string, unknown>;
     return { text: `[ubicación] ${(loc?.name as string) ?? ''} ${(loc?.address as string) ?? ''}`.trim(), type };
   }
+  // Plantillas: nombre + variables, para que la bandeja muestre qué salió y para poder buscar en el
+  // log (el aviso de solicitud a conductores se deduplica por el id corto que va en las variables).
+  if (type === 'template') {
+    const tpl = payload.template as Record<string, unknown>;
+    const comps = (tpl?.components as Array<Record<string, unknown>> | undefined) ?? [];
+    const vars = comps.flatMap(c => ((c.parameters as Array<Record<string, unknown>> | undefined) ?? []).map(p => String(p.text ?? '')));
+    return { text: `[plantilla ${tpl?.name ?? '?'}] ${vars.join(' | ')}`.trim(), type };
+  }
   return { text: `[${type}]`, type };
 }
 
@@ -5231,6 +5239,12 @@ async function presentIdleOrPendingRating(phone: string, idleAction: () => Promi
 // conductores en las últimas 24 h -- dentro de esa ventana el texto libre es gratis y no hay
 // plantilla que pueda clasificarse como marketing.
 //
+// AMPLIADO 2026-10-04 (pedido del usuario: "que todos los conductores sean avisados de cada viaje
+// según el tipo de vehículo, todos"): 43 de 102 conductores no tenían token de push (nunca activaron
+// las notificaciones) y por eso NUNCA se enteraban de nada. Ahora a los que NO tienen la ventana de
+// 24 h abierta les llega la plantilla UTILITY PLANTILLA_SOLICITUD (de pago, ~US$0,001 c/u en Colombia).
+// Solo sale si Meta la tiene APROBADA y como UTILITY; si la pasara a MARKETING no se manda.
+//
 // Cuidados, porque es el mismo número que atiende a los conductores y su calidad importa:
 //  - mismas reglas del push (vehículo, estado, notify_new_requests) -- ag_notify_drivers_on_trip_request
 //  - ventana de 23,5 h (margen sobre las 24 h de Meta)
@@ -5239,6 +5253,7 @@ async function presentIdleOrPendingRating(phone: string, idleAction: () => Promi
 //  - "NO MÁS" lo apaga (ag_wa_support_sessions.alertas_viaje_off, migración 302), sin tocar el push
 // ════════════════════════════════════════════════════════════════════════════
 const MARCA_ALERTA_VIAJE = '🚗 *Nueva solicitud de viaje';
+const PLANTILLA_SOLICITUD = 'movi_solicitud_viaje_conductor';
 // Desde Play Store se toca "Abrir" y se entra a la app (los enlaces web abren el navegador).
 const ENLACE_ABRIR_MOVI = 'https://play.google.com/store/apps/details?id=com.publihazclick.movi';
 const MARCA_DESCONECTADO = '📴 Quedaste desconectado de Movi';
@@ -5283,20 +5298,25 @@ async function alertaSolicitudConductores(tripId: string, simular = false): Prom
     sb.from('ag_wa_message_log').select('wa_phone, body').eq('role', 'conductor').eq('direction', 'out')
       .like('body', `${MARCA_ALERTA_VIAJE}%`).gte('created_at', new Date(Date.now() - 24 * 3600e3).toISOString()).in('wa_phone', tels),
   ]);
+  // Los avisos por plantilla también cuentan para el tope diario y para no repetir el mismo viaje.
+  const { data: recientesTpl } = await sb.from('ag_wa_message_log').select('wa_phone, body').eq('role', 'conductor').eq('direction', 'out')
+    .like('body', `[plantilla ${PLANTILLA_SOLICITUD}]%`).gte('created_at', new Date(Date.now() - 24 * 3600e3).toISOString()).in('wa_phone', tels);
   const conVentana = new Set((entrantes ?? []).map((r: { wa_phone: string }) => r.wa_phone));
   const sinAlertas = new Set((apagados ?? []).map((r: { wa_phone: string }) => r.wa_phone));
   const enViaje = new Set((ocupados ?? []).map((r: { driver_id: string }) => r.driver_id));
   const cuenta = new Map<string, number>();
   const yaAvisados = new Set<string>();
-  for (const r of (recientes ?? []) as Array<{ wa_phone: string; body: string }>) {
+  for (const r of [...(recientes ?? []), ...(recientesTpl ?? [])] as Array<{ wa_phone: string; body: string }>) {
     cuenta.set(r.wa_phone, (cuenta.get(r.wa_phone) ?? 0) + 1);
     // El mensaje lleva los primeros 8 caracteres del id ("solicitud 265e13d0"), no el id entero.
     if (r.body.includes(tripId.slice(0, 8))) yaAvisados.add(r.wa_phone);
   }
-  const destino = tels.filter(t => conVentana.has(t) && !sinAlertas.has(t) && !enViaje.has(porTel.get(t)!)
+  const avisables = tels.filter(t => !sinAlertas.has(t) && !enViaje.has(porTel.get(t)!)
     && !yaAvisados.has(t) && (cuenta.get(t) ?? 0) < 12);
-  if (simular) return { enviados: 0, candidatos: destino.length, destino: destino.map(t => t.slice(-4)) };
-  if (!destino.length) return { enviados: 0, candidatos: 0 };
+  const destino = avisables.filter(t => conVentana.has(t));            // texto libre, gratis
+  const destinoTpl = avisables.filter(t => !conVentana.has(t));        // plantilla de pago
+  if (simular) return { enviados: 0, candidatos: avisables.length, destino: [...destino.map(t => t.slice(-4)), ...destinoTpl.map(t => 'tpl' + t.slice(-4))] };
+  if (!avisables.length) return { enviados: 0, candidatos: 0 };
 
   // Última verificación justo antes de mandar: si alguien ya la tomó, no se avisa a nadie.
   const { data: sigue } = await sb.from('ag_trip_requests').select('status').eq('id', tripId).maybeSingle();
@@ -5316,7 +5336,24 @@ async function alertaSolicitudConductores(tripId: string, simular = false): Prom
     `_(solicitud ${tripId.slice(0, 8)})_\n\n` +
     `_Te llega por aquí porque nos escribiste hoy. Si no quieres estos avisos, responde *NO MÁS*._`;
   const res = await Promise.all(destino.map(t => sendSupportText(t, texto, 'sistema')));
-  return { enviados: res.filter(r => r.ok).length, candidatos: destino.length };
+
+  let resTpl: WaResult[] = [];
+  if (destinoTpl.length) {
+    const info = await fetch(`https://graph.facebook.com/v22.0/${WABA_ID}/message_templates?name=${PLANTILLA_SOLICITUD}&fields=name,status,category,language`, {
+      headers: { Authorization: `Bearer ${WA_TOKEN}` },
+    }).then(r => r.json()).catch(() => ({})) as { data?: Array<{ status: string; category: string; language: string }> };
+    const tpl = info?.data?.[0];
+    if (tpl?.status === 'APPROVED' && tpl.category === 'UTILITY') {
+      const vars = [precio, trip.origin_name ?? 'Recogida', trip.dest_name ?? 'Destino', km, tripId.slice(0, 8)].map(v => tplParam(String(v)));
+      resTpl = await Promise.all(destinoTpl.map(t => sendSupportGraph({
+        to: t, type: 'template',
+        template: { name: PLANTILLA_SOLICITUD, language: { code: tpl.language }, components: [{ type: 'body', parameters: vars.map(v => ({ type: 'text', text: v })) }] },
+      }, 'sistema')));
+    } else {
+      console.warn('[WA] aviso de solicitud por plantilla NO enviado: plantilla', tpl?.status ?? 'inexistente', tpl?.category ?? '');
+    }
+  }
+  return { enviados: res.filter(r => r.ok).length + resTpl.filter(r => r.ok).length, candidatos: avisables.length };
 }
 
 /**
@@ -8454,7 +8491,10 @@ serve(async (req) => {
     if (body.accion === 'crear') {
       const ya = await consultar() as { data?: unknown[] };
       if (Array.isArray(ya?.data) && ya.data.length) return new Response(JSON.stringify({ ya_existia: true, ...ya }), { headers: { 'Content-Type': 'application/json' } });
-      const comps: unknown[] = [{ type: 'BODY', text: String(body.cuerpo ?? '') }];
+      const cuerpo: Record<string, unknown> = { type: 'BODY', text: String(body.cuerpo ?? '') };
+      // Plantillas con variables ({{1}}, {{2}}...): Meta las rechaza sin un valor de ejemplo por variable.
+      if (Array.isArray(body.ejemplos) && body.ejemplos.length) cuerpo.example = { body_text: [(body.ejemplos as unknown[]).map(String)] };
+      const comps: unknown[] = [cuerpo];
       if (body.pie) comps.push({ type: 'FOOTER', text: String(body.pie) });
       // Botones de respuesta rápida (hasta 3), p. ej. la ayuda de recarga.
       if (Array.isArray(body.botones) && body.botones.length) {
