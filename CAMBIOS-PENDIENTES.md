@@ -13,6 +13,20 @@
 
 ## Pendiente de subir
 
+### Rediseño de la pantalla principal del conductor, copia del diseño del usuario (2026-10-05)
+- **Por qué**: el usuario mandó la imagen de cómo quiere la pantalla (captura `Screenshot_20261005_092717...jhjr.jpg`)
+  y pidió que quede "tal cual", con tamaños y todo.
+- **Qué cambia (solo web, `anda-gana.component.ts`; NO necesita APK: la app carga la web)**: saludo grande en 2 líneas,
+  píldora "Modo Conductor" + menú de 32 px arriba a la derecha, tarjetas naranja/azul planas de 140 px, saldo casi negro
+  con "+ Recargar" blanco, "Solicitudes en vivo" con el punto después, botones de ayuda de 44 px, ubicación en una
+  barra de una línea, mapa de borde a borde azul marino con calles cian y + / − arriba a la derecha, fondo gris claro.
+- **Quitado porque no está en el diseño**: botón de actualizar junto a "Solicitudes en vivo" y botón de fuego (zonas con
+  demanda) del mapa. `reloadFullPage()` y `toggleHeatmap()` siguen en el código por si se reponen.
+- **Verificado**: página de prueba con el mismo HTML, fotografiada en Chrome a 360 px y medida contra el diseño: todo a
+  ≤2 px (botones de ayuda +3 px de ancho). Probado también a 320 y 412 px y con nombre largo, sin cortes. `ngc` OK.
+  NO probado aún en el celular real.
+
+
 ### Solicitudes de viaje: envío push en paralelo + aviso por WhatsApp a conductores con ventana abierta (2026-10-03)
 - **Por qué**: el usuario vio que la solicitud tarda en llegar a los conductores. Medido: el servidor la saca en
   <0,5 s (cola de pg_net 0,2-0,4 s) pero Android entrega el push tarde o nunca con la app cerrada (de 579 avisos

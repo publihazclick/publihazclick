@@ -74,14 +74,14 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
     }
   `],
   host: {
-    '[style.background]': "screen() === 'splash' ? '#245BDB' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'",
+    '[style.background]': "screen() === 'splash' ? '#245BDB' : screen() === 'driver-form' ? '#060b17' : screen() === 'driver-home' ? '#F2F3F7' : '#FFFFFF'",
     '[style.min-height]': "'100dvh'",
     '[style.display]': "'block'",
     '[style.transition]': "'background 0.3s'",
   },
   template: `
 <div class="min-h-screen w-full flex flex-col items-center"
-  [style.background]="screen() === 'splash' ? '#245BDB' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'"
+  [style.background]="screen() === 'splash' ? '#245BDB' : screen() === 'driver-form' ? '#060b17' : screen() === 'driver-home' ? '#F2F3F7' : '#FFFFFF'"
   [style.padding]="screen() === 'quick-register' || screen() === 'passenger-home' ? '0' : screen() === 'driver-home' ? '0 16px' : '24px 16px'"
   style="min-height:100dvh">
 
@@ -5325,27 +5325,29 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
   @if (screen() === 'driver-home') {
     <div class="w-full max-w-lg flex flex-col gap-4 pt-3 pb-8">
 
-      <!-- Header conductor -->
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="font-black text-lg leading-tight" style="color:#0f172a">¡Hola, {{ firstName() }}!</h1>
-          <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
-              style="background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.25);color:#0891b2;font-size:11px">
-              <span class="material-symbols-outlined" style="font-size:11px">directions_car</span> Modo Conductor
+      <!-- Header conductor (rediseño 2026-10-05, copia exacta del diseño que mandó el usuario; medidas
+           tomadas de la imagen a escala de un celular de 360 px): saludo grande en 2 líneas, y arriba a
+           la derecha la píldora "Modo Conductor" + menú cuadrado de 32 px (sin la palabra MENÚ). -->
+      <!-- La píldora y el menú van fijos arriba a la derecha, al lado de "¡Hola," (línea corta), y el
+           nombre usa todo el ancho de la línea de abajo: con flex el nombre se partía ("Carlos" / "!").
+           Nombres de más de 11 letras bajan de tamaño para caber en una línea. -->
+      <div style="position:relative;padding-top:15px;margin-bottom:1px">
+        <h1 [style.font-size]="firstName().length > 11 ? 'clamp(26px,8.6vw,32px)' : null" style="margin:0;overflow-wrap:anywhere;color:#000;font-weight:800;font-size:clamp(32px,calc(44px - (360px - 100vw) * 0.2),44px);line-height:1.04;letter-spacing:-0.035em">¡Hola,<br>{{ firstName() }}!</h1>
+        <div class="flex items-center" style="position:absolute;top:15px;right:0;gap:8px;margin-top:6.5px">
+          <span class="inline-flex items-center"
+            style="height:28px;padding:0 14.75px;border-radius:999px;background:#D7E3F9;color:#4068C0;font-size:13.5px;font-weight:600;white-space:nowrap;letter-spacing:-0.01em">Modo Conductor</span>
+          <!-- 32 px a la vista como en el diseño; el padding negativo agranda la zona que se toca a 48 px. -->
+          <button (click)="driverMenuOpen.set(true)" aria-label="Menú"
+            class="flex items-center justify-center active:scale-90 transition-all"
+            style="padding:8px;margin:-8px;background:none;border:none">
+            <span class="flex items-center justify-center"
+              style="width:32px;height:32px;border-radius:7px;background:#ECEDF1;border:1px solid #C5C9D2">
+              <span class="flex flex-col items-start" style="gap:4px">
+                <span class="block" style="width:18px;height:1.6px;border-radius:1px;background:#3F4552"></span>
+                <span class="block" style="width:17px;height:1.6px;border-radius:1px;background:#3F4552"></span>
+                <span class="block" style="width:13px;height:1.6px;border-radius:1px;background:#3F4552"></span>
+              </span>
             </span>
-          </div>
-        </div>
-        <div class="flex items-center gap-2">
-          <button (click)="driverMenuOpen.set(true)"
-            class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 rounded-xl"
-            style="background:#F3F4F6;border:1px solid #E5E7EB;min-width:48px;min-height:48px;padding:8px 12px">
-            <div class="flex flex-col items-center gap-1">
-              <span class="block rounded-full bg-slate-600" style="width:18px;height:2px"></span>
-              <span class="block rounded-full bg-slate-600" style="width:18px;height:2px"></span>
-              <span class="block rounded-full bg-slate-600" style="width:14px;height:2px"></span>
-            </div>
-            <span class="text-slate-600 font-bold" style="font-size:10px;letter-spacing:0.06em">MENÚ</span>
           </button>
         </div>
       </div>
@@ -5528,35 +5530,36 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
         </div>
       }
 
-      <!-- ══ Tarjetas rápidas: Beneficios + Invitados ══ -->
-      <div class="grid grid-cols-2 gap-2">
+      <!-- ══ Tarjetas rápidas: Beneficios + Invitados (rediseño 2026-10-05, ver encabezado) ══
+           140 px de alto, colores planos, ícono en cuadro blanco de 34 px. Los títulos terminan a la
+           misma altura y los subtítulos empiezan a la misma altura en las dos tarjetas (caja de 40 px
+           alineada abajo), igual que en el diseño. "Gana / Invitando" va en 2 líneas a propósito. -->
+      <div class="grid grid-cols-2" style="gap:16px">
         <!-- Mis Beneficios -->
         <button (click)="openDriverSection('benefits')"
-          class="flex flex-col items-start gap-1.5 active:scale-[0.98] transition-transform"
-          style="background:linear-gradient(135deg,#d97706,#b45309);border-radius:12px;padding:10px 12px;border:none;cursor:pointer;position:relative;overflow:hidden">
-          <div class="flex items-center justify-between w-full">
-            <div class="flex items-center justify-center flex-shrink-0"
-              style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.18)">
-              <span class="material-symbols-outlined" style="font-size:16px;color:#fff;font-variation-settings:'FILL' 1">workspace_premium</span>
-            </div>
-          </div>
-          <div class="text-left">
-            <p style="color:#fff;font-weight:700;font-size:12px;margin:0;line-height:1.3">Mis Beneficios</p>
-            <p style="color:rgba(255,255,255,0.8);font-size:10px;margin:0;line-height:1.3">Ver beneficios</p>
-          </div>
+          class="flex flex-col items-start text-left active:scale-[0.98] transition-transform"
+          style="height:140px;background:#FF923B;border-radius:14px;padding:12px;border:none;cursor:pointer;box-shadow:0 8px 18px -8px rgba(15,23,42,0.30)">
+          <span class="flex items-center justify-center flex-shrink-0"
+            style="width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,0.9)">
+            <span class="material-symbols-outlined" style="font-size:26px;color:#FF7A00;font-variation-settings:'FILL' 1">featured_seasonal_and_gifts</span>
+          </span>
+          <span class="flex items-end" style="height:40px;margin-top:2px">
+            <span style="color:#fff;font-weight:700;font-size:16.5px;line-height:1.08;letter-spacing:-0.015em">Mis Beneficios</span>
+          </span>
+          <span style="margin-top:6px;color:rgba(255,255,255,0.93);font-size:11px;font-weight:600;line-height:1.35">• Ver beneficios&nbsp;→</span>
         </button>
         <!-- Gana por invitar -->
         <button (click)="openDriverSection('referrals')"
-          class="flex flex-col items-start gap-1.5 active:scale-[0.98] transition-transform"
-          style="background:linear-gradient(135deg,#245BDB,#3B82F6);border-radius:12px;padding:10px 12px;border:none;cursor:pointer">
-          <div class="flex items-center justify-center flex-shrink-0"
-            style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.15)">
-            <span class="material-symbols-outlined" style="font-size:16px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
-          </div>
-          <div class="text-left">
-            <p style="color:#fff;font-weight:700;font-size:12px;margin:0;line-height:1.3">Gana Invitando</p>
-            <p style="color:rgba(255,255,255,0.8);font-size:10px;margin:0;line-height:1.3">Gana 2% por cada invitado</p>
-          </div>
+          class="flex flex-col items-start text-left active:scale-[0.98] transition-transform"
+          style="height:140px;background:#2D6CED;border-radius:14px;padding:12px;border:none;cursor:pointer;box-shadow:0 8px 18px -8px rgba(15,23,42,0.30)">
+          <span class="flex items-center justify-center flex-shrink-0"
+            style="width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,0.9)">
+            <span class="material-symbols-outlined" style="font-size:26px;color:#2D6CED;font-variation-settings:'FILL' 1">group</span>
+          </span>
+          <span class="flex items-end" style="height:40px;margin-top:2px">
+            <span style="color:#fff;font-weight:700;font-size:16.5px;line-height:1.08;letter-spacing:-0.015em">Gana<br>Invitando</span>
+          </span>
+          <span style="margin-top:6px;color:rgba(255,255,255,0.93);font-size:11px;font-weight:600;line-height:1.35">• Gana 2% por cada invitado&nbsp;→</span>
         </button>
       </div>
       <!-- Banner resultado pago wallet -->
@@ -5651,38 +5654,25 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
       }
 
       <!-- ══ Tarjeta Wallet (saldo de recarga) — siempre visible, toggle panel ══ -->
+      <!-- Rediseño 2026-10-05 (ver encabezado): 161 px de alto, fondo casi negro sin borde con puntos y
+           calles tenues de adorno, monto grande y botón "+ Recargar" blanco sólido centrado a la derecha.
+           Con el panel abierto el botón dice "× Cerrar" (mismo estilo) y las esquinas de abajo quedan rectas
+           para que el panel se pegue debajo, como antes. -->
       <button (click)="toggleWalletPanel()"
-        class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
-        [style]="walletPanelOpen()
-          ? 'background:linear-gradient(135deg,#0f172a,#1e293b);border:1.5px solid rgba(34,211,238,0.5);border-radius:18px 18px 0 0;padding:14px 16px;cursor:pointer;position:relative;overflow:hidden'
-          : 'background:linear-gradient(135deg,#0f172a,#1e293b);border:1.5px solid rgba(34,211,238,0.25);border-radius:18px;padding:14px 16px;cursor:pointer;position:relative;overflow:hidden'">
-        <!-- glow -->
-        <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(34,211,238,0.08);pointer-events:none"></div>
-        <!-- Ícono decorativo: se oculta en celulares angostos para que el saldo no parta en 3 líneas -->
-        <div class="hidden min-[400px]:flex items-center justify-center flex-shrink-0"
-          style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,rgba(34,211,238,0.2),rgba(6,182,212,0.12));border:1px solid rgba(34,211,238,0.3)">
-          <span class="material-symbols-outlined" style="font-size:22px;color:#22d3ee;font-variation-settings:'FILL' 1">account_balance_wallet</span>
-        </div>
-        <div class="flex-1 min-w-0 text-left">
-          <p class="whitespace-nowrap" style="color:rgba(148,163,184,0.9);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0">Tu saldo</p>
-          <p style="color:#fff;font-size:20px;font-weight:900;margin:0;line-height:1.15;letter-spacing:-0.01em">{{ formatCOP(driverWalletBalance()) }}</p>
-          <p style="color:rgba(34,211,238,0.7);font-size:10px;font-weight:600;margin:0;margin-top:1px">De aquí se descuenta el 12% de cada viaje, desde tu 2º viaje</p>
-        </div>
-        <div class="flex flex-col items-center gap-0.5 flex-shrink-0">
-          @if (walletPanelOpen()) {
-            <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl"
-              style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3)">
-              <span class="material-symbols-outlined" style="font-size:15px;color:#f87171">expand_less</span>
-              <span style="color:#f87171;font-size:11px;font-weight:800">Cerrar</span>
-            </div>
-          } @else {
-            <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl"
-              style="background:linear-gradient(135deg,rgba(34,211,238,0.2),rgba(6,182,212,0.12));border:1px solid rgba(34,211,238,0.3)">
-              <span class="material-symbols-outlined" style="font-size:14px;color:#22d3ee">add_circle</span>
-              <span style="color:#22d3ee;font-size:11px;font-weight:800">Recargar</span>
-            </div>
-          }
-        </div>
+        class="w-full flex items-center text-left active:scale-[0.99] transition-transform"
+        [style.border-radius]="walletPanelOpen() ? '14px 14px 0 0' : '14px'"
+        style="position:relative;overflow:hidden;background:#0B0D1C;border:none;cursor:pointer;gap:10px;padding:33.5px 14px 32px 13px;margin-top:10px;box-shadow:0 10px 20px -10px rgba(15,23,42,0.45)">
+        <!-- Adorno: calles tenues en diagonal (como un mapa de fondo) -->
+        <span aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(118deg,transparent 0 46px,rgba(120,150,190,0.07) 46px 47px),repeating-linear-gradient(28deg,transparent 0 58px,rgba(120,150,190,0.06) 58px 59px)"></span>
+        <!-- Adorno: puntos cian sobre el borde derecho que se desvanecen hacia adentro -->
+        <span aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(circle,rgba(70,190,210,0.5) 1.1px,transparent 1.7px);background-size:10px 10px;-webkit-mask-image:radial-gradient(ellipse 34% 80% at 100% 50%,#000 0%,rgba(0,0,0,0.3) 55%,transparent 100%);mask-image:radial-gradient(ellipse 34% 80% at 100% 50%,#000 0%,rgba(0,0,0,0.3) 55%,transparent 100%)"></span>
+        <span class="flex-1 min-w-0" style="position:relative">
+          <span class="block" style="color:#66B9CA;font-size:11px;font-weight:600;letter-spacing:0.13em;text-transform:uppercase;line-height:1">Tu saldo</span>
+          <span class="block" style="margin-top:9px;color:#F8F8F8;font-size:clamp(20px,calc(27px - (360px - 100vw) * 0.1),27px);font-weight:800;letter-spacing:-0.045em;line-height:1.1;white-space:nowrap">{{ formatCOP(driverWalletBalance()) }}</span>
+          <span class="block" style="margin-top:9px;color:#79C6D0;font-size:clamp(10px,calc(12.5px - (360px - 100vw) * 0.05),12.5px);font-weight:500;line-height:18px;white-space:nowrap">De aquí se descuenta el 12%<br>de cada viaje, desde tu 2º viaje</span>
+        </span>
+        <span class="inline-flex items-center flex-shrink-0"
+          style="position:relative;height:34px;padding:0 clamp(8px,calc(11px - (360px - 100vw) * 0.05),11px);border-radius:8px;background:#FFFFFF;color:#080818;font-size:clamp(13px,calc(14.5px - (360px - 100vw) * 0.03),14.5px);font-weight:700;letter-spacing:-0.02em;white-space:nowrap">{{ walletPanelOpen() ? '× Cerrar' : '+ Recargar' }}</span>
       </button>
 
       <!-- Panel de recarga inline (se abre debajo de la tarjeta) -->
@@ -6015,37 +6005,29 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
              viajes?" y "Actualizar" iban en una sola línea y se amontonaban). Línea 1: título + contador +
              actualizar (solo ícono). Línea 2: "¿No te llegan viajes?" a todo el ancho, y solo cuando no hay
              solicitudes (si están llegando, no hace falta). El modal flotante muestra el detalle. -->
-        <div class="flex flex-col gap-2" [style.display]="walletPanelOpen() ? 'none' : null">
-          <div class="flex items-center justify-between gap-2 px-1">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="flex-shrink-0 rounded-full" style="width:8px;height:8px"
-                [style.background]="driverOnline() ? '#16a34a' : '#94a3b8'"></span>
-              <p class="font-black truncate" style="margin:0;font-size:15px;color:#0f172a">Solicitudes en vivo</p>
-              @if (visibleDriverRequests().length > 0) {
-                <span class="flex-shrink-0" style="background:#245BDB;color:#fff;font-size:11px;font-weight:900;padding:2px 8px;border-radius:999px">{{ visibleDriverRequests().length }}</span>
-              }
-            </div>
-            <button (click)="reloadFullPage()" aria-label="Actualizar" title="Actualizar"
-              class="flex-shrink-0 flex items-center justify-center rounded-full active:scale-95 transition-all"
-              style="width:38px;height:38px;background:#FFFFFF;border:1px solid #E2E8F0">
-              <span class="material-symbols-outlined" style="font-size:20px;color:#245BDB">refresh</span>
-            </button>
+        <!-- Rediseño 2026-10-05 (ver encabezado): punto verde DESPUÉS del título y sin el botón de
+             actualizar (no está en el diseño); botones de ayuda bajos (44 px) con ícono a la izquierda. -->
+        <div class="flex flex-col" style="gap:8.5px;margin-top:4px" [style.display]="walletPanelOpen() ? 'none' : null">
+          <div class="flex items-center min-w-0" style="gap:6px;padding:0 2px">
+            <p class="truncate" style="margin:0;font-size:17px;font-weight:800;letter-spacing:-0.02em;color:#080818">Solicitudes en vivo</p>
+            <span class="flex-shrink-0 rounded-full" style="width:6px;height:6px"
+              [style.background]="driverOnline() ? '#2FD34F' : '#94a3b8'"></span>
+            @if (visibleDriverRequests().length > 0) {
+              <span class="flex-shrink-0" style="margin-left:2px;background:#245BDB;color:#fff;font-size:11px;font-weight:900;padding:2px 8px;border-radius:999px">{{ visibleDriverRequests().length }}</span>
+            }
           </div>
-          <!-- Ayuda a la vista (2026-10-04): dos botones-tarjeta con borde, sombra e ícono para que se note que
-               se tocan. Antes "¿No te llegan viajes?" era una barra que parecía texto, y las guías estaban
-               escondidas casi al final del menú. -->
-          <div class="grid grid-cols-2 gap-2">
+          <div class="grid grid-cols-2" style="gap:10px">
             <button (click)="ejecutarAccionAyuda('diagnostico')"
-              class="flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center active:scale-[0.97] transition-all"
-              style="min-height:72px;background:#FFFFFF;border:1.5px solid #93C5FD;box-shadow:0 2px 6px rgba(36,91,219,0.12)">
-              <span class="material-symbols-outlined" style="font-size:26px;color:#245BDB">wifi_find</span>
-              <span class="text-[13px] font-black leading-tight" style="color:#0f172a">¿No te llegan viajes?</span>
+              class="flex items-center text-left active:scale-[0.97] transition-all"
+              style="height:44px;gap:clamp(4px,calc(7px - (360px - 100vw) * 0.075),7px);padding:0 clamp(6px,calc(9px - (360px - 100vw) * 0.075),9px);background:#FFFFFF;border:1.25px solid #7E808B;border-radius:8px">
+              <span class="material-symbols-outlined flex-shrink-0" style="font-size:21px;color:#3B63C9">info</span>
+              <span style="font-size:clamp(9.5px,calc(11px - (360px - 100vw) * 0.03),11px);font-weight:600;color:#0A1A4C;white-space:nowrap;letter-spacing:-0.01em">¿No te llegan viajes?</span>
             </button>
             <button (click)="openDriverSection('tutorial')"
-              class="flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center active:scale-[0.97] transition-all"
-              style="min-height:72px;background:#FFFFFF;border:1.5px solid #86EFAC;box-shadow:0 2px 6px rgba(22,163,74,0.12)">
-              <span class="material-symbols-outlined" style="font-size:26px;color:#16a34a">school</span>
-              <span class="text-[13px] font-black leading-tight" style="color:#0f172a">Aprende a usar Movi</span>
+              class="flex items-center text-left active:scale-[0.97] transition-all"
+              style="height:44px;gap:clamp(4px,calc(7px - (360px - 100vw) * 0.075),7px);padding:0 clamp(6px,calc(9px - (360px - 100vw) * 0.075),9px);background:#FFFFFF;border:1.25px solid #7E808B;border-radius:8px">
+              <span class="flex-shrink-0" aria-hidden="true" style="font-size:19px;line-height:1">📗</span>
+              <span style="font-size:clamp(9.5px,calc(11px - (360px - 100vw) * 0.03),11px);font-weight:600;color:#0F3B16;white-space:nowrap;letter-spacing:-0.01em">Aprende a usar Movi</span>
             </button>
           </div>
         </div>
@@ -6072,40 +6054,27 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
       }
 
       <!-- Mapa + dirección (se oculta, no se destruye, mientras Recargar está abierto; ver toggleWalletPanel) -->
-      <div class="flex flex-col gap-2" [style.display]="walletPanelOpen() && !driverMapFullscreen() ? 'none' : null">
+      <div class="flex flex-col" style="gap:14px;margin-top:-2px" [style.display]="walletPanelOpen() && !driverMapFullscreen() ? 'none' : null">
 
         @if (gpsStatus() !== 'requesting') {
           <div class="relative">
             @if (!addressEditMode()) {
+              <!-- Rediseño 2026-10-05 (ver encabezado): una sola barra de 34 px,
+                   "dirección - barrio - Precisión ±Xm" en una línea; tocarla sigue abriendo la edición. -->
               <button (click)="openAddressEdit()"
-                class="w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-lg shadow-black/20 text-left transition-all hover:shadow-xl active:scale-[0.98]">
-                <span class="material-symbols-outlined text-cyan-500 flex-shrink-0" style="font-size:22px">location_on</span>
-                <div class="flex-1 min-w-0">
+                class="w-full flex items-center text-left active:scale-[0.99] transition-all"
+                style="height:34px;gap:5px;padding:0 6px 0 7px;margin:0 -2px;width:calc(100% + 4px);background:#E9EAEE;border:1px solid #D6DBE1;border-radius:8px">
+                <span class="material-symbols-outlined flex-shrink-0" style="font-size:18px;color:#26B5C2;font-variation-settings:'FILL' 1">location_on</span>
+                <span class="flex-1 min-w-0 truncate" style="font-size:10px;color:#18202B;letter-spacing:-0.035em">
                   @if (addressLoading()) {
-                    <p class="text-slate-400 text-sm animate-pulse">Obteniendo dirección...</p>
+                    Obteniendo dirección...
                   } @else if (currentAddress()) {
-                    <p class="text-slate-800 text-sm font-semibold truncate">{{ currentAddress() }}</p>
-                    <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                      @if (currentNeighborhood()) {
-                        <p class="text-orange-500 text-xs font-medium truncate">{{ currentNeighborhood() }}</p>
-                      } @else {
-                        <p class="text-slate-400 text-xs">Toca para cambiar tu ubicación</p>
-                      }
-                      @if (gpsAccuracy() !== null) {
-                        <span class="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-                          [style.background]="gpsAccuracy()! <= 10 ? '#d1fae5' : gpsAccuracy()! <= 30 ? '#fef9c3' : '#fee2e2'"
-                          [style.color]="gpsAccuracy()! <= 10 ? '#065f46' : gpsAccuracy()! <= 30 ? '#713f12' : '#991b1b'">
-                          <span class="material-symbols-outlined" style="font-size:11px">my_location</span>
-                          Precisión ±{{ gpsAccuracy() }}m
-                        </span>
-                      }
-                    </div>
+                    {{ currentAddress() }}{{ currentNeighborhood() ? ' - ' + currentNeighborhood() : '' }}{{ gpsAccuracy() !== null ? ' - Precisión ±' + gpsAccuracy() + 'm' : '' }}
                   } @else {
-                    <p class="text-slate-500 text-sm">Dirección no disponible</p>
-                    <p class="text-slate-400 text-xs mt-0.5">Toca para buscar tu ubicación</p>
+                    Toca para buscar tu ubicación
                   }
-                </div>
-                <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:18px">edit</span>
+                </span>
+                <span class="material-symbols-outlined flex-shrink-0" style="font-size:18px;color:#333B4C">my_location</span>
               </button>
             } @else {
               <div class="flex flex-col bg-white rounded-2xl shadow-xl shadow-black/20 overflow-hidden">
@@ -6174,7 +6143,10 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
           </div>
         }
 
-        <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850] overflow-hidden' : 'relative overflow-hidden'">
+        <!-- Rediseño 2026-10-05: fuera de pantalla completa el mapa va de borde a borde (anula los 16 px de
+             margen de la página) y sin esquinas redondeadas, como en el diseño. -->
+        <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850] overflow-hidden' : 'relative overflow-hidden'"
+          [style.margin]="driverMapFullscreen() ? null : '0 -16px'">
 
           <!-- BOTÓN VOZ — oculto cuando: nav activo no-fullscreen, recibo visible o calificación visible -->
           @if (!(navActive() && !driverMapFullscreen()) && !tripReceiptModal() && !passengerRatingModal()) {
@@ -6198,16 +6170,14 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
 
           <div id="ag-map-user" class="ag-map-skeleton"
             [style.height]="driverMapFullscreen() ? '100dvh' : navActive() ? 'clamp(340px,52dvh,460px)' : 'clamp(260px,42dvh,340px)'"
-            [style.border-radius]="driverMapFullscreen() ? '0' : '16px'"
-            [style.border]="driverMapFullscreen() ? 'none' : '1px solid #E2E8F0'"
-            style="overflow:hidden;transition:height 0.35s ease"
+            style="overflow:hidden;transition:height 0.35s ease;border-radius:0;border:none"
             [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
 
           <!-- ── Overlay de navegación conductor ── -->
           @if (navActive()) {
             <!-- ══ Banner instrucción (arriba) — estilo inDriver ══ -->
             <div class="absolute top-0 left-0 right-0 z-30 pointer-events-none"
-              style="padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 20px;background:linear-gradient(180deg,rgba(7,28,75,0.98) 0%,rgba(10,40,100,0.94) 70%,transparent 100%);border-radius:16px 16px 0 0">
+              style="padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 20px;background:linear-gradient(180deg,rgba(7,28,75,0.98) 0%,rgba(10,40,100,0.94) 70%,transparent 100%);border-radius:0">
 
               <!-- Fila principal: icono maniobra + instrucción + distancia -->
               <div class="flex items-center gap-3">
@@ -6267,7 +6237,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
             <!-- ══ Barra inferior: ETA + km + voz + parar — solo cuando NO hay trip card fullscreen encima ══ -->
             <div class="absolute bottom-0 left-0 right-0 z-30"
               [style.display]="driverFullscreenTrip() ? 'none' : 'block'"
-              style="padding:14px 12px calc(env(safe-area-inset-bottom,0px) + 14px);background:linear-gradient(0deg,rgba(5,10,30,0.98) 0%,rgba(5,10,30,0.90) 70%,transparent 100%);border-radius:0 0 16px 16px">
+              style="padding:14px 12px calc(env(safe-area-inset-bottom,0px) + 14px);background:linear-gradient(0deg,rgba(5,10,30,0.98) 0%,rgba(5,10,30,0.90) 70%,transparent 100%);border-radius:0">
               <div class="flex items-center gap-2">
 
                 <!-- ETA -->
@@ -6312,14 +6282,8 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
             </div>
           }
 
-          @if (driverData() && driverOnline() && !driverMapFullscreen()) {
-            <button (click)="toggleHeatmap()" title="Zonas con demanda"
-              class="absolute w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition"
-              style="top:12px;right:12px"
-              [style]="heatmapVisible() ? 'background:linear-gradient(135deg,#f97316,#ef4444);color:#fff' : 'background:rgba(0,0,0,0.7);color:#fb923c'">
-              <span class="material-symbols-outlined" style="font-size:22px">local_fire_department</span>
-            </button>
-          }
+          <!-- El botón de "zonas con demanda" (fuego) se quitó el 2026-10-05: el diseño nuevo pone ahí los
+               botones + / − (ver _ubicarZoomConductor). toggleHeatmap() sigue existiendo por si se repone. -->
 
           <!-- Botón centrar conductor: siempre visible; resalta cuando movió el mapa -->
           @if (driverOnline()) {
@@ -13681,9 +13645,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     // Saturación reducida al 40% solo en modo conductor (oscuro) para no competir con la UI;
     // el mapa claro del pasajero se deja a saturación completa para que se vea limpio de día.
-    container.style.filter = isDriverMap ? 'saturate(0.4)' : 'saturate(0.85)';
+    // Conductor: sin filtro desde el rediseño 2026-10-05 -- el saturate(0.4) apagaba el cian de las
+    // calles del diseño nuevo (ver la paleta del conductor en el 'load' más abajo).
+    container.style.filter = isDriverMap ? 'none' : 'saturate(0.85)';
 
-    // Controles custom minimalistas (zoom) — esquina inferior derecha del contenedor
+    // Controles custom minimalistas (zoom) — esquina inferior derecha del contenedor.
+    // En el mapa del conductor (rediseño 2026-10-05) van arriba a la derecha, 30 px, fondo oscuro con
+    // borde gris claro, como en el diseño; ver _ubicarZoomConductor.
     if (!container.querySelector('.ag-zoom-ctrl')) {
       const zoomBox = document.createElement('div');
       zoomBox.className = 'ag-zoom-ctrl';
@@ -13691,7 +13659,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);right:12px;z-index:9855;
         display:flex;flex-direction:column;gap:4px;
       `;
-      const btnStyle = `
+      if (isDriverMap) zoomBox.dataset['conductor'] = '1';
+      const btnStyle = isDriverMap ? `
+        width:30px;height:30px;border-radius:7px;cursor:pointer;
+        background:#0E101D;border:1.5px solid #6B7385;
+        color:#FFFFFF;font-size:20px;font-weight:400;line-height:1;padding:0;
+        display:flex;align-items:center;justify-content:center;
+        font-family:'Inter','SF Pro Display',sans-serif;
+      ` : `
         width:36px;height:36px;border-radius:10px;border:none;cursor:pointer;
         background:rgba(18,18,18,0.85);backdrop-filter:blur(8px);
         color:#E0E0E0;font-size:20px;font-weight:300;
@@ -13708,15 +13683,20 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       btnOut.textContent = '−';
       btnIn.addEventListener('click',  () => this._map?.zoomIn({ duration: 350 }));
       btnOut.addEventListener('click', () => this._map?.zoomOut({ duration: 350 }));
-      btnIn.addEventListener('mouseover',  () => { btnIn.style.background  = 'rgba(67,97,238,0.8)'; });
-      btnIn.addEventListener('mouseout',   () => { btnIn.style.background  = 'rgba(18,18,18,0.85)'; });
-      btnOut.addEventListener('mouseover', () => { btnOut.style.background = 'rgba(67,97,238,0.8)'; });
-      btnOut.addEventListener('mouseout',  () => { btnOut.style.background = 'rgba(18,18,18,0.85)'; });
+      btnIn.setAttribute('aria-label', 'Acercar');
+      btnOut.setAttribute('aria-label', 'Alejar');
+      if (!isDriverMap) {
+        btnIn.addEventListener('mouseover',  () => { btnIn.style.background  = 'rgba(67,97,238,0.8)'; });
+        btnIn.addEventListener('mouseout',   () => { btnIn.style.background  = 'rgba(18,18,18,0.85)'; });
+        btnOut.addEventListener('mouseover', () => { btnOut.style.background = 'rgba(67,97,238,0.8)'; });
+        btnOut.addEventListener('mouseout',  () => { btnOut.style.background = 'rgba(18,18,18,0.85)'; });
+      }
       zoomBox.appendChild(btnIn);
       zoomBox.appendChild(btnOut);
       container.style.position = 'relative';
       container.appendChild(zoomBox);
     }
+    this._ubicarZoomConductor();
 
     this.noDriversNearby.set(true);
 
@@ -13763,6 +13743,44 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           try { m.setPaintProperty(layer.id, 'text-halo-color', '#121212'); } catch {}
         }
       });
+
+      // ── Paleta del CONDUCTOR (rediseño 2026-10-05) ──────────────
+      // Copia del diseño que mandó el usuario: fondo azul marino y calles cian (más brillantes las
+      // principales). Los ids son los del estilo MAP_STYLE_DRIVER (51 capas, consultado en Mapbox
+      // ese día): una sola capa de calles 'road-simple' (+ bridge/tunnel) cuyo tipo viene en "class".
+      // Solo pinta encima en tiempo de carga; el estilo guardado en Mapbox no se toca.
+      if (isDriverMap) {
+        const calles = ['match', ['get', 'class'],
+          ['motorway', 'trunk', 'primary'], '#22909D',
+          ['secondary', 'tertiary'], '#1C7783',
+          ['street', 'street_limited', 'primary_link', 'secondary_link', 'tertiary_link', 'link'], '#1A5260',
+          '#173C48'];
+        safeSet('land', 'background-color', '#0C1224');
+        safeSet('landuse', 'fill-color', '#111A2D');
+        safeSet('national-park', 'fill-color', '#0F1D2A');
+        safeSet('land-structure-polygon', 'fill-color', '#0C1224');
+        safeSet('land-structure-line', 'line-color', '#0C1224');
+        safeSet('water', 'fill-color', '#0E3442');
+        safeSet('waterway', 'line-color', '#0F4C5C');
+        safeSet('aeroway-polygon', 'fill-color', '#141D30');
+        safeSet('aeroway-line', 'line-color', '#1A2840');
+        ['road-simple', 'bridge-simple', 'tunnel-simple'].forEach(id => safeSet(id, 'line-color', calles));
+        safeSet('bridge-case-simple', 'line-color', '#0C1224');
+        ['road-path', 'road-path-trail', 'road-path-cycleway-piste', 'road-steps', 'road-pedestrian',
+         'bridge-path', 'bridge-path-trail', 'bridge-path-cycleway-piste', 'bridge-steps', 'bridge-pedestrian',
+         'tunnel-path', 'tunnel-path-trail', 'tunnel-path-cycleway-piste', 'tunnel-steps', 'tunnel-pedestrian']
+          .forEach(id => safeSet(id, 'line-color', '#16303B'));
+        ['road-rail', 'bridge-rail'].forEach(id => safeSet(id, 'line-color', '#1E2A40'));
+        safeSet('building', 'fill-extrusion-color', '#182436');
+        safeSet('building', 'fill-extrusion-opacity', 0.6);
+        // Nombres pequeños y tenues, como en el diseño (antes "HOTEL DUBAI" o "EL SARDINO" grandes y brillantes).
+        m.getStyle().layers.forEach((layer: any) => {
+          if (layer.type !== 'symbol') return;
+          safeSet(layer.id, 'text-color', layer.id === 'road-label-simple' ? '#5F7088' : '#56657B');
+          safeSet(layer.id, 'text-halo-color', '#0C1224');
+          try { m.setLayoutProperty(layer.id, 'text-size', layer.id === 'road-label-simple' ? 10 : 10.5); } catch {}
+        });
+      }
 
       // Cargar vehículos cuando el mapa esté completamente renderizado
       m.once('idle', () => this._loadVehicleMarkers(lat, lng));
@@ -17422,6 +17440,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   // ═══════════ Heatmap demanda ═══════════
+  /** Botones + / − del mapa del conductor (rediseño 2026-10-05): arriba a la derecha en la pantalla
+   *  de inicio, como en el diseño que mandó el usuario. Durante la navegación o a pantalla completa
+   *  vuelven abajo a la derecha, porque arriba va el banner de la maniobra. */
+  private _ubicarZoomConductor(): void {
+    if (typeof document === 'undefined') return;
+    const box = document.querySelector('#ag-map-user .ag-zoom-ctrl[data-conductor="1"]') as HTMLElement | null;
+    if (!box) return;
+    const arriba = this.screen() === 'driver-home' && !this.navActive() && !this.driverMapFullscreen();
+    box.style.top    = arriba ? '10px' : '';
+    box.style.right  = arriba ? '16px' : '12px';
+    box.style.bottom = arriba ? 'auto' : 'calc(env(safe-area-inset-bottom,0px) + 80px)';
+    box.style.gap    = arriba ? '5px' : '4px';
+  }
+  private readonly _zoomConductorEffect = effect(() => {
+    this.screen(); this.navActive(); this.driverMapFullscreen();
+    untracked(() => this._ubicarZoomConductor());
+  });
+
   heatmapVisible = signal(false);
   private _heatmapLoaded = false;
 
