@@ -5431,10 +5431,11 @@ async function recordatorioConectarse(motivo: string, telefonos: string[]): Prom
 const MENSAJE_SALDO_INICIAL = 'Para aceptar viajes necesitas tener mínimo *$10.000* de saldo. En tu *primer viaje no se te descuenta nada*; el descuento empieza desde el *segundo viaje*.';
 // Recarga por Nequi directo (desde 2026-10-04 la app ya no muestra ePayco).
 const NEQUI_RECARGA = '313 445 3649';
+const NEQUI_TITULAR = 'VICTOR VERA';
 const PASOS_RECARGA_NEQUI =
   `1. En la app toca tu *Saldo* → *Recargar*.\n` +
-  `2. Envía el valor que quieras recargar (mínimo $10.000) al *Nequi ${NEQUI_RECARGA}*.\n` +
-  `3. Mándanos por aquí la *captura del comprobante* y te cargamos el saldo completo, sin comisión, en pocos minutos.`;
+  `2. Envía el valor que quieras recargar (mínimo $10.000) al *Nequi ${NEQUI_RECARGA}* (a nombre de ${NEQUI_TITULAR}).\n` +
+  `3. Mándanos por aquí la *captura del comprobante* y te cargamos el valor completo que envíes, en pocos minutos.`;
 // ─── Comprobante de recarga por Nequi (2026-10-04) ────────────────────────────
 // El botón "Enviar comprobante por WhatsApp" de la app manda: "Hola, hice una recarga por Nequi para mi
 // saldo de Movi. Te envío el comprobante 👇". Antes el bot veía "recarga" y contestaba CÓMO recargar + el
@@ -5480,7 +5481,7 @@ async function manejarComprobanteNequi(phone: string, msgType: string, msgText: 
 
   await sendSupportText(phone,
     `${MARCA_COMPROBANTE_RECIBIDO}! ✅\n\n` +
-    `Ya lo estamos verificando y en pocos minutos te cargamos el saldo completo, sin descuentos. ` +
+    `Ya lo estamos verificando y en pocos minutos te cargamos el valor completo que enviaste. ` +
     `Te avisamos por aquí apenas quede listo.`);
 
   const nombre = (await lookupRealFirstName(phone)) ?? 'Un conductor';
@@ -5605,7 +5606,7 @@ async function manejarAprobacionNequi(msgText: string, quotedId?: string): Promi
   if (!d) { await sendText(SUPPORT_PHONE, `No encontré la cuenta de conductor de +${tel} 🤔 Revísalo en el panel.`, 'alerta'); return true; }
 
   if (dijoNo) {
-    await sendSupportText(tel, `Hola, revisamos y *no nos aparece el pago* de tu recarga por Nequi 😕\n\nRevisa que lo hayas enviado al Nequi *${NEQUI_RECARGA}* y mándanos de nuevo el comprobante por aquí. Si ya lo enviaste bien, escríbenos y lo revisamos contigo.`, 'sistema');
+    await sendSupportText(tel, `Hola, revisamos y *no nos aparece el pago* de tu recarga por Nequi 😕\n\nRevisa que lo hayas enviado al Nequi *${NEQUI_RECARGA}* (a nombre de ${NEQUI_TITULAR}) y mándanos de nuevo el comprobante por aquí. Si ya lo enviaste bien, escríbenos y lo revisamos contigo.`, 'sistema');
     await sendText(SUPPORT_PHONE, `❌ Listo, le avisé a ${nombre} que no apareció el pago. No le cargué nada. [comprobante +${tel}]`, 'alerta');
     return true;
   }
@@ -5781,7 +5782,7 @@ async function manejarAyudaRecarga(tel: string, msgText: string, btnId?: string)
     rec_p_medio:
       `Así se recarga 👇\n\n${PASOS_RECARGA_NEQUI}\n\n¿Pudiste recargar?`,
     rec_p_comision:
-      `Ahora la recarga por Nequi es *sin comisión*: si envías $10.000, te llegan $10.000 completos 🙌\n\n${PASOS_RECARGA_NEQUI}\n\n¿Pudiste recargar?`,
+      `Ahora *recargar no cuesta nada*: si envías $10.000 por Nequi, te llegan $10.000 completos 🙌\n\n${PASOS_RECARGA_NEQUI}\n\n¿Pudiste recargar?`,
   };
   const texto = respuestas[id];
   if (!texto) return false;
@@ -6923,7 +6924,7 @@ Un mismo conductor puede recibir solicitudes de varios de estos servicios según
 ═══ DINERO: CÓMO SE PAGA UN CONDUCTOR ═══
 - El pasajero le paga al conductor DIRECTO (no pasa por Movi). Movi cobra su comisión de la billetera prepagada del conductor, no del pago del viaje.
 - Comisión de Movi: 12% fijo. Se CALCULA sobre el valor de cada viaje, pero se DESCUENTA del saldo prepagado de la billetera del conductor, automáticamente. NUNCA digas que se descuenta "del valor de la carrera", "del pago del viaje" ni "de lo que te paga el pasajero": el conductor recibe el 100% de lo que le paga el pasajero, y la comisión sale aparte de su billetera. (Error real del 2026-10-01: el bot le dijo a un lead que se descontaba del valor de cada carrera.)
-- El conductor debe tener saldo en su billetera para recibir y aceptar viajes. Para aceptar viajes hay que tener mínimo *$10.000 COP* de saldo. Se guía UN paso a la vez, nunca todo junto: primero descargar la app, después registrarse ("Quiero ser conductor"), después recargar mínimo $10.000, y por último ponerse "En línea". En el PRIMER viaje no se le descuenta nada del saldo; el descuento del 12% empieza desde el SEGUNDO viaje. NUNCA digas que se puede trabajar o aceptar el primer viaje sin saldo o sin recargar (decisión del dueño 2026-10-04). Se recarga por *Nequi, sin comisión*: en la app toca Saldo → Recargar, envía el valor (mínimo $10.000) al Nequi 313 445 3649 y manda la captura del comprobante por este WhatsApp; un asesor carga el saldo completo en pocos minutos. Ya NO se recarga por ePayco, PSE, tarjeta, DaviPlata ni efectivo (si alguien escribe "EPC" o "epayco", explícale que ahora es por Nequi).
+- El conductor debe tener saldo en su billetera para recibir y aceptar viajes. Para aceptar viajes hay que tener mínimo *$10.000 COP* de saldo. Se guía UN paso a la vez, nunca todo junto: primero descargar la app, después registrarse ("Quiero ser conductor"), después recargar mínimo $10.000, y por último ponerse "En línea". En el PRIMER viaje no se le descuenta nada del saldo; el descuento del 12% empieza desde el SEGUNDO viaje. NUNCA digas que se puede trabajar o aceptar el primer viaje sin saldo o sin recargar (decisión del dueño 2026-10-04). Se recarga por *Nequi* y recargar no cuesta nada (OJO: no digas "sin comisión", porque Movi sí cobra el 12% de cada viaje desde el segundo; lo gratis es recargar): en la app toca Saldo → Recargar, envía el valor (mínimo $10.000) al Nequi 313 445 3649, a nombre de VICTOR VERA, y manda la captura del comprobante por este WhatsApp; un asesor carga el saldo completo en pocos minutos. Ya NO se recarga por ePayco, PSE, tarjeta, DaviPlata ni efectivo (si alguien escribe "EPC" o "epayco", explícale que ahora es por Nequi).
 - *¿Cuánto se puede ganar?* Sé honesto: depende del tiempo que el conductor tenga disponible y de cuántos servicios acepte -- eso no lo define Movi, lo define él. Lo que sí puedes decirle con certeza es cómo se reparte cada viaje: él cobra el 100% del valor directo del pasajero y Movi solo descuenta el 12% de su billetera. NUNCA inventes un ingreso mensual, diario ni por hora, ni des rangos "estimados": no los sabes.
 - *Precio sugerido de un viaje en carro:* arranca en $4.000 y suma alrededor de $1.300 por kilómetro. En la práctica, un viaje típico de ciudad de unos 5 km sale en unos $10.500 (o sea alrededor de $2.000 por kilómetro), y entre más largo el viaje, menos pesa el cobro base. En horas de alta demanda el sugerido sube automáticamente. Es solo un SUGERIDO: el pasajero puede ofrecer otro precio y el conductor puede aceptar o contraofertar.
 - *Precio sugerido de un viaje en MOTO (es DISTINTO al de carro, nunca uses el de carro para moto):* arranca en $2.500 y suma alrededor de $960 por kilómetro (mínimo $3.000). Un viaje típico de unos 5 km en moto sale en unos $7.500, o sea alrededor de $1.500 por kilómetro. (Error real del 2026-10-02: a un motero se le respondió con la tarifa de carro.)
@@ -7829,8 +7830,8 @@ async function leadYaRegistrado(phone: string, lead: LeadRow | null): Promise<vo
 /** Cómo recargar, en pasos cortos. La captura la atiende manejarComprobanteNequi. */
 async function leadComoRecargar(phone: string): Promise<void> {
   await sendSupportText(phone,
-    `Es muy fácil, por *Nequi* y *sin comisión* 💚\n\n` +
-    `1. Envía *$10.000* (o más) al Nequi *${NEQUI_RECARGA}*.\n` +
+    `Es muy fácil, por *Nequi*, y *recargar no cuesta nada* 💚\n\n` +
+    `1. Envía *$10.000* (o más) al Nequi *${NEQUI_RECARGA}* (a nombre de ${NEQUI_TITULAR}).\n` +
     `2. Mándame *aquí mismo* la captura del comprobante 📸\n\n` +
     `Apenas la reciba, te cargamos el saldo completo en pocos minutos ✅`);
 }
@@ -8324,7 +8325,7 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
 // ─── Conversación completa del número de soporte ──────────────────────────────
 /** Cómo se recarga la billetera. Medios confirmados por el usuario en su video de recargas. */
 const RESPUESTA_COMO_RECARGAR =
-  `Se recarga por *Nequi, sin comisión* 💚\n\n${PASOS_RECARGA_NEQUI}\n\n` +
+  `Se recarga por *Nequi*, y *recargar no cuesta nada* 💚\n\n${PASOS_RECARGA_NEQUI}\n\n` +
   `Recuerda: en tu *primer viaje no se te descuenta nada*; el descuento empieza desde el segundo viaje.`;
 
 async function handleSupportConversation(phone: string, name: string, msgText: string, btnId?: string): Promise<void> {
@@ -8491,7 +8492,7 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
         ? `${RESPUESTA_COMO_RECARGAR}\n\nTu saldo actual es *${fmtCOP(profile.walletBalance)}*.`
         : `Tu saldo actual en la billetera es *${fmtCOP(profile.walletBalance)}* 💰\n\n` +
           `De ahí se descuenta el 12% de comisión de cada viaje (lo que te paga el pasajero es 100% tuyo). ` +
-          `Recargas por *Nequi, sin comisión*, desde $10.000: envía el valor al Nequi ${NEQUI_RECARGA} y mándanos la captura por aquí.`;
+          `Recargas por *Nequi* (recargar no cuesta nada), desde $10.000: envía el valor al Nequi ${NEQUI_RECARGA} (a nombre de ${NEQUI_TITULAR}) y mándanos la captura por aquí.`;
     } else if (asksDocs) {
       action = 'profile:docs';
       const lines = [
