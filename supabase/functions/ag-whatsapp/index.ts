@@ -5428,7 +5428,7 @@ async function recordatorioConectarse(motivo: string, telefonos: string[]): Prom
 // la app ni de los viajes. Se dice que hay que recargar mínimo $10.000 para aceptar viajes y que el primer
 // viaje no descuenta nada. OJO: la LÓGICA no cambió (cc_accept_offer sigue dejando tomar el primer viaje
 // sin saldo); esto es solo lo que se le DICE al conductor.
-const MENSAJE_SALDO_INICIAL = 'El primer paso es *descargar la app y recargar mínimo $10.000* a tu saldo para poder aceptar viajes. En tu *primer viaje no se te descuenta nada*; el descuento empieza desde el *segundo viaje*.';
+const MENSAJE_SALDO_INICIAL = 'Para aceptar viajes necesitas tener mínimo *$10.000* de saldo. En tu *primer viaje no se te descuenta nada*; el descuento empieza desde el *segundo viaje*.';
 // Recarga por Nequi directo (desde 2026-10-04 la app ya no muestra ePayco).
 const NEQUI_RECARGA = '313 445 3649';
 const PASOS_RECARGA_NEQUI =
@@ -5646,7 +5646,9 @@ async function manejarAprobacionNequi(msgText: string, quotedId?: string): Promi
     return true;
   }
   const nuevo = Number(d.wallet_balance ?? 0) + monto;
-  await sendSupportText(tel, `✅ ¡Listo ${nombre}! Te cargamos *$${monto.toLocaleString('es-CO')}* a tu saldo de Movi. Tu saldo ahora es *$${nuevo.toLocaleString('es-CO')}*.\n\nYa puedes aceptar viajes 🚗💨`, 'sistema');
+  await sendSupportText(tel, `✅ ¡Listo ${nombre}! Te cargamos *$${monto.toLocaleString('es-CO')}* a tu saldo de Movi. Tu saldo ahora es *$${nuevo.toLocaleString('es-CO')}*.\n\n${LEAD_PONTE_EN_LINEA}`, 'sistema');
+  // Primera recarga de alguien que venía del embudo: ahora sí, el "gana invitando".
+  if (Number(d.wallet_balance ?? 0) < 10000 && await getLead(tel)) await leadInvitaYGana(tel);
   await upsertSupportSession(tel, { escalated: false, escalated_at: null });
   await sendText(SUPPORT_PHONE, `✅ Cargué *$${monto.toLocaleString('es-CO')}* a ${nombre} (aprobación ${aprobacion}). Saldo nuevo: $${nuevo.toLocaleString('es-CO')}. Ya le avisé. [comprobante +${tel}]`, 'alerta');
   return true;
@@ -6921,7 +6923,7 @@ Un mismo conductor puede recibir solicitudes de varios de estos servicios según
 ═══ DINERO: CÓMO SE PAGA UN CONDUCTOR ═══
 - El pasajero le paga al conductor DIRECTO (no pasa por Movi). Movi cobra su comisión de la billetera prepagada del conductor, no del pago del viaje.
 - Comisión de Movi: 12% fijo. Se CALCULA sobre el valor de cada viaje, pero se DESCUENTA del saldo prepagado de la billetera del conductor, automáticamente. NUNCA digas que se descuenta "del valor de la carrera", "del pago del viaje" ni "de lo que te paga el pasajero": el conductor recibe el 100% de lo que le paga el pasajero, y la comisión sale aparte de su billetera. (Error real del 2026-10-01: el bot le dijo a un lead que se descontaba del valor de cada carrera.)
-- El conductor debe tener saldo en su billetera para recibir y aceptar viajes. *El primer paso es descargar la app y recargar mínimo $10.000 COP.* En el PRIMER viaje no se le descuenta nada del saldo; el descuento del 12% empieza desde el SEGUNDO viaje. NUNCA digas que se puede trabajar o aceptar el primer viaje sin saldo o sin recargar (decisión del dueño 2026-10-04). Se recarga por *Nequi, sin comisión*: en la app toca Saldo → Recargar, envía el valor (mínimo $10.000) al Nequi 313 445 3649 y manda la captura del comprobante por este WhatsApp; un asesor carga el saldo completo en pocos minutos. Ya NO se recarga por ePayco, PSE, tarjeta, DaviPlata ni efectivo (si alguien escribe "EPC" o "epayco", explícale que ahora es por Nequi).
+- El conductor debe tener saldo en su billetera para recibir y aceptar viajes. Para aceptar viajes hay que tener mínimo *$10.000 COP* de saldo. Se guía UN paso a la vez, nunca todo junto: primero descargar la app, después registrarse ("Quiero ser conductor"), después recargar mínimo $10.000, y por último ponerse "En línea". En el PRIMER viaje no se le descuenta nada del saldo; el descuento del 12% empieza desde el SEGUNDO viaje. NUNCA digas que se puede trabajar o aceptar el primer viaje sin saldo o sin recargar (decisión del dueño 2026-10-04). Se recarga por *Nequi, sin comisión*: en la app toca Saldo → Recargar, envía el valor (mínimo $10.000) al Nequi 313 445 3649 y manda la captura del comprobante por este WhatsApp; un asesor carga el saldo completo en pocos minutos. Ya NO se recarga por ePayco, PSE, tarjeta, DaviPlata ni efectivo (si alguien escribe "EPC" o "epayco", explícale que ahora es por Nequi).
 - *¿Cuánto se puede ganar?* Sé honesto: depende del tiempo que el conductor tenga disponible y de cuántos servicios acepte -- eso no lo define Movi, lo define él. Lo que sí puedes decirle con certeza es cómo se reparte cada viaje: él cobra el 100% del valor directo del pasajero y Movi solo descuenta el 12% de su billetera. NUNCA inventes un ingreso mensual, diario ni por hora, ni des rangos "estimados": no los sabes.
 - *Precio sugerido de un viaje en carro:* arranca en $4.000 y suma alrededor de $1.300 por kilómetro. En la práctica, un viaje típico de ciudad de unos 5 km sale en unos $10.500 (o sea alrededor de $2.000 por kilómetro), y entre más largo el viaje, menos pesa el cobro base. En horas de alta demanda el sugerido sube automáticamente. Es solo un SUGERIDO: el pasajero puede ofrecer otro precio y el conductor puede aceptar o contraofertar.
 - *Precio sugerido de un viaje en MOTO (es DISTINTO al de carro, nunca uses el de carro para moto):* arranca en $2.500 y suma alrededor de $960 por kilómetro (mínimo $3.000). Un viaje típico de unos 5 km en moto sale en unos $7.500, o sea alrededor de $1.500 por kilómetro. (Error real del 2026-10-02: a un motero se le respondió con la tarifa de carro.)
@@ -7758,25 +7760,85 @@ async function leadYaDescargo(phone: string, lead: LeadRow | null): Promise<void
   } else if (lead?.modelo_ok == null) {
     await sendSupportButtons(phone, `${intro}\n\nMientras lo ves, dime: ${preguntaModelo(v)}`, LEAD_BTN_MODELO);
   } else {
-    await sendSupportText(phone, `${intro}\n\n${LEAD_ENTRA_A_REGISTRARTE}`);
+    await sendSupportButtons(phone, `${intro}\n\n${LEAD_ENTRA_A_REGISTRARTE}`, LEAD_BTN_REGISTRO);
   }
   await upsertLead(phone, { paso: 'descargo', ultimo_out_at: new Date().toISOString(), nudges_enviados: 0 });
   // Desde 2026-10-01 este es EL momento del tutorial (ya no sale en el link): es lo que se le
   // prometió con "avísame cuando la descargues". Si saliera antes, el tope de 1 por semana de
   // sendSupportVideo lo bloquearía justo aquí.
   await sendSupportVideo(phone, 'como_funciona', 'lead_ya_descargo');
-  // Ya sabíamos vehículo y año: este fue su último paso, así que también le toca el de invitar.
-  if (v && lead?.modelo_ok === true) await leadInvitaYGana(phone);
 }
 
 function preguntaModelo(v: 'moto' | 'carro'): string {
   return `*¿tu ${v} es modelo ${leadAnioMinimo(v)} o más ${v === 'moto' ? 'nueva' : 'nuevo'}?*`;
 }
 
-/** Cierre del registro: corto, y con el tropiezo #1 del primer día (En línea + GPS). */
+/**
+ * Paso del registro (2026-10-04, pedido del usuario: "que la atención sea muy humanizada y fácil de
+ * digerir"). Antes este mensaje mezclaba registrarse + "prende En línea", y la recarga no tenía paso
+ * propio. Ahora: SOLO el registro, y se espera a que avise ("Ya me registré"). Después vienen, cada
+ * uno en su turno, la recarga (leadYaRegistrado -> leadComoRecargar) y el "En línea" (al aprobarse la
+ * recarga, en manejarAprobacionNequi).
+ */
 const LEAD_ENTRA_A_REGISTRARTE =
-  `Abre la app y entra a *"Quiero ser conductor"*. Tu primer viaje lo puedes hacer *sin subir papeles*.\n\n` +
-  `Cuando termines, prende el botón verde *"En línea"* con el GPS activo y te empiezan a llegar viajes 🙌`;
+  `Ahora sigue el *registro* (toma unos 5 minutos) 📝\n\n` +
+  `1. Abre la app Movi.\n` +
+  `2. Toca *"Quiero ser conductor"*.\n` +
+  `3. Llena tus datos y los de tu vehículo.\n\n` +
+  `Tu primer viaje lo puedes hacer *sin subir papeles* 🙌\n\n` +
+  `Avísame cuando termines 👇`;
+const LEAD_BTN_REGISTRO = [
+  { id: 'lead_registrado', title: 'Ya me registré' },
+  { id: 'lead_duda',       title: 'Tengo una duda' },
+];
+const LEAD_BTN_RECARGA = [
+  { id: 'lead_como_recargo', title: '¿Cómo recargo?' },
+  { id: 'lead_duda',         title: 'Tengo una duda' },
+];
+const DIJO_YA_ME_REGISTRE = /ya\s+me\s+registr|ya\s+termin[eé]\s+(el\s+|mi\s+)?registro|ya\s+(estoy|qued[eé])\s+registrad|ya\s+llen[eé]\s+(los|mis)\s+datos/i;
+
+/** "Ya me registré": se verifica de verdad (cuenta de conductor con este número) antes de seguir. */
+async function leadYaRegistrado(phone: string, lead: LeadRow | null): Promise<void> {
+  const { data: u } = await db().from('ag_users').select('id, full_name').eq('phone', toE164(phone)).maybeSingle();
+  const { data: d } = u ? await db().from('ag_drivers').select('id, wallet_balance').eq('ag_user_id', u.id).maybeSingle() : { data: null };
+  if (!d) {
+    await sendSupportButtons(phone,
+      `Todavía no me aparece tu registro 🤔\n\n` +
+      `Revisa que hayas terminado todos los pasos de *"Quiero ser conductor"* y que te registraste con *este mismo número* de WhatsApp.\n\n` +
+      `Cuando termines, toca el botón otra vez 👇`, LEAD_BTN_REGISTRO);
+    return;
+  }
+  await upsertLead(phone, { paso: 'registrado', ultimo_out_at: new Date().toISOString(), nudges_enviados: 0 });
+  const nombre = (u?.full_name as string | undefined)?.trim().split(/\s+/)[0] ?? lead?.nombre_dado ?? null;
+
+  // Ya tiene saldo: directo a conectarse.
+  if (Number(d.wallet_balance ?? 0) >= 10000) {
+    await sendSupportText(phone,
+      `¡Bienvenido a Movi${nombre ? `, ${nombre}` : ''}! 🎉 Ya tienes saldo, así que estás listo.\n\n${LEAD_PONTE_EN_LINEA}`);
+    await leadInvitaYGana(phone);
+    return;
+  }
+  await sendSupportButtons(phone,
+    `¡Bienvenido a Movi${nombre ? `, ${nombre}` : ''}! 🎉 Ya casi estás listo para recibir viajes.\n\n` +
+    `El último paso es *recargar tu saldo*: mínimo *$10.000*. Con eso ya puedes aceptar viajes.\n\n` +
+    `Tranquilo: en tu *primer viaje no se te descuenta nada*. Desde el segundo viaje, Movi descuenta el 12% de cada viaje de ese saldo.`,
+    LEAD_BTN_RECARGA);
+}
+
+/** Cómo recargar, en pasos cortos. La captura la atiende manejarComprobanteNequi. */
+async function leadComoRecargar(phone: string): Promise<void> {
+  await sendSupportText(phone,
+    `Es muy fácil, por *Nequi* y *sin comisión* 💚\n\n` +
+    `1. Envía *$10.000* (o más) al Nequi *${NEQUI_RECARGA}*.\n` +
+    `2. Mándame *aquí mismo* la captura del comprobante 📸\n\n` +
+    `Apenas la reciba, te cargamos el saldo completo en pocos minutos ✅`);
+}
+
+/** Último paso, cuando ya tiene saldo: el tropiezo #1 del primer día (En línea + GPS). */
+const LEAD_PONTE_EN_LINEA =
+  `Ahora abre la app y prende el botón verde *"En línea"* con el *GPS activo*. ` +
+  `Así te empiezan a llegar los viajes 🚗💨\n\n` +
+  `Déjala abierta o en segundo plano, y acepta los permisos de notificaciones para no perderte ninguno.`;
 
 /**
  * Paso 4: eligió vehículo (por botón o escribiendo). Qué se responde depende de en qué paso
@@ -7807,12 +7869,12 @@ async function leadElegirVehiculo(phone: string, v: 'moto' | 'carro' | 'ninguno'
 
 /** Paso 5: el año sirve (o no lo sabe). `noSabe` agrega una línea para tranquilizarlo. */
 async function leadListoRegistro(phone: string, noSabe: boolean): Promise<void> {
-  await sendSupportText(phone,
+  await sendSupportButtons(phone,
     (noSabe
       ? `Tranquilo, el año lo ves en la tarjeta de propiedad, y si no sirve la app te avisa.\n\n`
       : `¡Perfecto! ✅ `) +
-    LEAD_ENTRA_A_REGISTRARTE);
-  await leadInvitaYGana(phone);
+    LEAD_ENTRA_A_REGISTRARTE, LEAD_BTN_REGISTRO);
+  // El "gana invitando" ya no va aquí: se le da cuando ya puede trabajar (después de la recarga).
 }
 
 /**
@@ -8075,6 +8137,8 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
       return true;
     }
     if (btnId === 'lead_descargo')    { await leadYaDescargo(phone, lead); return true; }
+    if (btnId === 'lead_registrado')  { await leadYaRegistrado(phone, lead); return true; }
+    if (btnId === 'lead_como_recargo') { await leadComoRecargar(phone); return true; }
     if (btnId === 'lead_duda') {
       await sendSupportText(phone, `Claro, dime 🙂 Pregúntame lo que quieras sobre requisitos, documentos, pagos o cómo funciona un viaje.`);
       await upsertLead(phone, { ultimo_in_at: ahora, nudges_enviados: 0 });
@@ -8082,6 +8146,9 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
     }
     return false;
   }
+
+  // "Ya me registré" escrito (no solo con el botón).
+  if (lead && DIJO_YA_ME_REGISTRE.test(msgText)) { await leadYaRegistrado(phone, lead); return true; }
 
   // ── Alguien nuevo que llega interesado ───────────────────────────────────
   if (!lead) {
@@ -8340,7 +8407,6 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
       `3️⃣ La aceptas, o le haces una contraoferta.\n` +
       `4️⃣ Vas por el pasajero, lo llevas, y *él te paga directo a ti*.\n` +
       `5️⃣ Movi descuenta el 12% de tu billetera (en tu primer viaje no se te descuenta nada).\n\n` +
-      `👉 ${MENSAJE_SALDO_INICIAL}\n\n` +
       `Si aún no te registras: descarga la app 👉 ${APP_DOWNLOAD_LINK} y entra a *"Quiero ser conductor"*.\n\n` +
       `Aquí abajo te dejo un video de 3 minutos donde lo ves todo 👇`;
     await sendSupportText(phone, reply);
