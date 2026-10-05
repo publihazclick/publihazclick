@@ -5611,9 +5611,9 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
           <span class="material-symbols-outlined" style="font-size:22px;color:#22d3ee;font-variation-settings:'FILL' 1">account_balance_wallet</span>
         </div>
         <div class="flex-1 min-w-0 text-left">
-          <p class="whitespace-nowrap" style="color:rgba(148,163,184,0.9);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0">Saldo de Recarga</p>
+          <p class="whitespace-nowrap" style="color:rgba(148,163,184,0.9);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0">Tu saldo</p>
           <p style="color:#fff;font-size:20px;font-weight:900;margin:0;line-height:1.15;letter-spacing:-0.01em">{{ formatCOP(driverWalletBalance()) }}</p>
-          <p style="color:rgba(34,211,238,0.7);font-size:10px;font-weight:600;margin:0;margin-top:1px">Se descuenta desde la 2ª carrera</p>
+          <p style="color:rgba(34,211,238,0.7);font-size:10px;font-weight:600;margin:0;margin-top:1px">De aquí se descuenta el 12% de cada viaje, desde tu 2º viaje</p>
         </div>
         <div class="flex flex-col items-center gap-0.5 flex-shrink-0">
           @if (walletPanelOpen()) {
@@ -5640,7 +5640,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
         <div style="background:#FFFFFF;border:1.5px solid rgba(34,211,238,0.25);border-top:none;border-radius:0 0 18px 18px;padding:18px 16px 16px;display:flex;flex-direction:column;gap:16px;margin-top:-18px">
           <div class="flex items-center justify-between gap-2 flex-wrap">
             <p class="text-slate-900 font-black" style="margin:0;font-size:16px;line-height:1.2">Recarga por Nequi</p>
-            <span class="px-2.5 py-1 rounded-full text-[11px] font-black" style="background:#DCFCE7;color:#15803d">Sin comisión</span>
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-black" style="background:#DCFCE7;color:#15803d">Recargar no cuesta nada</span>
           </div>
 
           <!-- Paso 1 -->
@@ -5662,6 +5662,8 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
                   {{ nequiCopiado() ? 'Copiado' : 'Copiar' }}
                 </button>
           </div>
+          <!-- Titular del Nequi: es lo que Nequi le muestra al conductor al transferir. -->
+          <p class="text-slate-500 text-xs" style="margin:-10px 0 0 4px">A nombre de: <b class="text-slate-700">VICTOR VERA</b></p>
 
           <!-- Paso 2 -->
           <div class="flex gap-3">
@@ -5680,7 +5682,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
             <span class="whitespace-nowrap">Enviar comprobante<span class="hidden min-[400px]:inline"> por WhatsApp</span></span>
           </a>
           <p class="text-slate-500 text-xs text-center leading-snug" style="margin:-6px 0 0">
-            Te cargamos el saldo completo, sin descuentos, en pocos minutos.
+            Te cargamos el valor completo que envíes, en pocos minutos.
           </p>
           <!-- ePayco QUITADO del panel del conductor (pedido del usuario 2026-10-04: "dejemos solo Nequi
                para no enredar el proceso"). Desde el 28-ago ninguna recarga por ePayco se completó. La
@@ -5719,7 +5721,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
             <span class="material-symbols-outlined flex-shrink-0" style="font-size:28px;color:#245BDB">rocket_launch</span>
             <div class="min-w-0">
               <p class="font-black text-sm" style="color:#0f172a;margin:0">Recarga mínimo {{ formatCOP(10000) }} para aceptar viajes</p>
-              <p class="text-slate-600 text-xs leading-relaxed mt-1" style="margin-bottom:0">En tu primer viaje no se te descuenta nada de tu saldo; el descuento empieza desde el segundo viaje.</p>
+              <p class="text-slate-600 text-xs leading-relaxed mt-1" style="margin-bottom:0">Tu primer viaje es gratis: no se te descuenta nada. Desde el segundo, Movi descuenta el 12% de cada viaje de tu saldo.</p>
             </div>
           </div>
           <button (click)="toggleWalletPanel()"
