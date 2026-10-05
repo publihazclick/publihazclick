@@ -99,3 +99,35 @@ Deno.test('preguntas de cómo funciona no se toman como consulta de su cuenta', 
   if (!fotoTexto('Hola buenas tardes disculpe la molestia pero ando en el colsag y la ubicación de en Antonia santos')) throw new Error('foto con texto claro');
   if (fotoTexto('Una pregunta la aplicación sale así') || fotoTexto('mira lo que me sale en la pantalla')) throw new Error('foto que hay que describir');
 });
+
+// Embudo simplificado (pedido del usuario 2026-10-05): saludo -> link sin botón -> silencio hasta que
+// pide el código -> bienvenida al registrarse -> "gana invitando" corto una sola vez. Nada más.
+Deno.test('el embudo de conductores no vuelve a meter botón, video ni preguntas', () => {
+  const cuerpo = (nombre: string) => {
+    const i = src.indexOf(`\nasync function ${nombre}(`);
+    if (i < 0) throw new Error(`no encontré ${nombre}`);
+    // Sin comentarios: solo cuenta lo que de verdad se le manda a la persona.
+    return src.slice(i, src.indexOf('\n}\n', i)).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  };
+  if (/title: 'Ya la descarg/.test(src)) throw new Error('volvió el botón "Ya la descargué"');
+  if (/sendSupportButtons/.test(cuerpo('leadPrimerPaso'))) throw new Error('el link volvió a llevar botones');
+  if (/avisas|av[ií]same/i.test(cuerpo('leadPrimerPaso'))) throw new Error('el link volvió a pedir "avísame"');
+  for (const fn of ['leadYaDescargo', 'leadInvitaYGana', 'leadFollowup', 'leadElegirVehiculo']) {
+    if (/sendSupportVideo|sendSupportButtons/.test(cuerpo(fn))) throw new Error(`${fn} volvió a mandar video o botones`);
+  }
+  if (/modelo|¿con qué vas a trabajar/i.test(cuerpo('leadYaDescargo'))) throw new Error('volvió la pregunta del vehículo/año');
+  const i = src.indexOf('const TEXTO_INVITA_Y_GANA');
+  const invita = src.slice(i, src.indexOf(';', i));
+  if (invita.length > 400) throw new Error('el "gana invitando" volvió a ser largo');
+  if (!/invita_gana_at/.test(cuerpo('leadInvitaYGana'))) throw new Error('el "gana invitando" perdió el "una vez en la vida"');
+});
+
+Deno.test('migración 319: esperas de 15 min y 3 h, un solo recordatorio', async () => {
+  const sql = await Deno.readTextFile(new URL('../../migrations/319_ag_embudo_conductores_simplificado.sql', import.meta.url));
+  for (const s of ["l.paso = 'nombre'", "interval '15 minutes'", "l.paso = 'pitch'", 'l.pidio_codigo_at IS NULL',
+                   'l.recordatorio_descarga_at IS NULL', "interval '3 hours'", "'lead_invita_gana'", 'l.invita_gana_at IS NULL',
+                   "interval '24 hours'", 'COALESCE(d.wallet_balance, 0) < 10000']) {
+    if (!sql.includes(s)) throw new Error(`falta en la migración: ${s}`);
+  }
+  if (/'20 minutes','3 hours','20 hours'/.test(sql)) throw new Error('volvieron los 3 "¿sigues ahí?"');
+});
