@@ -6011,24 +6011,37 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
 
       }
       @if (driverStatus() !== 'rejected') {
-        <!-- Solicitudes en vivo: solo label + contador, el modal flotante muestra el detalle -->
-        <div class="flex items-center justify-between px-1" [style.display]="walletPanelOpen() ? 'none' : null">
-          <div class="flex items-center gap-2">
-            <p class="text-slate-700 text-xs font-black uppercase tracking-widest">Solicitudes en vivo</p>
-            @if (visibleDriverRequests().length > 0) {
-              <span style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:10px;font-weight:900;padding:2px 7px;border-radius:999px">{{ visibleDriverRequests().length }}</span>
-            }
+        <!-- Solicitudes en vivo (reorganizado 2026-10-04: en celular el título en mayúsculas, "¿No te llegan
+             viajes?" y "Actualizar" iban en una sola línea y se amontonaban). Línea 1: título + contador +
+             actualizar (solo ícono). Línea 2: "¿No te llegan viajes?" a todo el ancho, y solo cuando no hay
+             solicitudes (si están llegando, no hace falta). El modal flotante muestra el detalle. -->
+        <div class="flex flex-col gap-2" [style.display]="walletPanelOpen() ? 'none' : null">
+          <div class="flex items-center justify-between gap-2 px-1">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="flex-shrink-0 rounded-full" style="width:8px;height:8px"
+                [style.background]="driverOnline() ? '#16a34a' : '#94a3b8'"></span>
+              <p class="font-black truncate" style="margin:0;font-size:15px;color:#0f172a">Solicitudes en vivo</p>
+              @if (visibleDriverRequests().length > 0) {
+                <span class="flex-shrink-0" style="background:#245BDB;color:#fff;font-size:11px;font-weight:900;padding:2px 8px;border-radius:999px">{{ visibleDriverRequests().length }}</span>
+              }
+            </div>
+            <button (click)="reloadFullPage()" aria-label="Actualizar" title="Actualizar"
+              class="flex-shrink-0 flex items-center justify-center rounded-full active:scale-95 transition-all"
+              style="width:38px;height:38px;background:#FFFFFF;border:1px solid #E2E8F0">
+              <span class="material-symbols-outlined" style="font-size:20px;color:#245BDB">refresh</span>
+            </button>
           </div>
-          <div class="flex items-center gap-3">
+          @if (visibleDriverRequests().length === 0) {
             <button (click)="ejecutarAccionAyuda('diagnostico')"
-              class="flex items-center gap-1 text-xs font-bold active:scale-95 transition-all" style="color:#245BDB">
-              <span class="material-symbols-outlined" style="font-size:14px">help</span> ¿No te llegan viajes?
+              class="w-full flex items-center gap-3 rounded-xl px-3 text-left active:scale-[0.99] transition-all"
+              style="min-height:46px;background:#EFF6FF;border:1px solid #BFDBFE">
+              <span class="material-symbols-outlined flex-shrink-0" style="font-size:20px;color:#245BDB">help</span>
+              <span class="flex-1 min-w-0 text-sm leading-tight" style="color:#0f172a">
+                <b>¿No te llegan viajes?</b> <span class="text-slate-500 hidden min-[360px]:inline">Revisa tu celular</span>
+              </span>
+              <span class="material-symbols-outlined flex-shrink-0 text-slate-400" style="font-size:20px">chevron_right</span>
             </button>
-            <button (click)="reloadFullPage()"
-              class="flex items-center gap-1 text-xs text-cyan-600 font-bold active:scale-95 transition-all">
-              <span class="material-symbols-outlined" style="font-size:14px">refresh</span> Actualizar
-            </button>
-          </div>
+          }
         </div>
       }
       @if (driverStatus() === 'rejected') {
