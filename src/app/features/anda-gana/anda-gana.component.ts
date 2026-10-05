@@ -5598,7 +5598,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
         </div>
       }
       <!-- ══ Tarjeta Wallet (saldo de recarga) — siempre visible, toggle panel ══ -->
-      <button (click)="walletPanelOpen.set(!walletPanelOpen())"
+      <button (click)="toggleWalletPanel()"
         class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
         [style]="walletPanelOpen()
           ? 'background:linear-gradient(135deg,#0f172a,#1e293b);border:1.5px solid rgba(34,211,238,0.5);border-radius:18px 18px 0 0;padding:14px 16px;cursor:pointer;position:relative;overflow:hidden'
@@ -5640,20 +5640,8 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
               <span class="material-symbols-outlined" style="font-size:20px;color:#16a34a;font-variation-settings:'FILL' 1">savings</span>
               <p class="text-slate-900 text-sm font-black" style="margin:0">Recarga por Nequi · sin comisión</p>
             </div>
-            <p class="text-slate-600 text-xs leading-snug" style="margin:0">1. Elige cuánto quieres recargar:</p>
-            <div class="grid grid-cols-3 gap-2">
-              @for (amt of rechargePresets; track amt) {
-                <button (click)="rechargeAmount.set(amt)"
-                  class="py-2.5 rounded-xl text-xs font-black transition-all active:scale-95"
-                  [style]="rechargeAmount() === amt
-                    ? 'background:linear-gradient(135deg,#16a34a,#15803d);color:#fff'
-                    : 'background:#FFFFFF;border:1px solid #BBF7D0;color:#374151'">
-                  {{ formatAmt(amt) }}
-                </button>
-              }
-            </div>
             <p class="text-slate-600 text-xs leading-snug" style="margin:0">
-              2. Envía <b class="text-slate-900">{{ rechargeAmount() >= 10000 ? formatCOP(rechargeAmount()) : 'el valor' }}</b> a este Nequi:
+              1. Envía el valor que quieras recargar (mínimo {{ formatCOP(10000) }}) a este Nequi:
             </p>
             <div class="flex items-center gap-2">
               <span class="flex-1 text-slate-900 font-black tracking-wide" style="font-size:18px">313 445 3649</span>
@@ -5665,7 +5653,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
               </button>
             </div>
             <p class="text-slate-600 text-xs leading-snug" style="margin:0">
-              3. Mándanos la captura del comprobante por WhatsApp. Te cargamos el saldo completo, sin descuentos, en pocos minutos.
+              2. Mándanos la captura del comprobante por WhatsApp. Te cargamos el saldo completo, sin descuentos, en pocos minutos.
             </p>
             <a [href]="nequiComprobanteUrl()" target="_blank" rel="noopener"
               class="w-full py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
@@ -5921,7 +5909,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
       }
       @if (driverStatus() !== 'rejected') {
         <!-- Solicitudes en vivo: solo label + contador, el modal flotante muestra el detalle -->
-        <div class="flex items-center justify-between px-1">
+        <div class="flex items-center justify-between px-1" [style.display]="walletPanelOpen() ? 'none' : null">
           <div class="flex items-center gap-2">
             <p class="text-slate-700 text-xs font-black uppercase tracking-widest">Solicitudes en vivo</p>
             @if (visibleDriverRequests().length > 0) {
@@ -5955,8 +5943,8 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
         </div>
       }
 
-      <!-- Mapa + dirección -->
-      <div class="flex flex-col gap-2">
+      <!-- Mapa + dirección (se oculta, no se destruye, mientras Recargar está abierto; ver toggleWalletPanel) -->
+      <div class="flex flex-col gap-2" [style.display]="walletPanelOpen() && !driverMapFullscreen() ? 'none' : null">
 
         @if (gpsStatus() !== 'requesting') {
           <div class="relative">
@@ -10765,8 +10753,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } catch { /* sin portapapeles: el número igual se ve en pantalla */ }
   }
   nequiComprobanteUrl(): string {
-    const monto = this.rechargeAmount() >= 10000 ? ` de ${this.formatCOP(this.rechargeAmount())}` : '';
-    return `https://wa.me/573009645697?text=${encodeURIComponent(`Hola, hice una recarga por Nequi${monto} para mi saldo de Movi. Te envío el comprobante 👇`)}`;
+    return `https://wa.me/573009645697?text=${encodeURIComponent('Hola, hice una recarga por Nequi para mi saldo de Movi. Te envío el comprobante 👇')}`;
   }
   // Volvió de ePayco y el saldo no subió: se le muestra el aviso con el botón de WhatsApp.
   rechargeNoReflejada = signal(false);
@@ -11832,6 +11819,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   driverMenuOpen    = signal(false);
   walletPanelOpen   = signal(false);
+  /** Recargar abierto = pantalla limpia: se ocultan el mapa y "Solicitudes en vivo" (pedido del usuario
+   * 2026-10-04). El mapa se OCULTA (display:none), no se destruye: Mapbox no sobrevive a sacarlo del DOM.
+   * Al volver a mostrarlo hay que avisarle su tamaño (resize) o queda en blanco o mal dibujado. */
+  toggleWalletPanel(): void {
+    const abrir = !this.walletPanelOpen();
+    this.walletPanelOpen.set(abrir);
+    if (!abrir) setTimeout(() => { try { this._map?.resize(); } catch { /* mapa aún no creado */ } }, 60);
+  }
 
   private _map:             any    = null;
   private _userMarker:      any    = null;
