@@ -6031,17 +6031,23 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
               <span class="material-symbols-outlined" style="font-size:20px;color:#245BDB">refresh</span>
             </button>
           </div>
-          @if (visibleDriverRequests().length === 0) {
+          <!-- Ayuda a la vista (2026-10-04): dos botones-tarjeta con borde, sombra e ícono para que se note que
+               se tocan. Antes "¿No te llegan viajes?" era una barra que parecía texto, y las guías estaban
+               escondidas casi al final del menú. -->
+          <div class="grid grid-cols-2 gap-2">
             <button (click)="ejecutarAccionAyuda('diagnostico')"
-              class="w-full flex items-center gap-3 rounded-xl px-3 text-left active:scale-[0.99] transition-all"
-              style="min-height:46px;background:#EFF6FF;border:1px solid #BFDBFE">
-              <span class="material-symbols-outlined flex-shrink-0" style="font-size:20px;color:#245BDB">help</span>
-              <span class="flex-1 min-w-0 text-sm leading-tight" style="color:#0f172a">
-                <b>¿No te llegan viajes?</b> <span class="text-slate-500 hidden min-[360px]:inline">Revisa tu celular</span>
-              </span>
-              <span class="material-symbols-outlined flex-shrink-0 text-slate-400" style="font-size:20px">chevron_right</span>
+              class="flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center active:scale-[0.97] transition-all"
+              style="min-height:72px;background:#FFFFFF;border:1.5px solid #93C5FD;box-shadow:0 2px 6px rgba(36,91,219,0.12)">
+              <span class="material-symbols-outlined" style="font-size:26px;color:#245BDB">wifi_find</span>
+              <span class="text-[13px] font-black leading-tight" style="color:#0f172a">¿No te llegan viajes?</span>
             </button>
-          }
+            <button (click)="openDriverSection('tutorial')"
+              class="flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center active:scale-[0.97] transition-all"
+              style="min-height:72px;background:#FFFFFF;border:1.5px solid #86EFAC;box-shadow:0 2px 6px rgba(22,163,74,0.12)">
+              <span class="material-symbols-outlined" style="font-size:26px;color:#16a34a">school</span>
+              <span class="text-[13px] font-black leading-tight" style="color:#0f172a">Aprende a usar Movi</span>
+            </button>
+          </div>
         </div>
       }
       @if (driverStatus() === 'rejected') {
@@ -6489,7 +6495,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
                  driverSection() === 'quests' ? 'Metas y bonos' :
                  driverSection() === 'vehicles' ? 'Mis vehículos' :
                  driverSection() === 'blacklist' ? 'Pasajeros bloqueados' :
-                 driverSection() === 'tutorial' ? '¿Cómo hago…?' :
+                 driverSection() === 'tutorial' ? 'Aprende a usar Movi' :
                  driverSection() === 'preferences' ? 'Preferencias' :
                  driverSection() === 'autoaccept' ? 'Auto-aceptar' :
                  driverSection() === 'documents' ? 'Mis documentos' :
@@ -12079,7 +12085,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   readonly rechargePresets = [10000, 20000, 50000, 100000, 200000, 500000];
 
   readonly driverMenuItems = [
-    { icon: 'person',          label: 'Mi Perfil',            action: 'profile',      sectionLabel: 'Principal',     danger: false, divider: false },
+    // Las guías van primero (2026-10-04): al final del menú nadie las encontraba.
+    { icon: 'school',          label: 'Aprende a usar Movi',  action: 'tutorial',     sectionLabel: 'Principal',     danger: false, divider: false },
+    { icon: 'person',          label: 'Mi Perfil',            action: 'profile',      sectionLabel: '',              danger: false, divider: false },
     { icon: 'wifi_tethering',  label: 'Estado / En Línea',    action: 'status',       sectionLabel: '',              danger: false, divider: false },
     { icon: 'account_balance_wallet', label: 'Mi Wallet · Recarga', action: 'wallet-panel', sectionLabel: '',           danger: false, divider: false },
     { icon: 'payments',        label: 'Comisión/Invitados',   action: 'earnings',     sectionLabel: '',              danger: false, divider: false },
@@ -12103,7 +12111,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'settings',        label: 'Configuración',        action: 'settings',     sectionLabel: '',              danger: false, divider: false },
     { icon: 'flag',            label: 'Reportar problema',    action: 'report',       sectionLabel: '',              danger: false, divider: false },
     { icon: 'support_agent',   label: 'Soporte',              action: 'support',      sectionLabel: '',              danger: false, divider: false },
-    { icon: 'help',            label: '¿Cómo hago…?',         action: 'tutorial',     sectionLabel: '',              danger: false, divider: false },
     { icon: 'gavel',           label: 'Términos y condiciones', action: 'terms',      sectionLabel: '',              danger: false, divider: false },
     { icon: 'privacy_tip',     label: 'Política de privacidad', action: 'privacy',    sectionLabel: '',              danger: false, divider: false },
     { icon: '',                label: '',                     action: '',             sectionLabel: 'Soporte directo', danger: false, divider: true },
