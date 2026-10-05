@@ -5640,8 +5640,20 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
               <span class="material-symbols-outlined" style="font-size:20px;color:#16a34a;font-variation-settings:'FILL' 1">savings</span>
               <p class="text-slate-900 text-sm font-black" style="margin:0">Recarga por Nequi · sin comisión</p>
             </div>
+            <p class="text-slate-600 text-xs leading-snug" style="margin:0">1. Elige cuánto quieres recargar:</p>
+            <div class="grid grid-cols-3 gap-2">
+              @for (amt of rechargePresets; track amt) {
+                <button (click)="rechargeAmount.set(amt)"
+                  class="py-2.5 rounded-xl text-xs font-black transition-all active:scale-95"
+                  [style]="rechargeAmount() === amt
+                    ? 'background:linear-gradient(135deg,#16a34a,#15803d);color:#fff'
+                    : 'background:#FFFFFF;border:1px solid #BBF7D0;color:#374151'">
+                  {{ formatAmt(amt) }}
+                </button>
+              }
+            </div>
             <p class="text-slate-600 text-xs leading-snug" style="margin:0">
-              1. Envía el valor que quieras recargar (mínimo {{ formatCOP(10000) }}) a este Nequi:
+              2. Envía <b class="text-slate-900">{{ rechargeAmount() >= 10000 ? formatCOP(rechargeAmount()) : 'el valor' }}</b> a este Nequi:
             </p>
             <div class="flex items-center gap-2">
               <span class="flex-1 text-slate-900 font-black tracking-wide" style="font-size:18px">313 445 3649</span>
@@ -5653,7 +5665,7 @@ type SeguimientoCodigo = null | 'esperando' | 'entregado' | 'sin_whatsapp' | 'sm
               </button>
             </div>
             <p class="text-slate-600 text-xs leading-snug" style="margin:0">
-              2. Mándanos la captura del comprobante por WhatsApp. Te cargamos el saldo completo, sin descuentos, en pocos minutos.
+              3. Mándanos la captura del comprobante por WhatsApp. Te cargamos el saldo completo, sin descuentos, en pocos minutos.
             </p>
             <a [href]="nequiComprobanteUrl()" target="_blank" rel="noopener"
               class="w-full py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
@@ -10753,7 +10765,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } catch { /* sin portapapeles: el número igual se ve en pantalla */ }
   }
   nequiComprobanteUrl(): string {
-    return `https://wa.me/573009645697?text=${encodeURIComponent('Hola, hice una recarga por Nequi para mi saldo de Movi. Te envío el comprobante 👇')}`;
+    const monto = this.rechargeAmount() >= 10000 ? ` de ${this.formatCOP(this.rechargeAmount())}` : '';
+    return `https://wa.me/573009645697?text=${encodeURIComponent(`Hola, hice una recarga por Nequi${monto} para mi saldo de Movi. Te envío el comprobante 👇`)}`;
   }
   // Volvió de ePayco y el saldo no subió: se le muestra el aviso con el botón de WhatsApp.
   rechargeNoReflejada = signal(false);
