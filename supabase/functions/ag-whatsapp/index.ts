@@ -8718,6 +8718,18 @@ const RESPUESTA_COMO_RECARGAR =
   `Recuerda: en tu *primer viaje no se te descuenta nada*; el descuento empieza desde el segundo viaje.`;
 
 async function handleSupportConversation(phone: string, name: string, msgText: string, btnId?: string): Promise<void> {
+  // VA PRIMERO, antes que la respuesta a fotos/archivos: a las 14:39 una foto recibió "Recibí tu archivo"
+  // un minuto después de que el admin escribiera (el chequeo estaba más abajo).
+  // El dueño está atendiendo este chat a mano (2026-10-05, …5200): escribió "Hola / ¿De quién me hablas?"
+  // y el bot igual le contestó a la persona por encima. Si hay un mensaje del admin en los últimos
+  // 30 minutos, el bot se queda callado (el mensaje igual queda en el registro y en la bandeja).
+  {
+    const { data: delAdmin } = await db().from('ag_wa_message_log').select('id')
+      .eq('wa_phone', normWaPhone(phone)).eq('role', 'conductor').eq('direction', 'out').eq('sent_by', 'admin')
+      .gte('created_at', new Date(Date.now() - 30 * 60e3).toISOString()).limit(1);
+    if (delAdmin && delAdmin.length) return;
+  }
+
   // Foto, audio, sticker o archivo sin texto (2026-10-02, caso real …957): mandó una foto
   // (seguramente de sus documentos) y el bot la escaló a un asesor sin saber qué era. Por acá el
   // bot solo lee texto, y los documentos se suben en la app, así que se le dice eso.
@@ -8727,16 +8739,6 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
       `Si son *documentos*, se suben directo en la app, en *"Quiero ser conductor"* (ahí los revisamos). ` +
       `Si tienes una pregunta, escríbemela y te respondo 🙂`);
     return;
-  }
-
-  // El dueño está atendiendo este chat a mano (2026-10-05, …5200): escribió "Hola / ¿De quién me hablas?"
-  // y el bot igual le contestó a la persona por encima. Si hay un mensaje del admin en los últimos
-  // 30 minutos, el bot se queda callado (el mensaje igual queda en el registro y en la bandeja).
-  {
-    const { data: delAdmin } = await db().from('ag_wa_message_log').select('id')
-      .eq('wa_phone', normWaPhone(phone)).eq('role', 'conductor').eq('direction', 'out').eq('sent_by', 'admin')
-      .gte('created_at', new Date(Date.now() - 30 * 60e3).toISOString()).limit(1);
-    if (delAdmin && delAdmin.length) return;
   }
 
   // Contestador automático de un negocio (caso real 2026-10-05, …0399): mandaba dos mensajes y el bot
