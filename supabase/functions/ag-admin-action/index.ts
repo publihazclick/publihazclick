@@ -110,14 +110,85 @@ Deno.serve(async (req) => {
       // abierta a cualquiera: con la llave pública cualquiera podía ponerle el saldo que quisiera a
       // cualquier conductor. Ahora pasa por aquí (admin verificado) y la función se cerró
       // (migración 311).
+      // 2026-10-06 (apartado "Recarga manual a conductores"): antes no revisaba que el conductor
+      // existiera ni frenaba el doble toque. Ahora: 404 si no existe, 409 si en los últimos 2 min
+      // ya se le cargó el mismo monto (salvo confirm_duplicate:true) y devuelve el saldo nuevo
+      // para que el panel muestre el resultado real de la base de datos, no una suma hecha en pantalla.
       case 'recharge_driver': {
         const amount = Number(body.amount);
         if (!body.driver_id) return json({ error: 'missing_driver_id' }, 400);
         if (!Number.isInteger(amount) || amount <= 0 || amount > 1_000_000) return json({ error: 'Monto inválido (entre $1 y $1.000.000)' }, 400);
+        const { data: drv, error: drvErr } = await movi
+          .from('ag_drivers').select('id, wallet_balance').eq('id', body.driver_id).maybeSingle();
+        if (drvErr) throw drvErr;
+        if (!drv) return json({ error: 'El conductor no existe' }, 404);
+        if (!body.confirm_duplicate) {
+          const desde = new Date(Date.now() - 2 * 60_000).toISOString();
+          const { data: reciente } = await movi
+            .from('ag_wallet_transactions').select('id')
+            .eq('driver_id', body.driver_id).eq('type', 'recharge').eq('amount', amount)
+            .gte('created_at', desde).limit(1);
+          if (reciente?.length) {
+            return json({ error: 'duplicada', message: 'Hace menos de 2 minutos ya se le cargó este mismo monto a este conductor.' }, 409);
+          }
+        }
         const { error } = await movi.rpc('ag_recharge_driver_wallet', { p_driver_id: body.driver_id, p_amount: amount });
         if (error) throw error;
-        console.log(`[ag-admin-action] recharge_driver ${body.driver_id} $${amount} por ${admin.userId}`);
-        return json({ ok: true });
+        const { data: after } = await movi.from('ag_drivers').select('wallet_balance').eq('id', body.driver_id).single();
+        console.log(`[ag-admin-action] recharge_driver ${body.driver_id} $${amount} por ${admin.userId} (${admin.nombre ?? 's/n'})`);
+        return json({ ok: true, new_balance: after?.wallet_balance ?? null });
+      }
+      // Buscador del apartado "Recarga manual a conductores" (2026-10-06). Busca por cualquier dato
+      // registrado: nombre, celular (con o sin +57, espacios o guiones), correo, cédula, placa o
+      // número de licencia. Incluye conductores en cualquier estado (registro rápido, pendiente,
+      // aprobado, rechazado): el botón viejo de la pestaña Conductores solo dejaba recargar aprobados.
+      case 'search_drivers': {
+        // Se quitan los caracteres que rompen la sintaxis de .or() de PostgREST.
+        const term = String(body.term ?? '').replace(/[,()*%\\]/g, ' ').trim();
+        if (term.length < 2) return json({ error: 'Escribe al menos 2 caracteres' }, 400);
+        const digits = term.replace(/\D/g, '');
+        const like = `%${term}%`;
+
+        const userOr = [`full_name.ilike.${like}`, `email.ilike.${like}`, `id_number.ilike.${like}`, `phone.ilike.${like}`];
+        // Celular: se busca solo por los dígitos, así "300 123 4567", "+57 3001234567" y "3001234567" encuentran lo mismo.
+        if (digits.length >= 4) userOr.push(`phone.ilike.%${digits.length > 10 ? digits.slice(-10) : digits}%`, `id_number.ilike.%${digits}%`);
+        const driverOr = [`plate.ilike.${like}`, `vehicle_plate.ilike.${like}`, `id_number.ilike.${like}`, `license_number.ilike.${like}`];
+        if (digits.length >= 4) driverOr.push(`id_number.ilike.%${digits}%`, `license_number.ilike.%${digits}%`);
+
+        const [usersRes, driversRes] = await Promise.all([
+          movi.from('ag_users').select('id').or(userOr.join(',')).limit(100),
+          movi.from('ag_drivers').select('id').or(driverOr.join(',')).limit(100),
+        ]);
+        if (usersRes.error) throw usersRes.error;
+        if (driversRes.error) throw driversRes.error;
+        const userIds = (usersRes.data ?? []).map((u: { id: string }) => u.id);
+        const driverIds = (driversRes.data ?? []).map((d: { id: string }) => d.id);
+        if (!userIds.length && !driverIds.length) return json({ ok: true, data: [] });
+
+        const filtros: string[] = [];
+        if (userIds.length) filtros.push(`ag_user_id.in.(${userIds.join(',')})`);
+        if (driverIds.length) filtros.push(`id.in.(${driverIds.join(',')})`);
+        const { data, error } = await movi
+          .from('ag_drivers')
+          .select('id, status, wallet_balance, plate, vehicle_plate, vehicle_type, vehicle_brand, vehicle_model, vehicle_color, id_number, is_online, created_at, ag_users(full_name, phone, email, id_number, city, is_blocked)')
+          .or(filtros.join(','))
+          .order('created_at', { ascending: false })
+          .limit(30);
+        if (error) throw error;
+        return json({ ok: true, data });
+      }
+      // Últimos movimientos de la billetera de un conductor, para ver en el apartado de recarga
+      // manual si ya se le cargó antes de volver a cargarle.
+      case 'driver_wallet_history': {
+        if (!body.driver_id) return json({ error: 'missing_driver_id' }, 400);
+        const { data, error } = await movi
+          .from('ag_wallet_transactions')
+          .select('id, amount, type, description, created_at')
+          .eq('driver_id', body.driver_id)
+          .order('created_at', { ascending: false })
+          .limit(15);
+        if (error) throw error;
+        return json({ ok: true, data });
       }
       case 'resolve_sos': {
         if (!body.sos_id) return json({ error: 'missing_sos_id' }, 400);

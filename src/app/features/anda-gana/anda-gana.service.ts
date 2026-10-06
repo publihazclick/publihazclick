@@ -1459,6 +1459,34 @@ export class AndaGanaService {
     }
   }
 
+  /** Apartado "Recarga manual a conductores" (2026-10-06): busca conductores por nombre, celular,
+   * correo, cédula, placa o licencia. */
+  async adminSearchDrivers(term: string, publihazclickToken: string): Promise<any[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'search_drivers', term });
+    return out.data ?? [];
+  }
+
+  /** Recarga desde el apartado de recarga manual: devuelve el saldo nuevo leído de la base de datos
+   * y avisa si es una posible recarga duplicada (mismo monto en los últimos 2 min). */
+  async adminManualRecharge(driverId: string, amount: number, confirmDuplicate: boolean, publihazclickToken: string):
+    Promise<{ success: boolean; newBalance?: number | null; duplicate?: boolean; error?: string }> {
+    try {
+      const out = await this.callAdminAction(publihazclickToken, {
+        action: 'recharge_driver', driver_id: driverId, amount, confirm_duplicate: confirmDuplicate,
+      });
+      return { success: true, newBalance: out.new_balance ?? null };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo cargar el saldo';
+      if (msg === 'duplicada') return { success: false, duplicate: true };
+      return { success: false, error: msg };
+    }
+  }
+
+  async adminDriverWalletHistory(driverId: string, publihazclickToken: string): Promise<any[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'driver_wallet_history', driver_id: driverId });
+    return out.data ?? [];
+  }
+
   async getDriverStats(driverId: string): Promise<{ avgRating: number; completedTrips: number }> {
     const [ratingsRes, tripsRes] = await Promise.all([
       this.supabase.from('ag_trip_ratings')

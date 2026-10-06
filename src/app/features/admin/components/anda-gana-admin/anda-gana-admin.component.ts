@@ -4,7 +4,7 @@ import { SlicePipe, DatePipe } from '@angular/common';
 import { AndaGanaService, AgUser, AgDriver } from '../../../../features/anda-gana/anda-gana.service';
 import { AuthService } from '../../../../core/services/auth.service';
 
-type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'configuracion' | 'sos' | 'viajes' | 'ciudad-a-ciudad' | 'cupones' | 'retiros' | 'soporte';
+type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'recarga-manual' | 'pasajeros' | 'configuracion' | 'sos' | 'viajes' | 'ciudad-a-ciudad' | 'cupones' | 'retiros' | 'soporte';
 
 @Component({
   selector: 'app-anda-gana-admin',
@@ -95,6 +95,11 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
       class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
       [class]="tab() === 'conductores' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-500 hover:text-slate-300'">
       Conductores
+    </button>
+    <button (click)="tab.set('recarga-manual')"
+      class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition flex items-center gap-1.5"
+      [class]="tab() === 'recarga-manual' ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-500 hover:text-slate-300'">
+      <span class="material-symbols-outlined" style="font-size:14px">account_balance_wallet</span>Recarga manual
     </button>
     <button (click)="abrirSoporte()"
       class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition flex items-center gap-1.5"
@@ -305,6 +310,150 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
         }
       </div>
     }
+  }
+
+  <!-- ═══ RECARGA MANUAL A CONDUCTORES (2026-10-06) ═══
+       Para que el dueño pueda cargar saldo sin depender de nadie: busca por cualquier dato
+       registrado y recarga a conductores en cualquier estado. Paso de confirmación obligatorio
+       y aviso de posible duplicado (lo valida también el servidor). -->
+  @if (tab() === 'recarga-manual') {
+    <div class="flex flex-col gap-4">
+      <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-4 flex flex-col gap-3">
+        <p class="text-white font-bold text-sm">Buscar conductor</p>
+        <p class="text-slate-500 text-xs">Por celular, nombre, cédula, placa, correo o licencia.</p>
+        <form class="flex gap-2" (submit)="$event.preventDefault(); buscarConductorRecarga()">
+          <input type="search" name="rmTerm" [ngModel]="rmTerm()" (ngModelChange)="rmTerm.set($event)"
+            placeholder="Ej: 3001234567, Carlos, ABC123"
+            autocomplete="off"
+            class="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500/50"/>
+          <button type="submit" [disabled]="rmBuscando() || rmTerm().trim().length < 2"
+            class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black text-sm font-black disabled:opacity-50 flex items-center gap-1">
+            <span class="material-symbols-outlined" style="font-size:18px">search</span>
+            {{ rmBuscando() ? 'Buscando…' : 'Buscar' }}
+          </button>
+        </form>
+        @if (rmError()) {
+          <p class="text-rose-400 text-xs">{{ rmError() }}</p>
+        }
+      </div>
+
+      @if (rmBuscado() && !rmBuscando() && rmResultados().length === 0 && !rmError()) {
+        <div class="text-center py-10 text-slate-500 text-sm">No se encontró ningún conductor con "{{ rmUltimoTerm() }}".</div>
+      }
+      @if (rmResultados().length === 30) {
+        <p class="text-slate-500 text-xs">Se muestran los 30 más recientes. Si no ves al conductor, escribe un dato más exacto.</p>
+      }
+
+      @for (d of rmResultados(); track d.id) {
+        <div class="bg-white/[0.03] border rounded-2xl p-4 flex flex-col gap-3"
+          [class]="rmSel()?.id === d.id ? 'border-emerald-500/40' : 'border-white/8'">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">{{ d.vehicle_type === 'moto' ? 'two_wheeler' : 'directions_car' }}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-white font-bold text-sm truncate">{{ d.ag_users?.full_name || 'Sin nombre' }}</p>
+              <p class="text-slate-400 text-xs">{{ d.ag_users?.phone || 'Sin celular' }}</p>
+              <p class="text-slate-500 text-xs truncate">
+                {{ d.plate || d.vehicle_plate || 'Sin placa' }}
+                @if (d.vehicle_brand || d.vehicle_model) { · {{ d.vehicle_brand }} {{ d.vehicle_model }} }
+                @if (d.id_number || d.ag_users?.id_number) { · CC {{ d.id_number || d.ag_users?.id_number }} }
+              </p>
+            </div>
+            <div class="flex flex-col items-end gap-1 flex-shrink-0">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" [class]="estadoConductorClase(d.status)">{{ estadoConductorTexto(d.status) }}</span>
+              @if (d.ag_users?.is_blocked) {
+                <span class="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-bold">Bloqueado</span>
+              }
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 rounded-xl px-3 py-2.5" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07)">
+            <div class="flex-1">
+              <p class="text-slate-500 text-[10px] uppercase font-bold">Saldo actual</p>
+              <p class="font-black text-base" [class]="(d.wallet_balance ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ formatCOP(d.wallet_balance ?? 0) }}</p>
+            </div>
+            @if (rmSel()?.id !== d.id) {
+              <button (click)="seleccionarConductorRecarga(d)"
+                class="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold"
+                style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);color:#34d399">
+                <span class="material-symbols-outlined" style="font-size:16px">add</span> Agregar saldo
+              </button>
+            }
+          </div>
+
+          @if (rmSel()?.id === d.id) {
+            <div class="flex flex-col gap-3">
+              @if (rmExito()) {
+                <div class="rounded-xl px-3 py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm font-bold">
+                  ✓ {{ rmExito() }}
+                </div>
+              }
+
+              @if (rmErrorRecarga()) {
+                <div class="rounded-xl px-3 py-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">{{ rmErrorRecarga() }}</div>
+              }
+              @if (!rmConfirmando()) {
+                <div class="flex flex-wrap gap-2">
+                  @for (m of rmMontosRapidos; track m) {
+                    <button (click)="rmMonto.set(m)"
+                      class="px-3 py-2 rounded-lg text-xs font-bold border"
+                      [class]="rmMonto() === m ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-white/5 text-slate-300 border-white/10'">
+                      {{ formatCOP(m) }}
+                    </button>
+                  }
+                </div>
+                <div class="flex gap-2">
+                  <input type="number" inputmode="numeric" min="1" max="1000000" step="1000"
+                    [ngModel]="rmMonto() || null" (ngModelChange)="rmMonto.set(+$event || 0)"
+                    placeholder="Otro monto"
+                    class="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500/50"/>
+                  <button (click)="pedirConfirmacionRecarga()"
+                    [disabled]="!montoRecargaValido()"
+                    class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black text-sm font-black disabled:opacity-40">
+                    Continuar
+                  </button>
+                  <button (click)="cancelarRecarga()" class="px-3 py-2.5 rounded-xl bg-white/5 text-slate-400 text-sm">✕</button>
+                </div>
+              } @else {
+                <div class="rounded-xl p-3 bg-amber-500/10 border border-amber-500/30 flex flex-col gap-3">
+                  <p class="text-amber-200 text-sm">
+                    Vas a cargar <b>{{ formatCOP(rmMonto()) }}</b> a <b>{{ d.ag_users?.full_name || 'este conductor' }}</b>.
+                    El saldo pasará de {{ formatCOP(d.wallet_balance ?? 0) }} a <b>{{ formatCOP((d.wallet_balance ?? 0) + rmMonto()) }}</b>.
+                  </p>
+                  @if (rmDuplicada()) {
+                    <p class="text-rose-300 text-xs font-bold">⚠ Hace menos de 2 minutos ya se le cargó este mismo monto. ¿Seguro que quieres cargarlo otra vez?</p>
+                  }
+                  <div class="flex gap-2">
+                    <button (click)="confirmarRecargaManual()" [disabled]="rmGuardando()"
+                      class="flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-black text-sm font-black disabled:opacity-50">
+                      {{ rmGuardando() ? 'Cargando…' : (rmDuplicada() ? 'Sí, cargar otra vez' : 'Sí, cargar saldo') }}
+                    </button>
+                    <button (click)="rmConfirmando.set(false); rmDuplicada.set(false)" [disabled]="rmGuardando()"
+                      class="px-4 py-2.5 rounded-xl bg-white/5 text-slate-300 text-sm">Volver</button>
+                  </div>
+                </div>
+              }
+
+              <div class="flex flex-col gap-1">
+                <p class="text-slate-500 text-[10px] uppercase font-bold">Últimos movimientos</p>
+                @if (rmHistorialCargando()) {
+                  <p class="text-slate-500 text-xs">Cargando…</p>
+                } @else if (rmHistorial().length === 0) {
+                  <p class="text-slate-500 text-xs">Sin movimientos todavía.</p>
+                }
+                @for (t of rmHistorial(); track t.id) {
+                  <div class="flex items-center justify-between gap-2 text-xs py-1 border-b border-white/5">
+                    <span class="text-slate-400 truncate">{{ t.created_at | date:'d MMM, h:mm a' }} · {{ t.description || t.type }}</span>
+                    <span class="font-bold flex-shrink-0" [class]="t.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ t.amount >= 0 ? '+' : '' }}{{ formatCOP(t.amount) }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
   }
 
   <!-- ═══ CONFIGURACIÓN ═══ -->
@@ -1316,6 +1465,114 @@ export class AndaGanaAdminComponent implements OnInit, OnDestroy {
       await this.load();
     }
     this.actionLoading.set(null);
+  }
+
+  // ── Recarga manual a conductores (2026-10-06) ──
+  rmTerm             = signal('');
+  rmUltimoTerm       = signal('');
+  rmBuscando         = signal(false);
+  rmBuscado          = signal(false);
+  rmError            = signal<string | null>(null);
+  rmResultados       = signal<any[]>([]);
+  rmSel              = signal<any | null>(null);
+  rmMonto            = signal(0);
+  rmConfirmando      = signal(false);
+  rmDuplicada        = signal(false);
+  rmGuardando        = signal(false);
+  rmExito            = signal<string | null>(null);
+  rmErrorRecarga     = signal<string | null>(null);
+  rmHistorial        = signal<any[]>([]);
+  rmHistorialCargando = signal(false);
+  readonly rmMontosRapidos = [10000, 20000, 30000, 50000, 100000];
+  montoRecargaValido = computed(() => Number.isInteger(this.rmMonto()) && this.rmMonto() > 0 && this.rmMonto() <= 1_000_000);
+
+  async buscarConductorRecarga() {
+    const term = this.rmTerm().trim();
+    if (term.length < 2 || this.rmBuscando()) return;
+    this.rmBuscando.set(true);
+    this.rmError.set(null);
+    this.cancelarRecarga();
+    try {
+      this.rmResultados.set(await this.agService.adminSearchDrivers(term, this.authService.getAccessToken() ?? ''));
+    } catch (e) {
+      this.rmResultados.set([]);
+      this.rmError.set(e instanceof Error ? e.message : 'No se pudo buscar. Intenta de nuevo.');
+    }
+    this.rmUltimoTerm.set(term);
+    this.rmBuscado.set(true);
+    this.rmBuscando.set(false);
+  }
+
+  async seleccionarConductorRecarga(d: any) {
+    this.rmSel.set(d);
+    this.rmMonto.set(0);
+    this.rmConfirmando.set(false);
+    this.rmDuplicada.set(false);
+    this.rmExito.set(null);
+    await this.cargarHistorialRecarga(d.id);
+  }
+
+  private async cargarHistorialRecarga(driverId: string) {
+    this.rmHistorialCargando.set(true);
+    try {
+      const h = await this.agService.adminDriverWalletHistory(driverId, this.authService.getAccessToken() ?? '');
+      if (this.rmSel()?.id === driverId) this.rmHistorial.set(h);
+    } catch {
+      if (this.rmSel()?.id === driverId) this.rmHistorial.set([]);
+    }
+    this.rmHistorialCargando.set(false);
+  }
+
+  pedirConfirmacionRecarga() {
+    if (!this.montoRecargaValido()) return;
+    this.rmExito.set(null);
+    this.rmErrorRecarga.set(null);
+    this.rmConfirmando.set(true);
+  }
+
+  cancelarRecarga() {
+    this.rmSel.set(null);
+    this.rmMonto.set(0);
+    this.rmConfirmando.set(false);
+    this.rmDuplicada.set(false);
+    this.rmExito.set(null);
+    this.rmErrorRecarga.set(null);
+    this.rmHistorial.set([]);
+  }
+
+  async confirmarRecargaManual() {
+    const d = this.rmSel();
+    const monto = this.rmMonto();
+    if (!d || !this.montoRecargaValido() || this.rmGuardando()) return;
+    this.rmGuardando.set(true);
+    const r = await this.agService.adminManualRecharge(d.id, monto, this.rmDuplicada(), this.authService.getAccessToken() ?? '');
+    this.rmGuardando.set(false);
+    if (r.duplicate) { this.rmDuplicada.set(true); return; }
+    if (!r.success) {
+      this.rmConfirmando.set(false);
+      this.rmErrorRecarga.set(`No se pudo cargar el saldo: ${r.error ?? 'error desconocido'}`);
+      return;
+    }
+    // El saldo que se muestra es el que devolvió la base de datos, no una suma hecha en pantalla.
+    const nuevo = r.newBalance ?? (d.wallet_balance ?? 0) + monto;
+    this.rmResultados.update(list => list.map(x => x.id === d.id ? { ...x, wallet_balance: nuevo } : x));
+    this.rmSel.set({ ...d, wallet_balance: nuevo });
+    this.rmExito.set(`Listo: se cargaron ${this.formatCOP(monto)}. Saldo nuevo: ${this.formatCOP(nuevo)}.`);
+    this.rmConfirmando.set(false);
+    this.rmDuplicada.set(false);
+    this.rmMonto.set(0);
+    await this.cargarHistorialRecarga(d.id);
+  }
+
+  estadoConductorTexto(status: string): string {
+    return ({ quick: 'Registro rápido', pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado' } as Record<string, string>)[status] ?? status;
+  }
+
+  estadoConductorClase(status: string): string {
+    return ({
+      quick: 'bg-blue-500/10 text-blue-400', pending: 'bg-amber-500/10 text-amber-400',
+      approved: 'bg-emerald-500/10 text-emerald-400', rejected: 'bg-rose-500/10 text-rose-400',
+    } as Record<string, string>)[status] ?? 'bg-white/5 text-slate-400';
   }
 
   async loadCommission() {

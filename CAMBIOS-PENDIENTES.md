@@ -13,6 +13,18 @@
 
 ## Pendiente de subir
 
+### Panel admin Movi: nuevo apartado "Recarga manual a conductores" (2026-10-06)
+- **PENDIENTE**: desplegar `ag-admin-action` (con `--no-verify-jwt`) y hacer push del frontend. Van juntos:
+  la pestaña nueva llama a acciones (`search_drivers`, `driver_wallet_history`) que solo existen en la función nueva.
+- **Por qué**: el usuario quiere poder cargar saldo él mismo sin depender de Claude.
+- **Qué cambia**: pestaña "Recarga manual" en /admin/anda-gana. Busca por celular (con o sin +57/espacios), nombre,
+  cédula, placa, correo o licencia; muestra saldo y últimos 15 movimientos; montos rápidos o monto libre; paso de
+  confirmación con saldo antes/después; el servidor frena el mismo monto al mismo conductor en <2 min salvo que se
+  confirme otra vez, y devuelve el saldo nuevo real. Recarga a conductores en CUALQUIER estado (el botón viejo de la
+  pestaña Conductores solo aparecía para aprobados y fallaba sin decir nada; se deja como estaba).
+- **Verificado**: `ngc` EXIT=0. NO probado en producción todavía.
+
+
 ### "Ciudad a ciudad": el botón Ubicación ya no abre WhatsApp al número real del conductor (2026-10-05)
 - **SUBIDO a producción el 2026-10-05.**
 - **Por qué**: revisión de privacidad pedida por el usuario. `ccShareLiveLocation` abría `wa.me/<número del conductor>`:
