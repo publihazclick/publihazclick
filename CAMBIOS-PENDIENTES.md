@@ -13,9 +13,20 @@
 
 ## Pendiente de subir
 
+### Regla única: una solicitud NO se cierra si el pasajero pidió seguir buscando (2026-10-06)
+- **SUBIDO a producción el 2026-10-06** (ag-whatsapp v290 + migración 322 verificada).
+- **Por qué**: el dueño vio solicitudes canceladas aunque el pasajero tocó "Seguir buscando".
+- **Causas encontradas**: (1) al abrir la app CUALQUIER pasajero, `ag_cancel_stale_trips` cancelaba TODAS las solicitudes
+  de todos con >12 min (incluidas WhatsApp y recién "seguir buscando"), y la podía correr cualquiera sin sesión
+  (24 cancelaciones sin motivo en 60 días); (2) el bot cancelaba sin preguntar si el pasajero escribía algo tras 12 min;
+  (3) "Buscar otro" y elegir "Subir oferta" no reiniciaban el ciclo de avisos; (4) la sesión vencida se tragaba el toque.
+- **Ahora**: solo se cierra sola si el pasajero no respondió a los 3 avisos. Seguir buscando / Subir oferta / Buscar otro
+  reinician el ciclo. El bot nunca cancela sin preguntar. `ag_cancel_stale_trips` solo toca las solicitudes propias
+  de la app, sin ofertas pendientes, contando desde la última reapertura, con motivo, y sin permiso para anon.
+
+
 ### Bot WhatsApp pasajeros: 4 fallas vistas en las pruebas del dueño del 2026-10-05 (2026-10-06)
-- **PENDIENTE**: desplegar `ag-whatsapp` (con `--no-verify-jwt`) y aplicar la migración 321 por Management API.
-  No toca la web: no gasta build de Cloudflare.
+- **SUBIDO a producción el 2026-10-06** (ag-whatsapp v290, mig 321 verificada: viaje cerrado, cron con tope de 12 h).
 - **Qué se arregla**:
   1. La sesión vencía 2 h después del último menú aunque se estuviera buscando conductor → "Seguir buscando" recibía
      el saludo (9:01 p. m.). Ahora cada paso renueva el vencimiento y una solicitud viva nunca se olvida. Existía desde 06-04.
@@ -27,8 +38,8 @@
 
 
 ### Panel admin Movi: nuevo apartado "Recarga manual a conductores" (2026-10-06)
-- **PENDIENTE**: desplegar `ag-admin-action` (con `--no-verify-jwt`) y hacer push del frontend. Van juntos:
-  la pestaña nueva llama a acciones (`search_drivers`, `driver_wallet_history`) que solo existen en la función nueva.
+- **SUBIDO a producción el 2026-10-06** (ag-admin-action v20 + push del frontend). Buscador probado con sesión real de
+  admin: celular con/sin +57 y espacios, nombre y placa encuentran al conductor; validaciones 400/404 OK. No se cargó saldo.
 - **Por qué**: el usuario quiere poder cargar saldo él mismo sin depender de Claude.
 - **Qué cambia**: pestaña "Recarga manual" en /admin/anda-gana. Busca por celular (con o sin +57/espacios), nombre,
   cédula, placa, correo o licencia; muestra saldo y últimos 15 movimientos; montos rápidos o monto libre; paso de

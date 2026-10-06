@@ -124,6 +124,18 @@ function _raiseOfferSuggested(current: number): number {
 // antes de aplicar -- protección contra errores de tipeo (ej. un cero de más).
 const RAISE_OFFER_SANITY_MULTIPLIER = 3;
 
+/** REGLA ÚNICA DE CIERRE (2026-10-06, pedido del dueño: "si el pasajero da click a seguir buscando no
+ * debemos cancelar el viaje"). Una solicitud solo se cierra sola si el pasajero NO respondió a los
+ * avisos de "nadie ha aceptado". Toda respuesta que signifique "sigan buscando" -- Seguir buscando,
+ * Subir oferta, Buscar otro -- reinicia el ciclo de 3 avisos de ag_wa_stale_search_check.
+ * (Seguir buscando y el monto final de Subir oferta ya lo hacían vía ag_rebroadcast_trip_request.) */
+async function reiniciarAvisosBusqueda(tripId: string | null | undefined): Promise<void> {
+  if (!tripId) return;
+  await db().from('ag_trip_requests')
+    .update({ wa_stale_check_round: 0, wa_stale_check_sent_at: new Date().toISOString() })
+    .eq('id', tripId).eq('status', 'searching');
+}
+
 /** Aplica el monto final de "subir oferta": guarda el precio de origen la primera vez (no lo
  * pisa en subidas siguientes), actualiza el precio, reenvía el push real a conductores
  * cercanos, y le confirma al pasajero -- compartido por el camino directo y el confirmado. */
@@ -4788,27 +4800,26 @@ async function handleConversation(
     const matchStart = session.matching_started_at ? new Date(session.matching_started_at as string) : new Date();
     const elapsedMin = (Date.now() - matchStart.getTime()) / 60000;
     if (elapsedMin > 12) {
-      // Cancelar el viaje en DB si existe
+      // 2026-10-06: antes aquí se CANCELABA la solicitud sin preguntar ("nadie aceptó en 12 minutos")
+      // si el pasajero escribía cualquier cosa. Ahora nunca se cancela sin preguntarle: se le hace la
+      // misma pregunta del aviso (seguir buscando / subir oferta / cancelar) y decide él.
       const tripId = session.trip_request_id as string;
       if (tripId) {
-        const supabase = db();
-        await supabase.from('ag_trip_requests')
-          .update({
-            status:        'cancelled',
-            cancelled_at:  new Date().toISOString(),
-            updated_at:    new Date().toISOString(),
-            cancel_reason: 'Cancelado automáticamente — nadie aceptó en 12 minutos',
-          })
-          .eq('id', tripId)
-          .eq('status', 'searching');
+        const { data: t } = await db().from('ag_trip_requests').select('status').eq('id', tripId).maybeSingle();
+        if (t?.status === 'searching') {
+          const delivery = isDeliveryService(session.service_type as string);
+          await upsertSession(phone, { state: 'stale_search_confirm' });
+          await sendButtons(phone,
+            `Todavía ningún ${delivery ? 'mensajero' : 'conductor'} ha aceptado tu solicitud.\n\n` +
+            `💡 Si subes tu oferta, lo más probable es que alguien la acepte enseguida.\n\n¿Qué quieres hacer?`,
+            [
+              { id: 'stale_keep_looking', title: '🔍 Seguir buscando' },
+              { id: 'stale_raise_offer',  title: '💰 Subir oferta' },
+              { id: 'stale_cancel',       title: '❌ Cancelar' },
+            ]);
+          return;
+        }
       }
-      await resetSession(phone);
-      const noneFoundNoun = isDeliveryService(session.service_type as string) ? 'mensajero disponible' : 'conductores disponibles';
-      await presentServiceMenu(phone,
-        `😔 No encontramos ${noneFoundNoun} en este momento.\n\n` +
-        `Puedes intentarlo de nuevo ya mismo o en unos minutos.`
-      );
-      return;
     }
 
     // Antes respondía "⏳ Buscando conductores... (12 min restantes)" a CUALQUIER cosa, sin
@@ -4892,6 +4903,7 @@ async function handleConversation(
         .select('offered_price').eq('id', tripId).maybeSingle();
       const current = (trip?.offered_price as number) ?? MIN_PRICE;
       const suggested = _raiseOfferSuggested(current);
+      await reiniciarAvisosBusqueda(tripId);
       await upsertSession(phone, { state: 'stale_raise_offer_amount', offered_price: current });
       await sendText(phone,
         `Tu oferta actual es *$${current.toLocaleString('es-CO')}*.\n\n` +
@@ -5120,6 +5132,8 @@ async function handleConversation(
         await presentOffer(phone, { ...nextOffer, service_type: session.service_type, for_name: travelerLabel(session) }, 'Oferta rechazada ❌\n\n');
         return;
       }
+      // "Buscar otro" = sigan buscando: no se le cierra la solicitud por avisos viejos (2026-10-06).
+      await reiniciarAvisosBusqueda(tripId);
 
       await upsertSession(phone, {
         state: 'matching',
