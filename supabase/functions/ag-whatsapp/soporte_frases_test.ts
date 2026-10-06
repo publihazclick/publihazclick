@@ -150,3 +150,12 @@ Deno.test('cada link de descarga va con "Estamos disponibles en Play Store como 
   if (/tocar el enlace|miedo/i.test(enviado.replace(/No digas nada de "si te da miedo tocar el enlace"/, '')))
     throw new Error('volvió el "si te da miedo tocar el enlace" en un mensaje');
 });
+
+// Caso real 2026-10-05 (…8217): con un asesor a cargo, el bot calló los textos pero contestó la foto con
+// "si son documentos, súbelos en Quiero ser conductor" a un conductor que ya trabaja.
+Deno.test('foto sin texto: calla si hay asesor, y a un conductor registrado no le habla de "Quiero ser conductor"', () => {
+  const i = src.indexOf("if (!btnId && !msgText.trim()) {");
+  const bloque = src.slice(i, src.indexOf('Recibí tu archivo', i));
+  if (!/ses\?\.escalated && Date\.now\(\) - escAt < ESCALATION_TTL_MS\) return;/.test(bloque)) throw new Error('la foto ya no respeta al asesor');
+  if (!/lookupAgUserBasic\(phone\)/.test(bloque) || !/Vi tu foto/.test(bloque)) throw new Error('el conductor registrado volvió a recibir el texto de documentos');
+});

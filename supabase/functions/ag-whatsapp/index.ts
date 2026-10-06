@@ -8758,6 +8758,20 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
   // (seguramente de sus documentos) y el bot la escaló a un asesor sin saber qué era. Por acá el
   // bot solo lee texto, y los documentos se suben en la app, así que se le dice eso.
   if (!btnId && !msgText.trim()) {
+    // Caso real 2026-10-05 (…8217, revisor en tiempo real): con la conversación en manos de un asesor
+    // el bot calló sus 3 textos (bien) pero a la foto le contestó (mal) y con el texto de "documentos",
+    // a un conductor que ya trabaja. Si hay un asesor a cargo, la foto también se deja para él.
+    const ses = await getSupportSession(phone);
+    const escAt = ses?.escalated_at ? new Date(ses.escalated_at as string).getTime() : 0;
+    if (ses?.escalated && Date.now() - escAt < ESCALATION_TTL_MS) return;
+    // Conductor ya registrado: lo de "Quiero ser conductor" no le aplica; se le pide que escriba qué es.
+    if (await lookupAgUserBasic(phone)) {
+      if (await yaLeDijimosEsto(phone, 'Vi tu foto 📸', 10)) return;
+      await sendSupportText(phone,
+        `Vi tu foto 📸 pero por este chat no puedo ver imágenes.\n\n` +
+        `¿Me escribes qué te sale en la pantalla o cuál es tu duda? Así te ayudo 🙌`);
+      return;
+    }
     await sendSupportText(phone,
       `Recibí tu archivo 📎 pero por este chat solo puedo leer texto.\n\n` +
       `Si son *documentos*, se suben directo en la app, en *"Quiero ser conductor"* (ahí los revisamos). ` +
