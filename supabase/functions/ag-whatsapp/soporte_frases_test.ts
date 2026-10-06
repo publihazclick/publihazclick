@@ -165,3 +165,9 @@ Deno.test('foto sin texto: calla si hay asesor, y a un conductor registrado no l
 Deno.test('la queja de "llega sin saber destino ni precio" tiene su regla en el prompt', () => {
   if (!/se QUEJA o comenta cómo le llega una solicitud/.test(src) || !/origen → destino/.test(src)) throw new Error('falta la regla');
 });
+
+// Caso real 2026-10-05 (…5016): "jorge" y luego "caseres" -> al apellido se le respondió "¿En qué te ayudo?".
+Deno.test('el apellido en un segundo mensaje se lee como nombre (y el embudo lo deja pasar en silencio)', () => {
+  if (f.leeNombreDado('caseres') !== 'Caseres') throw new Error('"caseres" no se reconoce como nombre');
+  if (!/lead\.paso === 'pitch' && lead\.nombre_dado && recienLink/.test(src)) throw new Error('falta la regla del apellido');
+});

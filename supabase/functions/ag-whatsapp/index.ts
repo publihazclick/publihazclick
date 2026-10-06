@@ -8713,6 +8713,12 @@ async function maybeHandleDriverLead(phone: string, name: string, msgText: strin
       await sendSupportText(phone, `¡Mucho gusto! 🙌 Aquí quedo para cualquier duda.`);
       return true;
     }
+    // El apellido en un segundo mensaje ("jorge" + "caseres", caso real 2026-10-05 …5016): ya le acabamos
+    // de mandar el link y el bot le contestó "¿En qué te ayudo?". Es el resto de su nombre: no se contesta.
+    const recienLink = lead.ultimo_out_at && Date.now() - new Date(lead.ultimo_out_at).getTime() < 3 * 60e3;
+    if (lead.paso === 'pitch' && lead.nombre_dado && recienLink && !/[?¿]/.test(msgText) && !pideAlgo && leeNombreDado(msgText)) {
+      return true;
+    }
     return false; // Es una duda concreta -> la responde el FAQ, que sabe más.
   }
 
