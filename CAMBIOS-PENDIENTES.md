@@ -13,6 +13,19 @@
 
 ## Pendiente de subir
 
+### Bot WhatsApp pasajeros: 4 fallas vistas en las pruebas del dueño del 2026-10-05 (2026-10-06)
+- **PENDIENTE**: desplegar `ag-whatsapp` (con `--no-verify-jwt`) y aplicar la migración 321 por Management API.
+  No toca la web: no gasta build de Cloudflare.
+- **Qué se arregla**:
+  1. La sesión vencía 2 h después del último menú aunque se estuviera buscando conductor → "Seguir buscando" recibía
+     el saludo (9:01 p. m.). Ahora cada paso renueva el vencimiento y una solicitud viva nunca se olvida. Existía desde 06-04.
+  2. Una segunda oferta se tiraba en silencio si ya había otra en pantalla (Darling $12.500, 10:30 a. m.).
+  3. "Subir oferta"/"Seguir buscando" de un aviso viejo respondían "Te leo" sin hacer nada (6:51 p. m.).
+  4. Mig 321: viaje del 09-14 trabado en 'accepted' mandaba "Tu conductor: Va en camino" (44 veces) y la ubicación
+     de Gabriel; se cierra (sin mover dinero) y el cron ignora viajes de más de 12 h.
+- **Verificado**: `deno check` OK, coherencia_test OK. NO probado en producción.
+
+
 ### Panel admin Movi: nuevo apartado "Recarga manual a conductores" (2026-10-06)
 - **PENDIENTE**: desplegar `ag-admin-action` (con `--no-verify-jwt`) y hacer push del frontend. Van juntos:
   la pestaña nueva llama a acciones (`search_drivers`, `driver_wallet_history`) que solo existen en la función nueva.

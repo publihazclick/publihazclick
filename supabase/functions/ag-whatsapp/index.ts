@@ -1344,11 +1344,17 @@ async function getSession(phone: string) {
   return data;
 }
 
+// 2026-10-06: el vencimiento (2 h) se renueva en CADA paso. Antes solo lo ponían resetSession y
+// presentServiceMenu, así que la sesión vencía 2 h después de mostrar el menú aunque el pasajero
+// estuviera en plena búsqueda: caso real del dueño el 2026-10-05, menú a las 6:57 p. m., pidió a
+// las 8:55 p. m., tocó "Seguir buscando" a las 9:01 p. m. y el bot lo saludó como si nada, con la
+// solicitud todavía abierta. Este hueco existía desde el 2026-06-04.
 async function upsertSession(phone: string, patch: Record<string, unknown>) {
   const supabase = db();
   const { data } = await supabase
     .from('ag_wa_sessions')
-    .upsert({ wa_phone: phone, last_message_at: new Date().toISOString(), ...patch },
+    .upsert({ wa_phone: phone, last_message_at: new Date().toISOString(),
+              expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), ...patch },
              { onConflict: 'wa_phone' })
     .select()
     .single();
@@ -3353,10 +3359,19 @@ async function handleConversation(
   let session = precomputedSession !== undefined ? (precomputedSession ?? { wa_phone: phone, state: 'idle' })
     : await getSession(phone) ?? { wa_phone: phone, state: 'idle' };
 
-  // Sesión expirada → reset
+  // Sesión expirada → reset. Excepto si sigue atada a una solicitud o viaje vivo (2026-10-06): ahí
+  // reiniciar deja al pasajero hablando con un bot que ya no sabe que le está buscando conductor.
   if (session.expires_at && new Date(session.expires_at) < new Date()) {
-    await resetSession(phone);
-    session = { wa_phone: phone, state: 'idle' };
+    let viva = false;
+    if (session.trip_request_id) {
+      const { data: t } = await db().from('ag_trip_requests').select('status')
+        .eq('id', session.trip_request_id as string).maybeSingle();
+      viva = !!t && ['searching', 'accepted', 'in_progress'].includes(t.status as string);
+    }
+    if (!viva) {
+      await resetSession(phone);
+      session = { wa_phone: phone, state: 'idle' };
+    }
   }
 
   // Si el viaje asociado a la sesión ya terminó (completado o cancelado por
@@ -4679,6 +4694,16 @@ async function handleConversation(
   }
 
   // ── MATCHING ─────────────────────────────────────────────────────────────────
+  // 2026-10-06: el pasajero toca "Subir oferta"/"Seguir buscando"/"Cancelar" de un aviso ANTERIOR
+  // cuando la sesión ya volvió a 'matching'. Antes caía en "Te leo 👍 Sigo buscando" y el botón no
+  // hacía nada (caso real 2026-10-05 6:51 p. m., "Subir oferta"). Si la solicitud sigue buscando, se
+  // atiende como respuesta a ese aviso.
+  if (state === 'matching' && session.trip_request_id && msgBtnId && /^stale_(keep_looking|raise_offer|cancel)$/.test(msgBtnId)) {
+    const { data: t } = await db().from('ag_trip_requests').select('status')
+      .eq('id', session.trip_request_id as string).maybeSingle();
+    if (t?.status === 'searching') state = 'stale_search_confirm';
+  }
+
   if (state === 'matching') {
     // Verificar si el viaje ya fue aceptado
     const tripId = session.trip_request_id as string;
@@ -6201,7 +6226,10 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // una oferta real justo mientras está viendo el aviso de "nadie ha
     // aceptado todavía" (migración 241) -- sin este estado extra, esa
     // oferta se perdería en silencio.
-    if (!session || (session.state !== 'matching' && session.state !== 'stale_search_confirm') || session.trip_request_id !== payload.trip_request_id) return;
+    // 'awaiting_offer_response' (2026-10-06): con una oferta ya en pantalla, la segunda se tiraba en
+    // silencio. Caso real 2026-10-05: Darling ofreció $12.500 (justo lo que pedía el pasajero) a las
+    // 10:30 y nunca se le mostró. Es seguro mostrar varias: cada botón lleva el id de SU oferta.
+    if (!session || !['matching', 'stale_search_confirm', 'awaiting_offer_response'].includes(session.state as string) || session.trip_request_id !== payload.trip_request_id) return;
 
     // Misma tarjeta (foto + botones) que usa el chequeo oportunista en
     // fetchNextPendingOffer/presentOffer -- una sola forma de mostrar una
