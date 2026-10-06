@@ -133,14 +133,20 @@ Deno.test('migraciones 319-320: esperas de 15 min y 3 h, un solo recordatorio, i
   if (/\+ interval '2[1-9] hours'/.test(sql)) throw new Error('el "gana invitando" volvió a salir a las 24 h o más');
 });
 
-// Pedido del usuario 2026-10-05: "hay gente que le da miedo tocar enlaces". Cada mensaje que manda el
-// link de descarga dice también cómo buscarla en Play Store, en el mismo mensaje.
-Deno.test('cada link de descarga va con "búscala en Play Store como MOVI TRANSPORTE URBANO"', () => {
+// Pedido del usuario 2026-10-05: cada link de descarga va precedido, en el mismo mensaje, de "Estamos
+// disponibles en Play Store como MOVI TRANSPORTE URBANO, aquí está el link". Corrección del mismo día:
+// a la persona NO se le dice nada de "si te da miedo tocar el enlace" (ese era el motivo, no el texto).
+Deno.test('cada link de descarga va con "Estamos disponibles en Play Store como MOVI TRANSPORTE URBANO"', () => {
   const lineas = src.split('\n');
   const sinAviso = lineas.map((l, i) => [l, i] as const)
     .filter(([l]) => l.includes('${APP_DOWNLOAD_LINK}') && !l.trim().startsWith('- El link oficial'))
-    .filter(([, i]) => !lineas.slice(i, i + 3).join('\n').includes('BUSCALA_EN_PLAY_STORE'))
+    .filter(([, i]) => !lineas.slice(Math.max(0, i - 2), i + 1).join('\n').includes('ESTAMOS_EN_PLAY_STORE'))
     .map(([l, i]) => `línea ${i + 1}: ${l.trim()}`);
   if (sinAviso.length) throw new Error('\n' + sinAviso.join('\n'));
-  if (!/MOVI TRANSPORTE URBANO/.test(src)) throw new Error('falta el nombre en Play Store');
+  const i = src.indexOf('const ESTAMOS_EN_PLAY_STORE');
+  const texto = src.slice(i, src.indexOf(';', i));
+  if (!/Estamos disponibles en Play Store como \*MOVI TRANSPORTE URBANO\*/.test(texto)) throw new Error('cambió el texto pedido');
+  const enviado = lineas.filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n');
+  if (/tocar el enlace|miedo/i.test(enviado.replace(/No digas nada de "si te da miedo tocar el enlace"/, '')))
+    throw new Error('volvió el "si te da miedo tocar el enlace" en un mensaje');
 });

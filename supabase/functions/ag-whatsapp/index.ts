@@ -2044,14 +2044,15 @@ async function presentDestConfirm(
 // parámetro de tracking que agrega Google al compartir desde su propia app,
 // no hace falta para que el link funcione.
 const APP_DOWNLOAD_LINK = 'https://play.google.com/store/apps/details?id=com.publihazclick.movi';
-// Va en el MISMO mensaje que cada link de descarga (pedido del usuario 2026-10-05: "hay gente que le
-// da miedo tocar enlaces"). Así puede buscarla a mano sin tocar nada.
-const BUSCALA_EN_PLAY_STORE = `Si prefieres no tocar el enlace, búscala en Play Store como *MOVI TRANSPORTE URBANO* 🔎`;
+// Va justo ANTES de cada link de descarga, en el mismo mensaje (pedido del usuario 2026-10-05): así
+// quien no quiera tocar el enlace sabe cómo buscarla. OJO, corrección del usuario: NO se le dice a la
+// persona nada de "si te da miedo tocar el enlace" -- eso era el motivo, no el mensaje. Solo esto:
+const ESTAMOS_EN_PLAY_STORE = `Estamos disponibles en Play Store como *MOVI TRANSPORTE URBANO*, aquí está el link 👇`;
 async function sendUnsupportedServiceMessage(phone: string, svc: string): Promise<void> {
   await resetSession(phone);
   await sendText(phone,
     `${SERVICE_LABELS[svc] ?? svc} todavía no está disponible por este chat 😔\n\n` +
-    `Por ahora ese servicio solo se puede pedir desde la app de Movi (Play Store):\n${APP_DOWNLOAD_LINK}\n${BUSCALA_EN_PLAY_STORE}\n\n` +
+    `Por ahora ese servicio solo se puede pedir desde la app de Movi. ${ESTAMOS_EN_PLAY_STORE}\n${APP_DOWNLOAD_LINK}\n\n` +
     `Escribe *hola* si quieres pedir un Carro, Moto o Domicilio por aquí.`
   );
 
@@ -2876,8 +2877,8 @@ async function maybeOfferAppDownload(phone: string): Promise<void> {
     if (count === 2) {
       await sendText(phone,
         `🚀 *Psst...* ya llevas 2 viajes con Movi por WhatsApp.\n\n` +
-        `Con la app puedes ver el mapa en vivo, pagar más fácil y pedir en un toque. Descárgala gratis en Play Store:\n` +
-        `${APP_DOWNLOAD_LINK}\n\n${BUSCALA_EN_PLAY_STORE}`
+        `Con la app puedes ver el mapa en vivo, pagar más fácil y pedir en un toque. Es gratis 🙌\n\n` +
+        `${ESTAMOS_EN_PLAY_STORE}\n${APP_DOWNLOAD_LINK}`
       );
     }
   } catch (e) { console.error('[WA] maybeOfferAppDownload error:', e); }
@@ -3185,8 +3186,8 @@ function isAppDownloadInquiry(t: string): boolean {
 }
 
 function appDownloadReply(): string {
-  return `📲 Este es el link oficial para descargar Movi:\n${APP_DOWNLOAD_LINK}\n\n` +
-    `${BUSCALA_EN_PLAY_STORE}\n\nEs la misma app para pedir viajes y para trabajar como conductor.\n\n` +
+  return `📲 ${ESTAMOS_EN_PLAY_STORE}\n${APP_DOWNLOAD_LINK}\n\n` +
+    `Es la misma app para pedir viajes y para trabajar como conductor.\n\n` +
     `_Por ahora solo está disponible para Android._`;
 }
 
@@ -7191,7 +7192,7 @@ REGLA DE ORO (pedido del dueño, 2026-10-05: "responderás solo a esa pregunta p
 
 ═══ DÓNDE SE DESCARGA LA APP (PREGUNTA MUY FRECUENTE) ═══
 - El link oficial y ÚNICO es: ${APP_DOWNLOAD_LINK}
-- SIEMPRE que mandes el link, en el MISMO mensaje agrega: "${BUSCALA_EN_PLAY_STORE}" (hay gente que le da miedo tocar enlaces).
+- SIEMPRE que mandes el link, ponle justo antes, en el mismo mensaje: "${ESTAMOS_EN_PLAY_STORE}". No digas nada de "si te da miedo tocar el enlace".
 - SIEMPRE que alguien pregunte cómo descargar, dónde bajarla, que no la encuentra, cuál es el logo, o cómo saber cuál es la de verdad -- MANDA EL LINK COMPLETO, tal cual, en el mensaje. Nunca digas solo "búscala en Play Store": hay muchas apps llamadas "Movi" y la gente termina instalando la equivocada o rindiéndose (pasó de verdad con varios conductores).
 - En Play Store aparece como *Movi - Transporte Urbano*, del desarrollador TECNOMULTIMEDIA. Es una sola app: la misma sirve para pasajero y para conductor.
 - Por ahora solo hay versión de Android. Si alguien pregunta por iPhone/iOS, dilo claro: todavía no hay versión para iPhone.
@@ -8090,8 +8091,8 @@ async function leadPrimerPaso(phone: string, nombre: string | null, intro?: stri
     // advirtió que es una afirmación comparativa sin datos que la respalden hoy (ver el video
     // "por qué Movi", apagado por cifras que no cuadraban) y decidió dejarla así.
     `Lo primero que quiero que sepas es que *somos la app que mejor paga el kilómetro a los conductores* 💰\n\n` +
-    `Para iniciar tu atención, el *primer paso para ser conductor es descargar la app* 👇\n` +
-    `${APP_DOWNLOAD_LINK}\n\n${BUSCALA_EN_PLAY_STORE}`);
+    `Para iniciar tu atención, el *primer paso para ser conductor es descargar la app*.\n\n` +
+    `${ESTAMOS_EN_PLAY_STORE}\n${APP_DOWNLOAD_LINK}`);
   await upsertLead(phone, {
     ...(nombre ? { nombre_dado: nombre } : {}),
     paso: 'pitch',
@@ -8499,7 +8500,7 @@ async function leadFollowup(phone: string, paso: string): Promise<void> {
     return;
   }
   if (paso === 'pitch') {
-    await sendSupportText(phone, `¿Pudiste descargar la app? 👇\n${APP_DOWNLOAD_LINK}\n\n${BUSCALA_EN_PLAY_STORE}`);
+    await sendSupportText(phone, `¿Pudiste descargar la app? ${ESTAMOS_EN_PLAY_STORE}\n${APP_DOWNLOAD_LINK}`);
   }
 }
 
@@ -8857,8 +8858,8 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
       `3️⃣ La aceptas, o le haces una contraoferta.\n` +
       `4️⃣ Vas por el pasajero, lo llevas, y *él te paga directo a ti*.\n` +
       `5️⃣ Movi descuenta el 12% de tu billetera (en tu primer viaje no se te descuenta nada).\n\n` +
-      `Si aún no te registras: descarga la app 👉 ${APP_DOWNLOAD_LINK} y entra a *"Quiero ser conductor"*.\n` +
-      `${BUSCALA_EN_PLAY_STORE}\n\n` +
+      `Si aún no te registras, descarga la app y entra a *"Quiero ser conductor"*. ${ESTAMOS_EN_PLAY_STORE}\n` +
+      `${APP_DOWNLOAD_LINK}\n\n` +
       `Aquí abajo te dejo un video de 3 minutos donde lo ves todo 👇`;
     await sendSupportText(phone, reply);
     await logSupportInteraction(phone, msgText, 'como_funciona', reply);
