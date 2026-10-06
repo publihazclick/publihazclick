@@ -159,3 +159,9 @@ Deno.test('foto sin texto: calla si hay asesor, y a un conductor registrado no l
   if (!/ses\?\.escalated && Date\.now\(\) - escAt < ESCALATION_TTL_MS\) return;/.test(bloque)) throw new Error('la foto ya no respeta al asesor');
   if (!/lookupAgUserBasic\(phone\)/.test(bloque) || !/Vi tu foto/.test(bloque)) throw new Error('el conductor registrado volvió a recibir el texto de documentos');
 });
+
+// Caso real 2026-10-05 (…8217): "Mire como llega el servicio y uno sin saber para donde van y cuanto
+// colocan" recibió el tutorial de cómo usar la app. La IA tiene la regla para contestar la queja.
+Deno.test('la queja de "llega sin saber destino ni precio" tiene su regla en el prompt', () => {
+  if (!/se QUEJA o comenta cómo le llega una solicitud/.test(src) || !/origen → destino/.test(src)) throw new Error('falta la regla');
+});
